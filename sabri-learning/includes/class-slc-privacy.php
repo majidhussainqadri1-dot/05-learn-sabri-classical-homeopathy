@@ -1,0 +1,11 @@
+<?php
+defined( 'ABSPATH' ) || exit;
+
+final class SLC_Privacy {
+	public function hooks() { add_filter( 'wp_privacy_personal_data_exporters', array( $this, 'exporters' ) ); add_filter( 'wp_privacy_personal_data_erasers', array( $this, 'erasers' ) ); }
+	public function exporters( $items ) { $items['sabri-learning'] = array( 'exporter_friendly_name' => 'Sabri learning activity', 'callback' => array( $this, 'export' ) ); return $items; }
+	public function erasers( $items ) { $items['sabri-learning'] = array( 'eraser_friendly_name' => 'Sabri learning activity', 'callback' => array( $this, 'erase' ) ); return $items; }
+	public function export( $email, $page = 1 ) { $user = get_user_by( 'email', $email ); if ( ! $user || $page > 1 ) { return array( 'data' => array(), 'done' => true ); } global $wpdb; $data = array(); $rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}slc_progress WHERE user_id=%d", $user->ID ) ); foreach ( $rows as $row ) { $data[] = array( 'name' => 'Lesson progress', 'value' => get_the_title( $row->lesson_id ) . ' — ' . $row->status . ' — score ' . $row->score . '%' ); } $saved = $wpdb->get_col( $wpdb->prepare( "SELECT lesson_id FROM {$wpdb->prefix}slc_bookmarks WHERE user_id=%d", $user->ID ) ); foreach ( $saved as $id ) { $data[] = array( 'name' => 'Bookmarked lesson', 'value' => get_the_title( $id ) ); } return array( 'data' => $data ? array( array( 'group_id' => 'sabri-learning', 'group_label' => 'Sabri Learning', 'item_id' => 'user-' . $user->ID, 'data' => $data ) ) : array(), 'done' => true ); }
+	public function erase( $email, $page = 1 ) { $user = get_user_by( 'email', $email ); if ( ! $user || $page > 1 ) { return array( 'items_removed' => false, 'items_retained' => false, 'messages' => array(), 'done' => true ); } global $wpdb; $removed = $wpdb->delete( $wpdb->prefix . 'slc_progress', array( 'user_id' => $user->ID ), array( '%d' ) ) > 0; $removed = $wpdb->delete( $wpdb->prefix . 'slc_bookmarks', array( 'user_id' => $user->ID ), array( '%d' ) ) > 0 || $removed; $authored = count_user_posts( $user->ID, SLC_Content::LESSON, true ); return array( 'items_removed' => $removed, 'items_retained' => $authored > 0, 'messages' => $authored ? array( 'Published lessons and moderation audit history are retained for platform integrity.' ) : array(), 'done' => true ); }
+}
+

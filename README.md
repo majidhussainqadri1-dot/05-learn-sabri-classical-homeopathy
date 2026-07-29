@@ -1,7 +1,19 @@
 # File 05 — Learn Sabri Classical Homeopathy
 
-This repository is reserved for **File 05** of the **Sabri Social Homeopathy Platform**.
+Baseline repository for the **Learn Sabri Classical Homeopathy** module of the **Sabri Social Homeopathy Platform**.
 
-The original version `0.1.0` source is imported through a protected baseline branch and Draft Pull Request so that provenance, integrity, audit findings, and later corrective work remain traceable.
+## Baseline facts
 
-> Production code must not be committed directly to `main`. The baseline must be reviewed before any merge, release, staging installation, or deployment.
+- Original plugin version: `0.1.0`
+- Plugin root: `sabri-learning/`
+- Original source files: `19`
+- Original PHP files: `13`
+- Original source bytes: `75,981`
+- Original ZIP SHA-256: `20d9ddd2d46244897b690156c48dad96b2411729d5129d92f6a87ccffa69068a`
+- Source-tree SHA-256: `5789e3d1d74f113d16b9d487b9252ce051a849d768767c5ce7e79cca5c95aa9a`
+
+## Repository policy
+
+The branch `baseline/file-05-original-import` preserves the supplied source exactly. It is not an approved production release. Review findings and corrections must be performed separately, with the baseline remaining traceable and immutable.
+
+See `SOURCE-PROVENANCE.md`, `MANIFEST.md`, `CHECKSUMS.sha256`, `STATUS.md`, and `BASELINE-REVIEW.md`.

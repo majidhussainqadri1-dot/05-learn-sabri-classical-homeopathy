@@ -1,0 +1,49 @@
+<?php
+defined( 'ABSPATH' ) || exit;
+
+final class SLC_Publishing {
+	public function hooks() { add_shortcode( 'slc_submit_lesson', array( $this, 'form' ) ); add_action( 'admin_post_slc_submit_lesson', array( $this, 'submit' ) ); }
+	public function form() {
+		if ( ! is_user_logged_in() ) { return '<div class="slc-notice"><p>An account is required to submit a lesson.</p><a class="slc-button" href="' . esc_url( wp_login_url( get_permalink() ) ) . '">Log In</a></div>'; }
+		if ( ! SLC_Permissions::can_submit() ) { return '<div class="slc-notice"><strong>Lesson publishing is restricted.</strong><p>Only the Founder, administrators and verified doctors may submit lessons.</p></div>'; }
+		$books = get_posts( array( 'post_type' => SLC_Content::BOOK, 'post_status' => 'publish', 'posts_per_page' => 100, 'orderby' => 'title', 'order' => 'ASC' ) ); ob_start(); ?>
+		<main class="slc-shell"><header class="slc-page-head"><span>Learning Management</span><h1>Submit Learning Lesson</h1><p>Use American English. Verified doctor contributions remain pending until administrator approval.</p></header>
+		<form class="slc-form" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post" enctype="multipart/form-data"><input type="hidden" name="action" value="slc_submit_lesson"><?php wp_nonce_field( 'slc_submit_lesson', 'slc_nonce' ); ?>
+		<label>Lesson title<input name="title" maxlength="180" required></label><label>Learning level<select name="level" required><option value="">Select level</option><?php foreach ( SLC_Content::levels() as $slug => $name ) : ?><option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $name ); ?></option><?php endforeach; ?></select></label>
+		<label>Learning topic<select name="topic" required><option value="">Select topic</option><?php foreach ( SLC_Content::topics() as $slug => $name ) : ?><option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $name ); ?></option><?php endforeach; ?></select></label><label>Related book<select name="book_id"><option value="0">No specific book</option><?php foreach ( $books as $book ) : ?><option value="<?php echo absint( $book->ID ); ?>"><?php echo esc_html( $book->post_title ); ?></option><?php endforeach; ?></select></label>
+		<label>Chapter or section<input name="chapter" maxlength="160" placeholder="Chapter 1 — Foundations"></label><label>Featured image<input type="file" name="image" accept="image/jpeg,image/png,image/webp"><small>JPG, PNG or WebP; maximum 5 MB.</small></label>
+		<label class="slc-full">Short summary<textarea name="excerpt" rows="3" maxlength="500" required></textarea></label><label class="slc-full">Complete lesson<textarea name="content" rows="15" required></textarea></label>
+		<label class="slc-full">Learning objectives — one per line<textarea name="objectives" rows="4" required></textarea></label><label>Important terms<input name="terms" maxlength="500" placeholder="term, term, term"></label><label>Estimated study time<input name="study_time" maxlength="40" placeholder="20 minutes"></label>
+		<label class="slc-full">References — one per line<textarea name="references" rows="5" required></textarea></label>
+		<label class="slc-full">Optional knowledge-check questions<textarea name="quiz" rows="6" placeholder="Question | Option A | Option B | Option C | A | Explanation"></textarea><small>Maximum five lines. Separate each question, three options, correct letter and explanation with |.</small></label>
+		<div class="slc-full slc-case-check" hidden data-slc-case><strong>Patient Case Learning safeguards</strong><label class="slc-check"><input type="checkbox" name="case_anonymized" value="1"> Patient identity and direct identifiers have been removed.</label><label class="slc-check"><input type="checkbox" name="case_consent" value="1"> Appropriate permission exists for any information or image that could identify the patient.</label></div>
+		<label class="slc-check slc-full"><input type="checkbox" name="medical_notice" value="1" required> This lesson is educational, does not promise a cure, does not provide a personal prescription and does not replace emergency or qualified medical care.</label><button class="slc-button" type="submit"><?php echo 'publish' === SLC_Permissions::initial_status() ? 'Publish Lesson' : 'Submit for Review'; ?></button></form></main>
+		<?php return ob_get_clean();
+	}
+
+	public function submit() {
+		if ( ! is_user_logged_in() || ! SLC_Permissions::can_submit() ) { wp_die( esc_html__( 'You are not allowed to submit lessons.', 'sabri-learning' ), '', array( 'response' => 403 ) ); }
+		check_admin_referer( 'slc_submit_lesson', 'slc_nonce' );
+		$title = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : ''; $excerpt = isset( $_POST['excerpt'] ) ? sanitize_textarea_field( wp_unslash( $_POST['excerpt'] ) ) : ''; $content = isset( $_POST['content'] ) ? wp_kses_post( wp_unslash( $_POST['content'] ) ) : ''; $topic = isset( $_POST['topic'] ) ? sanitize_title( wp_unslash( $_POST['topic'] ) ) : ''; $level = isset( $_POST['level'] ) ? sanitize_title( wp_unslash( $_POST['level'] ) ) : '';
+		$title = $this->limit( $title, 180 ); $excerpt = $this->limit( $excerpt, 500 );
+		if ( ! $title || ! trim( wp_strip_all_tags( $content ) ) || ! SLC_Content::allowed( $topic, SLC_Content::TOPIC ) || ! SLC_Content::allowed( $level, SLC_Content::LEVEL ) || empty( $_POST['medical_notice'] ) ) { $this->fail( 'Complete the lesson title, content, approved topic, level and medical confirmation.' ); }
+		if ( 'patient-case-learning' === $topic && ( empty( $_POST['case_anonymized'] ) || empty( $_POST['case_consent'] ) ) ) { $this->fail( 'Patient Case Learning requires anonymity and consent confirmations.' ); }
+		$error = $this->validate_image(); if ( $error ) { $this->fail( $error ); }
+		$book_id = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0; if ( $book_id && ( SLC_Content::BOOK !== get_post_type( $book_id ) || 'publish' !== get_post_status( $book_id ) ) ) { $book_id = 0; }
+		$status = SLC_Permissions::initial_status(); $id = wp_insert_post( array( 'post_type' => SLC_Content::LESSON, 'post_status' => $status, 'post_author' => get_current_user_id(), 'post_title' => $title, 'post_excerpt' => $excerpt, 'post_content' => $content, 'comment_status' => 'open', 'ping_status' => 'closed' ), true ); if ( is_wp_error( $id ) ) { $this->fail( 'The lesson could not be saved.' ); }
+		if ( ! SLC_Content::assign( $id, $topic, SLC_Content::TOPIC ) || ! SLC_Content::assign( $id, $level, SLC_Content::LEVEL ) ) { wp_update_post( array( 'ID' => $id, 'post_status' => 'draft' ) ); $this->fail( 'The approved topic or level could not be assigned. The lesson was kept as a draft.' ); }
+		foreach ( array( 'objectives' => 'textarea', 'terms' => 'text', 'study_time' => 'text', 'references' => 'textarea', 'chapter' => 'text' ) as $key => $type ) { $value = isset( $_POST[ $key ] ) ? wp_unslash( $_POST[ $key ] ) : ''; $value = 'textarea' === $type ? sanitize_textarea_field( $value ) : sanitize_text_field( $value ); update_post_meta( $id, '_slc_' . $key, $value ); }
+		update_post_meta( $id, '_slc_book_id', $book_id ); update_post_meta( $id, '_slc_language', 'en-US' ); update_post_meta( $id, '_slc_quiz', $this->quiz( isset( $_POST['quiz'] ) ? wp_unslash( $_POST['quiz'] ) : '' ) ); update_post_meta( $id, '_slc_views', 0 );
+		if ( 'patient-case-learning' === $topic ) { update_post_meta( $id, '_slc_case_anonymized', '1' ); update_post_meta( $id, '_slc_case_consent', '1' ); }
+		$image = $this->upload( $id ); if ( $image ) { set_post_thumbnail( $id, $image ); }
+		SLC_Admin::audit( $id, 'publish' === $status ? 'published' : 'submitted', '' );
+		if ( 'publish' === $status ) { wp_safe_redirect( get_permalink( $id ) ); } else { $pages = (array) get_option( 'slc_page_map', array() ); wp_safe_redirect( add_query_arg( 'submitted', '1', ! empty( $pages['submit'] ) ? get_permalink( $pages['submit'] ) : home_url( '/' ) ) ); } exit;
+	}
+
+	private function quiz( $raw ) { $out = array(); foreach ( array_slice( preg_split( '/\r\n|\r|\n/', sanitize_textarea_field( $raw ) ), 0, 5 ) as $line ) { $p = array_map( 'trim', explode( '|', $line ) ); if ( count( $p ) < 6 ) { continue; } $letter = strtoupper( $p[4] ); if ( ! in_array( $letter, array( 'A', 'B', 'C' ), true ) ) { continue; } $out[] = array( 'q' => $this->limit( $p[0], 300 ), 'o' => array( $this->limit( $p[1], 180 ), $this->limit( $p[2], 180 ), $this->limit( $p[3], 180 ) ), 'a' => array_search( $letter, array( 'A', 'B', 'C' ), true ), 'e' => $this->limit( $p[5], 500 ) ); } return $out; }
+	private function validate_image() { if ( empty( $_FILES['image']['name'] ) ) { return ''; } $f = $_FILES['image']; if ( ! empty( $f['error'] ) || (int) $f['size'] > 5 * MB_IN_BYTES ) { return 'The image must upload successfully and be 5 MB or smaller.'; } $type = wp_check_filetype_and_ext( $f['tmp_name'], $f['name'], array( 'jpg|jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp' ) ); return empty( $type['type'] ) ? 'Only JPG, PNG and WebP images are allowed.' : ''; }
+	private function upload( $id ) { if ( empty( $_FILES['image']['name'] ) ) { return 0; } require_once ABSPATH . 'wp-admin/includes/file.php'; require_once ABSPATH . 'wp-admin/includes/media.php'; require_once ABSPATH . 'wp-admin/includes/image.php'; $image = media_handle_upload( 'image', $id, array(), array( 'test_form' => false, 'mimes' => array( 'jpg|jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp' ) ) ); return is_wp_error( $image ) ? 0 : absint( $image ); }
+	private function limit( $value, $length ) { return function_exists( 'mb_substr' ) ? mb_substr( $value, 0, $length ) : substr( $value, 0, $length ); }
+	private function fail( $message ) { wp_die( esc_html( $message ), esc_html__( 'Lesson not accepted', 'sabri-learning' ), array( 'response' => 400, 'back_link' => true ) ); }
+}
+
