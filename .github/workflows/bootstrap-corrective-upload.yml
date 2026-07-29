@@ -6,17 +6,22 @@ on:
     paths:
       - '.file05-bootstrap/**'
       - '.github/workflows/bootstrap-corrective-upload.yml'
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 jobs:
   apply-corrective-overlay:
+    if: github.event_name == 'push' || github.head_ref == 'audit/file-05-source-review'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
+          ref: audit/file-05-source-review
       - name: Reassemble and verify corrective overlay
         shell: bash
         run: |
