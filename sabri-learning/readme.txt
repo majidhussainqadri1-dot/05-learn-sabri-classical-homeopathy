@@ -1,48 +1,54 @@
 === Learn Sabri Classical Homeopathy ===
 Contributors: sabrihomeopathy
 Tags: classical homeopathy, learning, books, lessons, progress
-Requires at least: 6.0
-Tested up to: 6.8
+Requires at least: 6.1
+Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 1.0.0
 License: GPLv2 or later
 
-Public books, structured lessons, progress, bookmarks and knowledge checks for the Sabri Social Homeopathy Platform.
+Governed public books, structured lessons, private progress, bookmarks, and knowledge checks for the Sabri Social Homeopathy Platform.
 
 == Description ==
 
-File 05 provides the first 25 percent of Learn Sabri Classical Homeopathy.
+File 05 provides the hardened learning foundation for Learn Sabri Classical Homeopathy.
 
-Features:
-* Public reading without registration.
-* Eight organized Founder book catalog entries.
-* Sixteen fixed learning topics and four learning levels.
-* Search and filters by keyword, topic, level, book and popularity.
-* Founder and administrator lessons publish immediately; verified doctor lessons require review.
-* Learning objectives, terms, references, related book, chapter and study time.
-* Private progress, bookmarks, Continue Learning and Mark as Complete.
-* Up to five knowledge-check questions per lesson.
-* Patient Case Learning anonymity and consent safeguards.
-* Learning Management moderation and audit history.
-* LearningResource and Book structured data, privacy hooks and accessible responsive design.
+Core controls:
+* File 00 is the mandatory and sole membership/doctor-verification authority.
+* File 01 owns the central Learn page.
+* File 20 owns the global application shell and navigation.
+* Custom post capabilities isolate books and lessons from generic WordPress post editors.
+* Founder and learning administrators may publish directly; currently verified doctors submit for independent review.
+* Moderation prohibits self-review and uses explicit state transitions plus optimistic concurrency control.
+* Patient Case Learning requires a versioned consent record, source, evidence reference, scope, and withdrawal status.
+* Private progress and bookmarks are filtered to currently published lessons.
+* Image upload checks MIME, dimensions, pixel count, embedded active-content signatures, and a security-scan filter.
+* Privacy export, erasure, anonymization, legal-hold handling, and guarded uninstall are included.
+* Lesson catalog search, filters, popularity, and pagination are included.
+
+== Dependencies ==
+
+The plugin stops safely unless these active contracts are available:
+1. File 00 — Sabri Membership Core 1.0.1 or later.
+2. File 01 — Sabri Platform Foundation.
+3. File 20 — Sabri Unified Application Shell 1.0.0 or later.
 
 == Installation ==
 
-1. Keep Files 01 through 04 active.
-2. Upload this ZIP through WordPress Admin > Plugins > Add New > Upload Plugin.
-3. Activate Learn Sabri Classical Homeopathy.
-4. Open the existing Learn Sabri Classical Homeopathy page.
-5. Use Learning Management for pending verified-doctor lessons.
-6. Eligible authors may use the automatically created Submit Learning Lesson page.
+1. Back up the database and files.
+2. Keep Files 00, 01, and 20 active and healthy.
+3. Upload the release ZIP through WordPress Admin > Plugins > Add New > Upload Plugin.
+4. Activate Learn Sabri Classical Homeopathy.
+5. Run the complete staging acceptance protocol before production.
 
-The plugin enhances the Foundation-managed Learn page without changing the active theme or WordPress Reading Settings.
+== Privacy and retention ==
 
-== Copyright and medical notice ==
-
-Book entries are catalog foundations only. Full third-party copyrighted text is not imported. Lessons are educational and must not diagnose, prescribe, promise a cure, delay emergency care or replace a qualified healthcare professional.
+Learning progress and bookmarks may be erased. Unpublished authored lessons are removed during a valid erasure request unless a legal hold applies. Published lessons may be retained for editorial integrity with personal attribution removed. Destructive uninstall requires both the SLC_PURGE_ON_UNINSTALL constant and the slc_allow_destructive_uninstall option.
 
 == Changelog ==
 
-= 0.1.0 =
-* Initial modular release.
+= 1.0.0 =
+* Hardened architecture, permissions, dependencies, moderation, consent, privacy, database lifecycle, shell integration, catalog pagination, upload security, safe DOM rendering, reproducible packaging, and corrective CI.
 
+= 0.1.0 =
+* Original modular baseline preserved on the immutable baseline branch.

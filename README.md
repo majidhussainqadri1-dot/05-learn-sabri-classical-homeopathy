@@ -1,19 +1,24 @@
 # File 05 — Learn Sabri Classical Homeopathy
 
-Baseline repository for the **Learn Sabri Classical Homeopathy** module of the **Sabri Social Homeopathy Platform**.
+This repository preserves the immutable File 05 `0.1.0` baseline and develops the governed `1.0.0` correction separately.
 
-## Baseline facts
+## Branches
 
-- Original plugin version: `0.1.0`
-- Plugin root: `sabri-learning/`
-- Original source files: `19`
-- Original PHP files: `13`
-- Original source bytes: `75,981`
-- Original ZIP SHA-256: `20d9ddd2d46244897b690156c48dad96b2411729d5129d92f6a87ccffa69068a`
-- Source-tree SHA-256: `5789e3d1d74f113d16b9d487b9252ce051a849d768767c5ce7e79cca5c95aa9a`
+- `baseline/file-05-original-import` — exact supplied source and custody evidence; never modify or merge as a release.
+- `audit/file-05-source-review` — corrective implementation for the 20 recorded blockers.
+- `main` — remains protected from unaccepted baseline or corrective code.
 
-## Repository policy
+## Corrected architecture
 
-The branch `baseline/file-05-original-import` preserves the supplied source exactly. It is not an approved production release. Review findings and corrections must be performed separately, with the baseline remaining traceable and immutable.
+File 00 is the authoritative membership and verification boundary. File 01 owns the Learn page. File 20 owns the global application shell. File 05 owns learning books, lessons, classifications, moderation, private progress, bookmarks, quizzes, patient-case consent records, privacy integration, and release/staging evidence.
 
-See `SOURCE-PROVENANCE.md`, `MANIFEST.md`, `CHECKSUMS.sha256`, `STATUS.md`, and `BASELINE-REVIEW.md`.
+## Verification
+
+```bash
+bash tests/source-invariants.sh
+php tests/security-invariants.php
+python3 scripts/source-tree-hash.py sabri-learning
+python3 scripts/build-release.py --output file-05-1.0.0-rc1.zip
+```
+
+See `CORRECTIVE-REVIEW.md`, `CORRECTIVE-MANIFEST.md`, `RELEASE-LOCK.md`, and `STAGING-ACCEPTANCE.md`.

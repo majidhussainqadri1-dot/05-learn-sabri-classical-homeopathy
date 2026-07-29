@@ -1,2 +1,99 @@
-(function(){'use strict';function send(data){data.append('action','slc_learning_action');data.append('nonce',slcLearning.nonce);return fetch(slcLearning.ajaxUrl,{method:'POST',credentials:'same-origin',body:data}).then(function(r){return r.json().then(function(j){if(!r.ok||!j.success){throw new Error(j.data&&j.data.message?j.data.message:'The learning action failed.');}return j.data;});});}function lessonId(el){var owner=el.closest('[data-lesson-id]');return owner?owner.dataset.lessonId:'';}document.addEventListener('DOMContentLoaded',function(){document.querySelectorAll('.slc-form select[name="topic"]').forEach(function(select){var box=select.form.querySelector('[data-slc-case]');function update(){var on=select.value==='patient-case-learning';box.hidden=!on;box.querySelectorAll('input').forEach(function(i){i.required=on;if(!on){i.checked=false;}});}select.addEventListener('change',update);update();});document.querySelectorAll('.slc-form input[type="file"]').forEach(function(input){input.addEventListener('change',function(){if(this.files[0]&&this.files[0].size>5*1024*1024){alert('Please choose an image that is 5 MB or smaller.');this.value='';}});});});document.addEventListener('click',function(e){var button=e.target.closest('[data-slc-action]');if(!button){return;}e.preventDefault();var data=new FormData();data.append('kind',button.dataset.slcAction);data.append('lessonId',lessonId(button));button.disabled=true;send(data).then(function(result){button.textContent=result.label;button.classList.toggle('is-active',!!result.active);button.setAttribute('aria-pressed',result.active?'true':'false');}).catch(function(err){alert(err.message);if(/log in/i.test(err.message)){location.href=slcLearning.loginUrl;}}).finally(function(){button.disabled=false;});});document.addEventListener('submit',function(e){var form=e.target.closest('[data-slc-quiz]');if(!form){return;}e.preventDefault();var answers=[];form.querySelectorAll('fieldset').forEach(function(field){var checked=field.querySelector('input:checked');answers.push(checked?parseInt(checked.value,10):-1);});var data=new FormData();data.append('kind','quiz');data.append('lessonId',lessonId(form));data.append('answers',JSON.stringify(answers));var button=form.querySelector('button[type="submit"]');if(button){button.disabled=true;}send(data).then(function(result){var html='<h3>Score: '+result.score+'% ('+result.correct+'/'+result.total+')</h3><ol>';result.review.forEach(function(item){html+='<li><strong>'+(item.correct?'Correct':'Review')+':</strong> '+item.answer+' — '+item.explanation+'</li>';});form.querySelector('[data-slc-quiz-result]').innerHTML=html+'</ol>';}).catch(function(err){alert(err.message);}).finally(function(){if(button){button.disabled=false;}});});})();
+(function () {
+	'use strict';
 
+	function send(data) {
+		data.append('action', 'slc_learning_action');
+		data.append('nonce', slcLearning.nonce);
+		return fetch(slcLearning.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: data }).then(function (response) {
+			return response.json().then(function (json) {
+				if (!response.ok || !json.success) {
+					throw new Error(json.data && json.data.message ? json.data.message : slcLearning.strings.failed);
+				}
+				return json.data;
+			});
+		});
+	}
+
+	function lessonId(element) {
+		var owner = element.closest('[data-lesson-id]');
+		return owner ? owner.dataset.lessonId : '';
+	}
+
+	function text(tag, value) {
+		var node = document.createElement(tag);
+		node.textContent = String(value);
+		return node;
+	}
+
+	document.addEventListener('DOMContentLoaded', function () {
+		document.querySelectorAll('.slc-form select[name="topic"]').forEach(function (select) {
+			var box = select.form.querySelector('[data-slc-case]');
+			if (!box) { return; }
+			function update() {
+				var enabled = select.value === 'patient-case-learning';
+				box.hidden = !enabled;
+				box.querySelectorAll('input,select,textarea').forEach(function (input) {
+					if (input.name !== 'case_anonymized' && input.name !== 'case_consent' && input.name !== 'consent_source' && input.name !== 'consent_evidence' && input.name !== 'consent_scope') { return; }
+					input.required = enabled;
+					if (!enabled && input.type === 'checkbox') { input.checked = false; }
+					if (!enabled && input.type !== 'checkbox') { input.value = ''; }
+				});
+			}
+			select.addEventListener('change', update);
+			update();
+		});
+	});
+
+	document.addEventListener('click', function (event) {
+		var button = event.target.closest('[data-slc-action]');
+		if (!button) { return; }
+		event.preventDefault();
+		var data = new FormData();
+		data.append('kind', button.dataset.slcAction);
+		data.append('lessonId', lessonId(button));
+		button.disabled = true;
+		send(data).then(function (result) {
+			button.textContent = result.label;
+			button.classList.toggle('is-active', !!result.active);
+			button.setAttribute('aria-pressed', result.active ? 'true' : 'false');
+		}).catch(function (error) {
+			window.alert(error.message);
+			if (/log in/i.test(error.message)) { window.location.href = slcLearning.loginUrl; }
+		}).finally(function () { button.disabled = false; });
+	});
+
+	document.addEventListener('submit', function (event) {
+		var form = event.target.closest('[data-slc-quiz]');
+		if (!form) { return; }
+		event.preventDefault();
+		var answers = [];
+		form.querySelectorAll('fieldset').forEach(function (field) {
+			var checked = field.querySelector('input:checked');
+			answers.push(checked ? parseInt(checked.value, 10) : -1);
+		});
+		var data = new FormData();
+		data.append('kind', 'quiz');
+		data.append('lessonId', lessonId(form));
+		data.append('answers', JSON.stringify(answers));
+		var button = form.querySelector('button[type="submit"]');
+		if (button) { button.disabled = true; }
+		send(data).then(function (result) {
+			var target = form.querySelector('[data-slc-quiz-result]');
+			if (!target) { return; }
+			target.replaceChildren();
+			var heading = text('h3', slcLearning.strings.score + ': ' + result.score + '% (' + result.correct + '/' + result.total + ')');
+			var list = document.createElement('ol');
+			result.review.forEach(function (item) {
+				var row = document.createElement('li');
+				var strong = text('strong', (item.correct ? slcLearning.strings.correct : slcLearning.strings.review) + ': ');
+				row.appendChild(strong);
+				row.appendChild(document.createTextNode(String(item.answer) + ' — ' + String(item.explanation)));
+				list.appendChild(row);
+			});
+			target.appendChild(heading);
+			target.appendChild(list);
+		}).catch(function (error) {
+			window.alert(error.message);
+		}).finally(function () { if (button) { button.disabled = false; } });
+	});
+}());
