@@ -1,0 +1,1 @@
+.slc-level-progress{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}.slc-level-progress>div{padding:13px;border:1px solid #e5e7eb;border-radius:12px}.slc-level-progress strong,.slc-level-progress span{display:block}.slc-level-progress progress{width:100%;margin-top:8px;accent-color:#ff8a1f}

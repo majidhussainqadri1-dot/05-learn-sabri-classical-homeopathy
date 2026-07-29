@@ -1,0 +1,16 @@
+# Local/editor artifacts
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Temporary/build artifacts
+*.log
+*.tmp
+.cache/
+build/
+dist/
+vendor/
+node_modules/
