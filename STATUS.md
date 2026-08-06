@@ -1,27 +1,32 @@
-# File 05 Status
+# File 05 Status — 2.0.0 Complete Source Candidate
 
-## Current state
+| Status | Evidence |
+|---|---|
+| Specified | Complete File 05 plan, Definitive Master Plan and current Founder amendments mapped |
+| Coded | All 18 functional requirements and 10 non-functional source requirements implemented in the 2.0.0 candidate |
+| Reviewed | Four review/fix rounds recorded; no known unresolved Critical or High source defect |
+| Packaged | Reproducible package script and byte-identical local ZIP evidence |
+| Automated QA | Static invariants, policy/crypto unit tests, PHP 7.4/8.3 lint, JavaScript syntax and deterministic double-build workflow |
+| Staging accepted | Pending real WordPress/Hostinger and companion-runtime evidence |
+| Live deployed | Not authorized |
+| Operationally accepted | Not authorized |
 
-**Corrective source remediation implemented on `audit/file-05-source-review`; automated GitHub verification and real WordPress staging remain pending.**
+## Current release identity
 
-- Baseline version: `0.1.0`
-- Corrected version: `1.0.0` RC1
-- Baseline branch: `baseline/file-05-original-import` — immutable
-- Corrective branch: `audit/file-05-source-review`
-- Baseline PR #1: Draft / unmerged
-- Corrective PR: must remain Draft / unmerged
-- Staging authorization: No, until corrective CI succeeds and the exact artifact is selected
-- Production authorization: No
+- Runtime: `2.0.0`
+- Schema: `7`
+- Canonical package root: `05-learn-sabri-classical-homeopathy/`
+- Text domain: `learn-sabri-classical-homeopathy`
+- PHP namespace prefix: `LSCH_`
+- Access model: `single-free-tier-v2`
+- Primary visual identity: green, with semantic secondary colors and mandatory icon support
 
-## Completed in corrective source
+No claim of production completion is made before staging, Founder approval and live operational evidence. The remaining work is external acceptance/deployment, not an undisclosed source-code backlog.
 
-- All 20 source-review findings have an implemented remediation.
-- File 00 authority, File 01 page ownership, and File 20 shell contracts are explicit.
-- Corrective static/security tests are present.
-- PHP syntax workflow covers PHP 7.4 and 8.3.
-- Packaging is deterministic and verified by two-build byte comparison.
-- Full staging acceptance and stop-the-line protocol is present.
+## Reproducible candidate evidence
 
-## Mandatory next gate
-
-Run GitHub corrective CI. Correct every failed check before selecting an RC artifact. Then install only the verified artifact on authenticated WordPress staging and execute every acceptance gate. Do not merge or deploy based on source review alone.
+- Plugin files: `20`
+- Canonical source-tree SHA-256: `5ae2a59b8d286bb4ead8e934189cdb890858711a485f93d952687ec411ae4567`
+- Candidate ZIP: `05-learn-sabri-classical-homeopathy-2.0.0-COMPLETE-CANDIDATE.zip`
+- Candidate ZIP bytes: `52,578`
+- Candidate ZIP SHA-256: `beeb51c9b85b761f7fd992255a6113e052b2c2eaab43f208d670ddacd21a03fd`

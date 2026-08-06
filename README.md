@@ -1,24 +1,27 @@
 # File 05 — Learn Sabri Classical Homeopathy
 
-This repository preserves the immutable File 05 `0.1.0` baseline and develops the governed `1.0.0` correction separately.
+Canonical repository for the Sabri Social Homeopathy Platform learning domain.
 
-## Branches
+## Corrective release
 
-- `baseline/file-05-original-import` — exact supplied source and custody evidence; never modify or merge as a release.
-- `audit/file-05-source-review` — corrective implementation for the 20 recorded blockers.
-- `main` — remains protected from unaccepted baseline or corrective code.
+- Runtime: `2.0.0`
+- Schema: `6`
+- Plan: `SSH-F05-PLAN-2026-v1.0`
+- Canonical package root: `05-learn-sabri-classical-homeopathy/`
+- WordPress slug/text domain: `learn-sabri-classical-homeopathy`
+- PHP namespace prefix: `LSCH_`
+- Business amendment: one complete free education tier; no PKR 400 gate
+- Visual amendment: green primary identity with contextual secondary colors and icons
 
-## Corrected architecture
+This branch implements the complete source architecture and automated evidence required by the approved File 05 plan. It does not claim Hostinger staging acceptance, Founder acceptance, live deployment, or operational acceptance without their separate real-environment evidence.
 
-File 00 is the authoritative membership and verification boundary. File 01 owns the Learn page. File 20 owns the global application shell. File 05 owns learning books, lessons, classifications, moderation, private progress, bookmarks, quizzes, patient-case consent records, privacy integration, and release/staging evidence.
-
-## Verification
+## Local verification
 
 ```bash
-bash tests/source-invariants.sh
-php tests/security-invariants.php
-python3 scripts/source-tree-hash.py sabri-learning
-python3 scripts/build-release.py --output file-05-1.0.0-rc1.zip
+python3 tests/static-invariants.py
+php tests/unit-policy.php
+find 05-learn-sabri-classical-homeopathy tests -name '*.php' -print0 | xargs -0 -n1 php -l
+python3 scripts/build-release.py --output file05-a.zip
+python3 scripts/build-release.py --output file05-b.zip
+cmp file05-a.zip file05-b.zip
 ```
-
-See `CORRECTIVE-REVIEW.md`, `CORRECTIVE-MANIFEST.md`, `RELEASE-LOCK.md`, and `STAGING-ACCEPTANCE.md`.
