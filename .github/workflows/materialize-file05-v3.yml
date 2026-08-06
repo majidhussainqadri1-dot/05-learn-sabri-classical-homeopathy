@@ -1,0 +1,44 @@
+name: Materialize File 05 v3 Candidate
+
+on:
+  push:
+    branches: [ codex/file-05-complete-v3.0.0 ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: materialize-file05-v3-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
+        with:
+          php-version: '8.3'
+          coverage: none
+      - uses: actions/setup-node@1e60f620b9541d27c13014132f7f7f409926e920 # v4.0.3
+        with:
+          node-version: '22'
+      - name: Materialize reviewed source tree
+        run: python3 materialize-v3/apply.py
+      - name: Verify materialized candidate
+        run: bash tests/source-invariants.sh
+      - name: Commit final candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git status --short
+          git diff --cached --check
+          git commit -m "Complete File 05 corrective candidate v3.0.0"
+          git push origin HEAD:codex/file-05-complete-v3.0.0
