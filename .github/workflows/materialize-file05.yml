@@ -29,6 +29,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --check
+          git status --short
           git commit -m "Complete File 05 learning platform v2.0.0"
           git push origin HEAD:codex/file-05-complete-v2.0.0
