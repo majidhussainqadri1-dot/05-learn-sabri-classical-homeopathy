@@ -1,0 +1,66 @@
+name: File 05 Complete Integrity
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ codex/file-05-complete-v2.0.0 ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: file-05-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Static architecture and security invariants
+        run: python3 tests/static-invariants.py
+      - name: Policy and crypto unit tests
+        run: php tests/unit-policy.php
+
+  php-syntax:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint PHP
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do php -l "$file"; done < <(find 05-learn-sabri-classical-homeopathy tests -type f -name '*.php' -print0 | sort -z)
+
+  reproducible-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Build twice and compare
+        run: |
+          set -euo pipefail
+          python3 scripts/source-tree-hash.py --manifest SOURCE-CHECKSUMS.sha256
+          python3 scripts/build-release.py --output file05-a.zip
+          python3 scripts/build-release.py --output file05-b.zip
+          cmp file05-a.zip file05-b.zip
+          sha256sum file05-a.zip file05-b.zip
+      - name: Upload candidate evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: file-05-2.0.0-candidate
+          path: |
+            file05-a.zip
+            file05-a.zip.sha256
+            SOURCE-CHECKSUMS.sha256
+          if-no-files-found: error
+          retention-days: 30
