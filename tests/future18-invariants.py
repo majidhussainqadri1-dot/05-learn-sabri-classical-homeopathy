@@ -120,6 +120,11 @@ for token in ['patientname','emailaddress','phonenumber','cnicnumber','dateofbir
     if token not in sensitive:
         errors.append(f'Missing de-identification guard token: {token}')
 
+# External canonical owners must explicitly authorize practice-blueprint access; adapters fail closed.
+blueprint = f.split('private static function blueprint',1)[-1].split('private static function auto_score',1)[0]
+if "lsch_future18_blueprint_access" not in blueprint or "true !== $external_allowed" not in blueprint:
+    errors.append('External practice-blueprint access is not fail-closed through an owner authorization contract.')
+
 # Read paths must not mutate personalized pathway state.
 if "'GET', 'HEAD'" not in r or "build_learning_path( get_current_user_id(), $goal ?: 'balanced_mastery', $persist )" not in r:
     errors.append('Learning-path GET/HEAD persistence guard is missing.')

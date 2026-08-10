@@ -566,6 +566,10 @@ final class LSCH_Future18 {
 		$mode = sanitize_key( $mode );
 		$external = apply_filters( 'lsch_future18_blueprint', null, $mode, $source_type, $source_id, $user_id );
 		if ( is_array( $external ) ) {
+			$external_allowed = apply_filters( 'lsch_future18_blueprint_access', false, $mode, $source_type, $source_id, $user_id, $external );
+			if ( true !== $external_allowed ) {
+				return new WP_Error( 'lsch_future18_external_blueprint_forbidden', __( 'The external learning owner did not authorize this governed practice object.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
+			}
 			return $external;
 		}
 		if ( 'lesson' !== $source_type || LSCH_Content::LESSON !== get_post_type( $source_id ) || ! LSCH_Policy::can_read_post( $source_id, $user_id ) ) {
