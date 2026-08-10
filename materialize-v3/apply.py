@@ -1,41 +1,84 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import base64, binascii, io, shutil, tarfile
+import base64
+import binascii
+import io
+import shutil
+import tarfile
+import zlib
 
 ROOT = Path.cwd().resolve()
 PARTS = ROOT / 'materialize-v3' / 'parts'
+BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+DECODE_ERRORS = (ValueError, binascii.Error, tarfile.TarError, OSError, EOFError, zlib.error)
 
-# Payload chunks are ASCII base64. Normalize whitespace and restore only the
-# syntactically required terminal padding; corruption still fails strict decode
-# or gzip/tar validation below.
-payload = ''.join(
-    ''.join(p.read_text(encoding='ascii').split())
-    for p in sorted(PARTS.glob('payload-*.txt'))
-)
-if not payload:
-    raise SystemExit('No materialization payload parts found.')
-payload += '=' * (-len(payload) % 4)
-try:
+
+def normalized_parts():
+    result = []
+    for path in sorted(PARTS.glob('payload-*.txt')):
+        result.append((path, ''.join(path.read_text(encoding='ascii').split())))
+    if not result:
+        raise SystemExit('No materialization payload parts found.')
+    return result
+
+
+def decode_and_validate(chunks):
+    payload = ''.join(chunks)
+    payload += '=' * (-len(payload) % 4)
     raw = base64.b64decode(payload.encode('ascii'), validate=True)
-except (ValueError, binascii.Error) as exc:
-    raise SystemExit(f'Invalid materialization payload: {exc}') from exc
-
-# Validate the complete archive before deleting any checked-out source. This
-# makes a broken/truncated materialization payload fail non-destructively.
-try:
     with tarfile.open(fileobj=io.BytesIO(raw), mode='r:gz') as tf:
         members = tf.getmembers()
         if not members:
-            raise SystemExit('Materialization archive is empty.')
+            raise ValueError('Materialization archive is empty.')
         for member in members:
             target = (ROOT / member.name).resolve()
             if ROOT not in target.parents and target != ROOT:
-                raise SystemExit(f'Unsafe archive member: {member.name}')
+                raise ValueError(f'Unsafe archive member: {member.name}')
             if member.issym() or member.islnk():
-                raise SystemExit(f'Links are not allowed: {member.name}')
-except (tarfile.TarError, OSError, EOFError) as exc:
-    raise SystemExit(f'Invalid materialization archive: {exc}') from exc
+                raise ValueError(f'Links are not allowed: {member.name}')
+    return raw
 
+
+parts = normalized_parts()
+chunks = [chunk for _, chunk in parts]
+
+try:
+    raw = decode_and_validate(chunks)
+    recovery_note = 'payload validated without repair'
+except DECODE_ERRORS as direct_error:
+    # Historical transport split left exactly one base64 character missing at a
+    # chunk boundary. Recover only when the archive itself cryptographically/
+    # structurally disambiguates the missing character: exactly one candidate
+    # must produce a complete safe gzip/tar archive. Never guess or continue on
+    # zero/multiple candidates.
+    candidates = []
+    for index, (path, chunk) in enumerate(parts[:-1]):
+        if len(chunk) % 4 != 3:
+            continue
+        for char in BASE64_ALPHABET:
+            test_chunks = list(chunks)
+            test_chunks[index] = chunk + char
+            try:
+                candidate_raw = decode_and_validate(test_chunks)
+            except DECODE_ERRORS:
+                continue
+            candidates.append((index, path.name, char, candidate_raw))
+
+    if len(candidates) != 1:
+        raise SystemExit(
+            'Materialization payload is corrupt and cannot be uniquely repaired: '
+            f'{len(candidates)} valid boundary candidates (direct error: {direct_error}).'
+        )
+
+    index, part_name, recovered_char, raw = candidates[0]
+    chunks[index] = chunks[index] + recovered_char
+    # Re-validate the chosen candidate once more before any destructive action.
+    raw = decode_and_validate(chunks)
+    recovery_note = f'uniquely repaired one missing base64 character at end of {part_name}'
+
+# Only after the complete candidate archive has been validated do we replace
+# the checked-out transport/materializer tree. This guarantees a corrupt
+# payload cannot destructively remove the current source.
 for item in list(ROOT.iterdir()):
     if item.name == '.git':
         continue
@@ -59,4 +102,4 @@ for rel in [
     if path.exists():
         path.chmod(0o755)
 
-print('Materialized File 05 v3.0.0 repository candidate.')
+print(f'Materialized File 05 repository candidate; {recovery_note}.')
