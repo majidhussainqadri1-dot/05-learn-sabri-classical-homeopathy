@@ -42,6 +42,14 @@ jobs:
           if old not in text:
               raise SystemExit('Future-18 ownership invariant target not found')
           p.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          security = Path('tests/security-invariants.php')
+          sec = security.read_text(encoding='utf-8')
+          old_version = '"Version: 3.3.0" => \'release version\','
+          new_version = '"Version: 4.0.0" => \'release version\','
+          if old_version not in sec:
+              raise SystemExit('Security release-version invariant target not found')
+          security.write_text(sec.replace(old_version, new_version, 1), encoding='utf-8')
           PY
       - name: Verify corrected materialized source
         shell: bash
