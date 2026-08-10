@@ -21,7 +21,7 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
-      - name: Current-plan architecture, security, policy and JavaScript checks
+      - name: Current-plan architecture, security, Future-18 policy and JavaScript checks
         run: bash tests/source-invariants.sh
 
   php-syntax:
@@ -52,13 +52,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build-a build-b
-          python3 scripts/build-release.py --root . --output build-a/05-learn-sabri-classical-homeopathy-3.3.0.zip
-          python3 scripts/build-release.py --root . --output build-b/05-learn-sabri-classical-homeopathy-3.3.0.zip
-          cmp build-a/05-learn-sabri-classical-homeopathy-3.3.0.zip build-b/05-learn-sabri-classical-homeopathy-3.3.0.zip
-          unzip -t build-a/05-learn-sabri-classical-homeopathy-3.3.0.zip
+          python3 scripts/build-release.py --root . --output build-a/05-learn-sabri-classical-homeopathy-4.0.0.zip
+          python3 scripts/build-release.py --root . --output build-b/05-learn-sabri-classical-homeopathy-4.0.0.zip
+          cmp build-a/05-learn-sabri-classical-homeopathy-4.0.0.zip build-b/05-learn-sabri-classical-homeopathy-4.0.0.zip
+          unzip -t build-a/05-learn-sabri-classical-homeopathy-4.0.0.zip
           rm -rf build-a/extracted
           mkdir -p build-a/extracted
-          unzip -q build-a/05-learn-sabri-classical-homeopathy-3.3.0.zip -d build-a/extracted
+          unzip -q build-a/05-learn-sabri-classical-homeopathy-4.0.0.zip -d build-a/extracted
           test -s build-a/extracted/05-learn-sabri-classical-homeopathy/MANIFEST.sha256
           test -s build-a/extracted/05-learn-sabri-classical-homeopathy/SBOM.spdx.json
           (cd build-a/extracted/05-learn-sabri-classical-homeopathy && sha256sum -c MANIFEST.sha256)
@@ -68,10 +68,10 @@ jobs:
           p=Path('build-a/extracted/05-learn-sabri-classical-homeopathy/SBOM.spdx.json')
           data=json.loads(p.read_text(encoding='utf-8'))
           assert data['spdxVersion']=='SPDX-2.3'
-          assert data['packages'][0]['versionInfo']=='3.3.0'
+          assert data['packages'][0]['versionInfo']=='4.0.0'
           PY
           diff -u \
             <(cd 05-learn-sabri-classical-homeopathy && find . -type f -print | sort) \
             <(cd build-a/extracted/05-learn-sabri-classical-homeopathy && find . -type f ! -name MANIFEST.sha256 ! -name SBOM.spdx.json -print | sort)
           python3 scripts/source-tree-hash.py --root . --manifest build-a/SOURCE-MANIFEST.sha256
-          sha256sum build-a/05-learn-sabri-classical-homeopathy-3.3.0.zip
+          sha256sum build-a/05-learn-sabri-classical-homeopathy-4.0.0.zip
