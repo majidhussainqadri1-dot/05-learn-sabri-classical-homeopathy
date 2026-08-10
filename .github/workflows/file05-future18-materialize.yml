@@ -33,6 +33,16 @@ jobs:
           base64 -d /tmp/f18.b64 | gzip -dc > /tmp/f18-materialize.py
           python3 -m py_compile /tmp/f18-materialize.py
           python3 /tmp/f18-materialize.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('tests/future18-invariants.py')
+          text = p.read_text(encoding='utf-8')
+          old = "    '$wpdb->usermeta', \"get_user_meta( $user_id, '_smc_\", 'file06_', 'file12_', 'file15_', 'file16_',\n"
+          new = "    '$wpdb->usermeta', \"get_user_meta( $user_id, '_smc_\", \"$wpdb->prefix . 'file06_\", \"$wpdb->prefix . 'file12_\", \"$wpdb->prefix . 'file15_\", \"$wpdb->prefix . 'file16_\",\n"
+          if old not in text:
+              raise SystemExit('Future-18 ownership invariant target not found')
+          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
       - name: Verify corrected materialized source
         shell: bash
         run: |
