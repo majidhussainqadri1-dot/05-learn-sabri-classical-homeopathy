@@ -31,7 +31,7 @@ All approved File 05 education is governed by the single-free-tier model. Paid/P
 
 = 4.0.0 =
 * Added F05-FUT-01..18: mastery, spaced repetition, flashcards, eight educational laboratories, personal learning prescription, mistake ledger, portfolio, mentorship, CPD, source-grounded File16 Socratic tutor and correction-impact re-study.
-* Added Future-18 sub-schema 1, private REST/UI/privacy lifecycle and canonical-owner boundaries.
+* Added Future-18 sub-schema 2, private REST/UI/privacy lifecycle and canonical-owner boundaries.
 
 = 3.3.0 =
 * Reconciled actual source with the current consolidated central plan and current File 05 plan.

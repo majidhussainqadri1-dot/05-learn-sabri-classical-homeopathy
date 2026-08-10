@@ -43,4 +43,4 @@ This record authorizes repository-source correction only. It does not authorize 
 
 ## F05-CHG-2026-08-10-FUT18
 
-Founder-approved scope expansion: all 18 Future Superset learning enhancements. Runtime target 4.0.0; core schema 18 retained; additive Future-18 schema 1. Canonical owner boundaries to Files 06/12/15/16/17/19/26 are mandatory. Staging/live/operational status is unchanged by repository coding.
+Founder-approved scope expansion: all 18 Future Superset learning enhancements. Runtime target 4.0.0; core schema 18 retained; additive Future-18 schema 2. Canonical owner boundaries to Files 06/12/15/16/17/19/26 are mandatory. Staging/live/operational status is unchanged by repository coding.

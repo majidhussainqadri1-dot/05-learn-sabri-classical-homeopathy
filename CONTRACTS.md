@@ -1,4 +1,4 @@
-# File 05 Versioned Contract Registry — 3.3.0
+# File 05 Versioned Contract Registry — 4.0.0
 
 | Owner/provider | Direction | Required | Boundary |
 |---|---|---:|---|

@@ -169,8 +169,9 @@ if "'provider_version'  => LSCH_VERSION" not in value or "'provider_version'  =>
 
 # Privacy export must carry the schema-2 practice competency snapshot.
 privacy = f.split('public static function privacy_export',1)[-1].split('public static function privacy_erase',1)[0]
-if 'blueprint_version,competency_key,response_json' not in privacy:
-    pass
+privacy_export_body = f.split('public static function privacy_export(',1)[-1].split('public static function privacy_erase(',1)[0]
+if 'blueprint_version' not in privacy_export_body or 'competency_key' not in privacy_export_body or 'response_json' not in privacy_export_body:
+    errors.append('Privacy export query does not carry the immutable Future18 practice competency snapshot.')
 
 # Mentorship reads must require current approved-account/guardian policy even for privileged users.
 mentorships = f.split('public static function mentorships',1)[-1].split('public static function record_cpd',1)[0]
@@ -216,6 +217,37 @@ if "items_retained' => false" not in f:
 # Source-grounded AI responses must return sanitized citations.
 if 'esc_url_raw' not in f or 'tutor_source_required' not in f:
     errors.append('Socratic tutor source/citation validation is incomplete.')
+
+
+# Fresh Review-80 release-identity and service-defense invariants.
+current_docs = [
+    base / 'README.md', base / 'STATUS.md', base / 'DATA-DICTIONARY.md',
+    base / 'ARCHITECTURE.md', base / 'MIGRATION.md',
+    plugin / 'readme.txt',
+]
+for doc in current_docs:
+    value = doc.read_text(encoding='utf-8')
+    for stale in ['Future-18 learning-intelligence schema: `1`', 'Future-18 sub-schema 1 — runtime 4.0.0', 'lsch_future18_schema=1']:
+        if stale in value:
+            errors.append(f'Stale Future18 schema-1 release identity remains in {doc.name}: {stale}')
+
+services = (plugin / 'includes' / 'class-lsch-services.php').read_text(encoding='utf-8')
+if "'key_version' => 1" in services.split('public static function save_note',1)[-1].split('public static function get_note',1)[0]:
+    errors.append('Private-note save path still hardcodes legacy key generation 1.')
+for token in ['lsch_note_write_failed','lsch_progress_write_failed','lsch_assignment_write_failed','lsch_appeal_conflict','lsch_reminder_write_failed','lsch_related_write_failed']:
+    if token not in services:
+        errors.append(f'Missing persistence-truth regression guard: {token}')
+for token in ["'posts_per_page' => 201", "'posts_per_page' => 501", 'lsch_lesson_component_limit', 'course_completion_scope_exceeded']:
+    if token not in services:
+        errors.append(f'Missing bounded-query regression guard: {token}')
+for signature in [
+    "! LSCH_Policy::can_use_learning_actions() || ! current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM )",
+    "! LSCH_Policy::can_use_learning_actions( $assessor_id ) || ! user_can( $assessor_id, LSCH_Capabilities::ASSESS )",
+]:
+    if signature not in services:
+        errors.append(f'Missing current-policy service guard: {signature}')
+if '$labelled_pii' not in f or '$phone_like' not in f:
+    errors.append('Future18 generic free-text PII guard is missing.')
 
 if errors:
     print('\n'.join(f'ERROR: {e}' for e in errors))

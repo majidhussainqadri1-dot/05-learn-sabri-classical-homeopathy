@@ -1,4 +1,4 @@
-# File 05 Data Dictionary — 3.3.0
+# File 05 Data Dictionary — 4.0.0
 
 ## Core tables
 
@@ -27,7 +27,7 @@
 
 Public catalog/content DTOs contain only publishable learning data. Enrollment/progress/notes/attempts/submissions/reminders/saved searches are account-private. Governance/audit/correction records are role-scoped. Patient-case consent evidence and private note keys are never public repository/browser payloads.
 
-## Future-18 sub-schema 1 — runtime 4.0.0
+## Future-18 sub-schema 2 — runtime 4.0.0
 
 - `lsch_f18_mastery` — private competency mastery/confidence/evidence state.
 - `lsch_f18_review_queue` — spaced reviews, private flashcards and mistake-ledger items.

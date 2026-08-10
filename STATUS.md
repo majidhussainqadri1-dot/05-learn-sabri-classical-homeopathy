@@ -18,7 +18,7 @@ This status distinguishes repository truth from staging/live truth.
 - Runtime: `4.0.0`
 - Core database/schema marker: `18`
 - File05 auxiliary state schema: `3`
-- Future-18 learning-intelligence schema: `1`
+- Future-18 learning-intelligence schema: `2`
 - REST namespace: `learn-sabri-classical-homeopathy/v2`
 - Plan contract: `SSH-F05-PLAN-2026-v1.1-future18-current-central-2026-08-10`
 - Canonical package root: `05-learn-sabri-classical-homeopathy/`

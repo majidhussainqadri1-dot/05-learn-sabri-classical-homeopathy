@@ -331,7 +331,9 @@ final class LSCH_Future18 {
 					}
 				}
 				if ( is_string( $value ) ) {
-					if ( preg_match( '/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i', $value ) || preg_match( '/\b[0-9]{5}-?[0-9]{7}-?[0-9]\b/', $value ) ) {
+					$labelled_pii = preg_match( '/\b(?:phone|mobile|email|address|passport|cnic|national[ _-]?id|date[ _-]?of[ _-]?birth|dob)\s*[:=\-]\s*\S+/i', $value );
+					$phone_like = preg_match( '/(?<!\d)(?:\+?\d[\s().-]?){8,15}(?!\d)/', $value );
+					if ( $labelled_pii || $phone_like || preg_match( '/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i', $value ) || preg_match( '/\b[0-9]{5}-?[0-9]{7}-?[0-9]\b/', $value ) ) {
 						return new WP_Error( 'lsch_future18_sensitive_case_data', __( 'Practice laboratories accept simulated/de-identified educational data only.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
 					}
 				}
@@ -548,7 +550,7 @@ final class LSCH_Future18 {
 	public static function set_blueprint( $lesson_id, $mode, array $blueprint ) {
 		$lesson_id = absint( $lesson_id );
 		$mode = sanitize_key( $mode );
-		if ( ! current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) || LSCH_Content::LESSON !== get_post_type( $lesson_id ) || ! in_array( $mode, self::practice_modes(), true ) ) {
+		if ( ! LSCH_Policy::can_use_learning_actions() || ! current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) || LSCH_Content::LESSON !== get_post_type( $lesson_id ) || ! in_array( $mode, self::practice_modes(), true ) ) {
 			return new WP_Error( 'lsch_future18_blueprint_forbidden', __( 'Practice blueprint management is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
 		$json = self::encode_json( $blueprint, 50000 );
@@ -653,7 +655,7 @@ final class LSCH_Future18 {
 	public static function grade_practice( $practice_id, $assessor_id, $score, array $feedback, $expected_version ) {
 		$practice_id = absint( $practice_id );
 		$assessor_id = absint( $assessor_id );
-		if ( ! $assessor_id || ( ! self::approved_user( $assessor_id ) && ! user_can( $assessor_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) || ( ! user_can( $assessor_id, LSCH_Capabilities::ASSESS ) && ! user_can( $assessor_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) ) {
+		if ( ! $assessor_id || ! self::approved_user( $assessor_id ) || ( ! user_can( $assessor_id, LSCH_Capabilities::ASSESS ) && ! user_can( $assessor_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) ) {
 			return new WP_Error( 'lsch_future18_assessor_forbidden', __( 'Practice assessment is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
 		global $wpdb;
@@ -770,7 +772,7 @@ final class LSCH_Future18 {
 	}
 
 	public static function assign_mentor( $mentor_id, $learner_id, $course_id, array $goals ) {
-		if ( ! current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) ) {
+		if ( ! LSCH_Policy::can_use_learning_actions() || ! current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) ) {
 			return new WP_Error( 'lsch_future18_mentorship_forbidden', __( 'Mentorship assignment is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
 		$mentor_id = absint( $mentor_id );
@@ -883,7 +885,7 @@ final class LSCH_Future18 {
 	public static function verify_cpd( $id, $verifier_id, $expected_version ) {
 		$id = absint( $id );
 		$verifier_id = absint( $verifier_id );
-		if ( ! $verifier_id || ( ! self::approved_user( $verifier_id ) && ! user_can( $verifier_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) || ( ! user_can( $verifier_id, LSCH_Capabilities::TEACH ) && ! user_can( $verifier_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) ) {
+		if ( ! $verifier_id || ! self::approved_user( $verifier_id ) || ( ! user_can( $verifier_id, LSCH_Capabilities::TEACH ) && ! user_can( $verifier_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) ) {
 			return new WP_Error( 'lsch_future18_cpd_verify_forbidden', __( 'CPD verification is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
 		global $wpdb;

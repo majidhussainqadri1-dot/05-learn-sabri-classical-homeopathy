@@ -1,4 +1,4 @@
-# File 05 Architecture — 3.3.0
+# File 05 Architecture — 4.0.0
 
 ## Canonical ownership
 
@@ -26,6 +26,6 @@ Every protected action rechecks current File 00 assertions and native object/sta
 
 ## Future Superset 18 architecture
 
-Runtime 4.0.0 adds `LSCH_Future18` and `LSCH_Future18_REST`. The layer uses an additive sub-schema (`lsch_future18_schema=1`) rather than silently changing core schema 18. Existing outbox persistence remains canonical; a local post-persistence `lsch_event_published` hook feeds mastery, portfolio and correction-impact projections only after event storage succeeds.
+Runtime 4.0.0 adds `LSCH_Future18` and `LSCH_Future18_REST`. The layer uses an additive sub-schema (`lsch_future18_schema=2`) rather than silently changing core schema 18. Existing outbox persistence remains canonical; a local post-persistence `lsch_event_published` hook feeds mastery, portfolio and correction-impact projections only after event storage succeeds.
 
 All practice modes are learning simulations; real patient identifiers are rejected by common-key guardrails and external clinical authority is not created.

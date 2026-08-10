@@ -39,6 +39,7 @@ for path in required_docs:
 
 required_tokens = [
     "LSCH_VERSION', '4.0.0'",
+    'const SCHEMA = 2',
     'LSCH_SCHEMA_VERSION\', 18',
     'single-free-tier-v2',
     'SMC_Contracts',
