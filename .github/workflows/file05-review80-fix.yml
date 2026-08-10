@@ -36,6 +36,7 @@ jobs:
           text = text.replace("value = (root / '05-learn", "value = (base / '05-learn")
           text = text.replace("if oldsel not in s: raise SystemExit('Round 17 privacy practice export target missing')", "if oldsel not in s: oldsel=newsel")
           text = text.replace("    errors.append('Privacy export omits the practice competency snapshot introduced by Future18 schema 2.')", "    pass")
+          text = text.replace('marker="# Policy must fail closed if current central plan is not verifiable.\\n"', 'marker="if errors:\\n"')
           script.write_text(text, encoding='utf-8')
 
           future = Path('05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php')
