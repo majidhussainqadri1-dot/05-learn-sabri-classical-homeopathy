@@ -20,6 +20,11 @@ if grep -RInE -- '-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----|AKIA[0-9A
   exit 1
 fi
 
+if find . -type f \( -name '*.pyc' -o -name '*.pyo' \) -print -quit | grep -q . || find . -type d -name '__pycache__' -print -quit | grep -q .; then
+  echo 'ERROR: generated Python cache artifact committed to repository' >&2
+  exit 1
+fi
+
 if find 05-learn-sabri-classical-homeopathy -type l -print -quit | grep -q .; then
   echo 'ERROR: symlink in canonical plugin source' >&2
   exit 1

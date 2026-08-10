@@ -185,8 +185,20 @@ services_source = files.get('05-learn-sabri-classical-homeopathy/includes/class-
 if 'mark_content_corrected' in services_source:
     errors.append('Legacy direct correction service bypass remains callable.')
 
+# Privileged core REST callbacks must recheck current learning eligibility/suspension policy.
+core_rest = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-rest.php', '')
+for signature in [
+    "public function assessor() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions()",
+    "public function reviewer() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions()",
+    "public function manager() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions()",
+    "public function teacher() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions()",
+    "public function operator() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions()",
+]:
+    if signature not in core_rest:
+        errors.append(f'core REST privileged callback missing current-policy check: {signature}')
+
 if errors:
     print('\n'.join(f'ERROR: {e}' for e in errors))
     sys.exit(1)
 
-print(f'PASS: {len(files)} plugin files; current-plan ownership/security/value invariants and 30 requirement traces present.')
+print(f'PASS: {len(files)} plugin files; current-plan ownership/security/value invariants and 48 requirement traces present.')

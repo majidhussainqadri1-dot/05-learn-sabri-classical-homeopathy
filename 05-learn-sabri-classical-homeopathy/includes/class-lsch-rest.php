@@ -40,12 +40,12 @@ final class LSCH_REST {
 	}
 
 	public function approved() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions(); }
-	public function assessor() { return is_user_logged_in() && current_user_can( LSCH_Capabilities::ASSESS ); }
-	public function reviewer() { return is_user_logged_in() && current_user_can( LSCH_Capabilities::REVIEW_LESSONS ); }
-	public function manager() { return is_user_logged_in() && current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ); }
-	public function teacher() { return is_user_logged_in() && ( current_user_can( LSCH_Capabilities::TEACH ) || current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) ); }
-	public function operator() { return is_user_logged_in() && current_user_can( LSCH_Capabilities::OPERATE ); }
-	public function author_or_reviewer( WP_REST_Request $request ) { $id = absint( $request['id'] ); return is_user_logged_in() && ( LSCH_Policy::can_manage_object( $id ) || current_user_can( LSCH_Capabilities::REVIEW_LESSONS ) ); }
+	public function assessor() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && current_user_can( LSCH_Capabilities::ASSESS ); }
+	public function reviewer() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && current_user_can( LSCH_Capabilities::REVIEW_LESSONS ); }
+	public function manager() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ); }
+	public function teacher() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && ( current_user_can( LSCH_Capabilities::TEACH ) || current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) ); }
+	public function operator() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && current_user_can( LSCH_Capabilities::OPERATE ); }
+	public function author_or_reviewer( WP_REST_Request $request ) { $id = absint( $request['id'] ); return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && ( LSCH_Policy::can_manage_object( $id ) || current_user_can( LSCH_Capabilities::REVIEW_LESSONS ) ); }
 
 	private function guard_rate( $bucket, $limit = 60, $window = 60 ) {
 		$subject = get_current_user_id() ?: ( isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : 'guest' );

@@ -73,7 +73,7 @@ final class LSCH_Value {
 		$providers = (array) $providers;
 		$providers['file05-learning.v3'] = array(
 			'owner'             => 'file05',
-			'provider_version'  => '3.3.0',
+			'provider_version'  => LSCH_VERSION,
 			'scope'             => 'learning-catalog-projection',
 			'global_rank_owner' => 'file26',
 			'query_endpoint'    => rest_url( LSCH_REST::NS . '/catalog' ),

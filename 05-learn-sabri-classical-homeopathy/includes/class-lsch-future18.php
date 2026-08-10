@@ -86,6 +86,7 @@ final class LSCH_Future18 {
 	public static function hooks() {
 		add_action( 'init', array( __CLASS__, 'maybe_upgrade' ), 3 );
 		add_action( 'lsch_event_published', array( __CLASS__, 'event_published' ), 10, 5 );
+		add_filter( 'lsch_run_job', array( __CLASS__, 'run_job' ), 10, 4 );
 		add_shortcode( 'lsch_mastery_center', array( __CLASS__, 'shortcode' ) );
 		add_filter( 'wp_privacy_personal_data_exporters', array( __CLASS__, 'privacy_exporters' ) );
 		add_filter( 'wp_privacy_personal_data_erasers', array( __CLASS__, 'privacy_erasers' ) );
@@ -366,7 +367,7 @@ final class LSCH_Future18 {
 		$actor_id = absint( $actor_id );
 		$user_id = absint( $user_id );
 		if ( ! self::can_supervise_user( $actor_id, $user_id, $source_type, $source_id ) ) {
-			return new WP_Error( 'lsch_future18_mastery_supervision_forbidden', __( 'Manual mastery evidence requires an assigned mentor or curriculum manager.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
+			return new WP_Error( 'lsch_future18_mastery_supervision_forbidden', __( 'Manual mastery evidence requires an active mentor, assigned teacher/assessor, or curriculum manager.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
 		return self::record_mastery_evidence( $user_id, $competency, $score, $weight, $source_type, $source_id );
 	}
@@ -845,7 +846,7 @@ final class LSCH_Future18 {
 
 	public static function mentorships( $user_id ) {
 		$user_id = absint( $user_id );
-		if ( ! self::approved_user( $user_id ) && ! user_can( $user_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) {
+		if ( ! self::approved_user( $user_id ) ) {
 			return new WP_Error( 'lsch_future18_mentorship_forbidden', __( 'Mentorship records are unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
 		global $wpdb;
@@ -947,6 +948,7 @@ final class LSCH_Future18 {
 			return new WP_Error( 'lsch_future18_tutor_provider_invalid', __( 'The File 16 tutor provider returned an invalid learning response.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 502 ) );
 		}
 		$citations = array();
+		$approved_sources = (array) $context['sources'];
 		foreach ( (array) ( $result['citations'] ?? array() ) as $citation ) {
 			if ( ! is_array( $citation ) ) { continue; }
 			$item = array(
@@ -955,7 +957,16 @@ final class LSCH_Future18 {
 				'title'      => sanitize_text_field( (string) ( $citation['title'] ?? '' ) ),
 				'url'        => esc_url_raw( (string) ( $citation['url'] ?? '' ) ),
 			);
-			if ( $item['object_id'] || $item['url'] ) { $citations[] = $item; }
+			$approved = false;
+			foreach ( $approved_sources as $source ) {
+				if ( ! is_array( $source ) ) { continue; }
+				$source_url = esc_url_raw( (string) ( $source['url'] ?? '' ) );
+				$source_title = sanitize_text_field( (string) ( $source['title'] ?? '' ) );
+				if ( $item['url'] && $source_url && hash_equals( $source_url, $item['url'] ) ) { $approved = true; break; }
+				if ( $item['title'] && $source_title && 0 === strcasecmp( trim( $source_title ), trim( $item['title'] ) ) ) { $approved = true; break; }
+			}
+			$approved = (bool) apply_filters( 'lsch_future18_tutor_citation_approved', $approved, $item, $approved_sources, $lesson_id, $user_id );
+			if ( $approved && ( $item['object_id'] || $item['url'] ) ) { $citations[] = $item; }
 		}
 		if ( ! $citations ) {
 			return new WP_Error( 'lsch_future18_tutor_source_required', __( 'The File 16 Socratic tutor must return at least one approved source citation.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 502 ) );
@@ -1004,14 +1015,55 @@ final class LSCH_Future18 {
 		$summary = $summary ? substr( $summary, 0, 2000 ) : __( 'This learning object changed after prior study. Review the corrected version.', 'learn-sabri-classical-homeopathy' );
 		$competencies = wp_get_object_terms( $object_id, LSCH_Content::COMPETENCY, array( 'fields' => 'slugs' ) );
 		$competencies = is_wp_error( $competencies ) || ! $competencies ? array( '' ) : array_slice( array_values( array_unique( array_map( static function( $value ) { return self::competency_key( $value ); }, $competencies ) ) ), 0, 20 );
-		$users = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT user_id FROM {$core['progress']} WHERE lesson_id=%d ORDER BY user_id ASC LIMIT 2000", $object_id ) );
+		$queued = LSCH_Events::enqueue( 'future18_impact_batch', array( 'event_id' => sanitize_text_field( $event_id ), 'object_type' => sanitize_key( $aggregate_type ), 'object_id' => $object_id, 'previous_version' => $previous, 'new_version' => $new, 'competencies' => $competencies, 'change_summary' => $summary, 'cursor_user_id' => 0, 'affected_user_count' => 0 ), null, 8, 'f18-impact-' . sanitize_text_field( $event_id ) . '-0' );
+		if ( ! $queued ) {
+			LSCH_Events::audit( 'future18_impact_enqueue_failed', sanitize_key( $aggregate_type ), $object_id, array( 'event_id' => sanitize_text_field( $event_id ) ), 'learning' );
+		}
+	}
+
+	private static function ensure_impact_review_item( $user_id, $event_id, $object_type, $object_id, $competency, $summary ) {
+		global $wpdb;
+		$t = self::tables();
+		$source_ref = substr( sanitize_text_field( $event_id ) . ':' . absint( $object_id ), 0, 64 );
+		$existing = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['review']} WHERE user_id=%d AND item_type='targeted_review' AND source_type='knowledge_change' AND source_id=%s AND competency_key=%s LIMIT 1", absint( $user_id ), $source_ref, self::competency_key( $competency ) ) );
+		if ( $existing ) { return true; }
+		$metadata = self::encode_json( array( 'event_id' => sanitize_text_field( $event_id ), 'object_type' => sanitize_key( $object_type ), 'object_id' => absint( $object_id ) ), 10000 );
+		if ( is_wp_error( $metadata ) ) { return false; }
+		$now = current_time( 'mysql', true );
+		return 1 === $wpdb->insert( $t['review'], array( 'public_id' => LSCH_Database::uuid(), 'user_id' => absint( $user_id ), 'item_type' => 'targeted_review', 'source_type' => 'knowledge_change', 'source_id' => $source_ref, 'competency_key' => self::competency_key( $competency ), 'prompt' => sanitize_textarea_field( $summary ), 'answer' => '', 'metadata_json' => $metadata, 'interval_days' => 0, 'ease' => 2.5, 'due_at' => $now, 'last_result' => 0, 'version' => 1, 'created_at' => $now, 'updated_at' => $now ), array( '%s','%d','%s','%s','%s','%s','%s','%s','%s','%d','%f','%s','%d','%d','%s','%s' ) );
+	}
+
+	public static function run_job( $result, $job_type, $payload, $job_key ) {
+		if ( 'future18_impact_batch' !== $job_type ) { return $result; }
+		$payload = is_array( $payload ) ? $payload : array();
+		$event_id = sanitize_text_field( (string) ( $payload['event_id'] ?? '' ) );
+		$object_type = sanitize_key( (string) ( $payload['object_type'] ?? '' ) );
+		$object_id = absint( $payload['object_id'] ?? 0 );
+		if ( ! $event_id || ! $object_id ) { return false; }
+		$previous = absint( $payload['previous_version'] ?? 0 );
+		$new = absint( $payload['new_version'] ?? 0 );
+		$summary = sanitize_textarea_field( (string) ( $payload['change_summary'] ?? '' ) );
+		$competencies = array_slice( array_values( array_unique( array_map( array( __CLASS__, 'competency_key' ), (array) ( $payload['competencies'] ?? array( '' ) ) ) ) ), 0, 20 );
+		if ( ! $competencies ) { $competencies = array( '' ); }
+		$cursor = absint( $payload['cursor_user_id'] ?? 0 );
+		global $wpdb;
+		$core = LSCH_Database::tables();
+		$t = self::tables();
+		$users = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT user_id FROM {$core['progress']} WHERE lesson_id=%d AND user_id>%d ORDER BY user_id ASC LIMIT 500", $object_id, $cursor ) );
 		$now = current_time( 'mysql', true );
 		foreach ( $users as $user_id ) {
 			foreach ( $competencies as $competency ) {
-				$wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$t['impacts']} (event_id,user_id,object_type,object_id,previous_version,new_version,competency_key,change_summary,required_action,status,created_at) VALUES (%s,%d,%s,%d,%d,%d,%s,%s,'targeted_review','pending',%s)", sanitize_text_field( $event_id ), absint( $user_id ), sanitize_key( $aggregate_type ), $object_id, $previous, $new, $competency, $summary, $now ) );
+				$wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$t['impacts']} (event_id,user_id,object_type,object_id,previous_version,new_version,competency_key,change_summary,required_action,status,created_at) VALUES (%s,%d,%s,%d,%d,%d,%s,%s,'targeted_review','pending',%s)", $event_id, absint( $user_id ), $object_type, $object_id, $previous, $new, $competency, $summary, $now ) );
+				self::ensure_impact_review_item( absint( $user_id ), $event_id, $object_type, $object_id, $competency, $summary );
 			}
 		}
-		LSCH_Events::publish( 'LearningRestudyRequired.v1', sanitize_key( $aggregate_type ), $object_id, array( 'affected_user_count' => count( $users ), 'previous_version' => $previous, 'new_version' => $new ) );
+		$total = absint( $payload['affected_user_count'] ?? 0 ) + count( $users );
+		if ( 500 === count( $users ) ) {
+			$next_cursor = absint( end( $users ) );
+			return LSCH_Events::enqueue( 'future18_impact_batch', array_merge( $payload, array( 'cursor_user_id' => $next_cursor, 'affected_user_count' => $total ) ), null, 8, 'f18-impact-' . $event_id . '-' . $next_cursor );
+		}
+		LSCH_Events::publish( 'LearningRestudyRequired.v1', $object_type, $object_id, array( 'event_id' => $event_id, 'affected_user_count' => $total, 'previous_version' => $previous, 'new_version' => $new ) );
+		return true;
 	}
 
 	public static function impacts( $user_id, $status = 'pending' ) {
@@ -1036,6 +1088,15 @@ final class LSCH_Future18 {
 		}
 		global $wpdb;
 		$t = self::tables();
+		$impact = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['impacts']} WHERE id=%d AND user_id=%d AND status='pending' LIMIT 1", $id, $user_id ), ARRAY_A );
+		if ( ! $impact ) {
+			return new WP_Error( 'lsch_future18_impact_conflict', __( 'Impact item was not pending or was already changed.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		$source_ref = substr( sanitize_text_field( $impact['event_id'] ) . ':' . absint( $impact['object_id'] ), 0, 64 );
+		$reviewed = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['review']} WHERE user_id=%d AND item_type='targeted_review' AND source_type='knowledge_change' AND source_id=%s AND competency_key=%s AND last_result>=3 LIMIT 1", $user_id, $source_ref, self::competency_key( $impact['competency_key'] ) ) );
+		if ( ! $reviewed ) {
+			return new WP_Error( 'lsch_future18_restudy_required', __( 'Complete the targeted re-study review before resolving this knowledge-change item.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
 		$updated = $wpdb->update( $t['impacts'], array( 'status' => 'reviewed', 'resolved_at' => current_time( 'mysql', true ) ), array( 'id' => $id, 'user_id' => $user_id, 'status' => 'pending' ), array( '%s', '%s' ), array( '%d', '%d', '%s' ) );
 		return 1 === $updated ? true : new WP_Error( 'lsch_future18_impact_conflict', __( 'Impact item was not pending or was already changed.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 	}
@@ -1103,7 +1164,7 @@ final class LSCH_Future18 {
 		$t = self::tables();
 		$mastery = $wpdb->get_results( $wpdb->prepare( "SELECT competency_key,mastery_score,confidence,evidence_count,last_source_type,last_source_id,last_evidence_at,next_review_at,version FROM {$t['mastery']} WHERE user_id=%d ORDER BY competency_key ASC LIMIT 1000", $user_id ), ARRAY_A );
 		$review = $wpdb->get_results( $wpdb->prepare( "SELECT item_type,source_type,source_id,competency_key,prompt,answer,metadata_json,interval_days,ease,due_at,last_result,version FROM {$t['review']} WHERE user_id=%d ORDER BY id ASC LIMIT 2000", $user_id ), ARRAY_A );
-		$practice = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,mode,source_type,source_id,blueprint_version,response_json,feedback_json,score,status,assessor_id,version,created_at,updated_at FROM {$t['practice']} WHERE user_id=%d ORDER BY id ASC LIMIT 2000", $user_id ), ARRAY_A );
+		$practice = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,mode,source_type,source_id,blueprint_version,competency_key,response_json,feedback_json,score,status,assessor_id,version,created_at,updated_at FROM {$t['practice']} WHERE user_id=%d ORDER BY id ASC LIMIT 2000", $user_id ), ARRAY_A );
 		$portfolio = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,item_type,object_type,object_id,competency_key,data_json,visibility,version,created_at,updated_at FROM {$t['portfolio']} WHERE user_id=%d ORDER BY id ASC LIMIT 2000", $user_id ), ARRAY_A );
 		$cpd = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,activity_type,object_type,object_id,competency_key,minutes,evidence_json,status,verified_by,completed_at,version FROM {$t['cpd']} WHERE user_id=%d ORDER BY id ASC LIMIT 1000", $user_id ), ARRAY_A );
 		$impacts = $wpdb->get_results( $wpdb->prepare( "SELECT event_id,object_type,object_id,previous_version,new_version,competency_key,change_summary,required_action,status,created_at,resolved_at FROM {$t['impacts']} WHERE user_id=%d ORDER BY id ASC LIMIT 2000", $user_id ), ARRAY_A );

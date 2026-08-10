@@ -149,6 +149,39 @@ cpd = f.split('public static function record_cpd',1)[-1].split('public static fu
 if 'lsch_future18_cpd_minutes_invalid' not in cpd or '$minutes < 1 || $minutes > 24 * 60' not in cpd:
     errors.append('CPD duration validation is not fail-closed.')
 
+# Tutor citations must match declared lesson sources or be explicitly approved by the canonical-source adapter.
+tutor = f.split('public static function socratic_tutor',1)[-1].split('public static function event_published',1)[0]
+if 'lsch_future18_tutor_citation_approved' not in tutor or '$approved_sources' not in tutor or 'if ( $approved &&' not in tutor:
+    errors.append('Socratic tutor citations are sanitized but not fail-closed against approved source context.')
+
+# Knowledge-change fan-out must be background, retryable, cursor-batched and free of a 2000-user truncation.
+if "add_filter( 'lsch_run_job'" not in f or "future18_impact_batch" not in f or 'LIMIT 500' not in f or 'LIMIT 2000", $object_id' in f:
+    errors.append('Knowledge-change impact fan-out is truncated or not retryable/batched.')
+
+# Mandatory re-study requires a targeted review item and cannot be self-resolved without a successful review result.
+if 'ensure_impact_review_item' not in f or "item_type='targeted_review'" not in f or 'lsch_future18_restudy_required' not in f or 'last_result>=3' not in f:
+    errors.append('Correction→targeted-review→resolve enforcement is incomplete.')
+
+# File26 learning provider must report the actual runtime version, not a stale 3.3.0 token.
+value = (base / '05-learn-sabri-classical-homeopathy/includes/class-lsch-value.php').read_text(encoding='utf-8')
+if "'provider_version'  => LSCH_VERSION" not in value or "'provider_version'  => '3.3.0'" in value:
+    errors.append('File26 provider version is stale relative to File05 runtime.')
+
+# Privacy export must carry the schema-2 practice competency snapshot.
+privacy = f.split('public static function privacy_export',1)[-1].split('public static function privacy_erase',1)[0]
+if 'blueprint_version,competency_key,response_json' not in privacy:
+    pass
+
+# Mentorship reads must require current approved-account/guardian policy even for privileged users.
+mentorships = f.split('public static function mentorships',1)[-1].split('public static function record_cpd',1)[0]
+if "! self::approved_user( $user_id ) &&" in mentorships:
+    errors.append('Mentorship service retains a privileged current-policy bypass.')
+
+# Review 17 durable privacy-export schema-2 check.
+privacy_r17 = f.split('public static function privacy_export(',1)[-1].split('public static function privacy_erase(',1)[0]
+if 'competency_key' not in privacy_r17 or 'blueprint_version' not in privacy_r17:
+    errors.append('Privacy export omits the Future18 schema-2 practice competency snapshot.')
+
 # Read paths must not mutate personalized pathway state.
 if "'GET', 'HEAD'" not in r or "build_learning_path( get_current_user_id(), $goal ?: 'balanced_mastery', $persist )" not in r:
     errors.append('Learning-path GET/HEAD persistence guard is missing.')
