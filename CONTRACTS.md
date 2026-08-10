@@ -19,3 +19,13 @@
 | File 26 Search/Discovery | provide projection | optional | File 26 owns global ranking; File 05 provides learning catalog visibility/freshness/why metadata |
 
 The REST namespace remains `learn-sabri-classical-homeopathy/v2` for compatibility. A runtime version bump does not silently break an existing versioned API contract.
+
+## Future-18 contract additions — v1
+
+- File 06: remedy/evidence knowledge references only; no copied encyclopedia truth.
+- File 12: document/source references only; no PDF object storage.
+- File 15: repertory-training references only; no repertory database ownership.
+- File 16: `File16.SocraticTutor.v1` answer provider; File 05 sends bounded lesson/objective/source context and requires at least one sanitized citation. Diagnosis, prescription and emergency authority are always false.
+- File 17: mentorship/cohort communication context only; no messaging transport.
+- File 19: Future-18 events may be projected to notifications; File 19 owns delivery/preferences.
+- File 26: personal learning prescription is File 05 local learning logic; global discovery/ranking stays File 26.

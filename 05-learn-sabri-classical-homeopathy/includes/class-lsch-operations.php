@@ -40,9 +40,13 @@ final class LSCH_Operations {
 			$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table;
 			$checks[ 'Value table: ' . $name ] = array( 'status' => $exists ? 'pass' : 'fail', 'detail' => $exists ? $table : 'Missing File 05 auxiliary state table.' );
 		}
+		foreach ( LSCH_Future18::tables() as $name => $table ) {
+			$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table;
+			$checks[ 'Future18 table: ' . $name ] = array( 'status' => $exists ? 'pass' : 'fail', 'detail' => $exists ? $table : 'Missing File 05 Future-18 learning table.' );
+		}
 		$pages = (array) get_option( 'lsch_page_map', array() );
 		$checks['Managed pages'] = array(
-			'status' => ! empty( $pages['home'] ) && ! empty( $pages['dashboard'] ) ? 'pass' : 'warn',
+			'status' => ! empty( $pages['home'] ) && ! empty( $pages['dashboard'] ) && ! empty( $pages['mastery'] ) ? 'pass' : 'warn',
 			'detail' => wp_json_encode( $pages ),
 		);
 		$checks['Cron outbox'] = array(
@@ -85,6 +89,7 @@ final class LSCH_Operations {
 			'version'      => LSCH_VERSION,
 			'schema'       => LSCH_SCHEMA_VERSION,
 			'state_schema' => LSCH_State::SCHEMA,
+			'future18_schema' => LSCH_Future18::SCHEMA,
 			'safe_mode'    => self::safe_mode(),
 			'checks'       => $checks,
 			'generated_at' => gmdate( 'c' ),
@@ -92,11 +97,12 @@ final class LSCH_Operations {
 	}
 
 	public static function repair( $dry_run = true ) {
-		$plan = array( 'ensure_state_schema', 'seed_vocabularies', 'recreate_missing_pages', 'reschedule_cron', 'reconcile_orphans', 'requeue_stale_jobs', 'rotate_private_note_keys_bounded' );
+		$plan = array( 'ensure_state_schema', 'ensure_future18_schema', 'seed_vocabularies', 'recreate_missing_pages', 'reschedule_cron', 'reconcile_orphans', 'requeue_stale_jobs', 'rotate_private_note_keys_bounded' );
 		if ( $dry_run ) {
 			return array( 'dry_run' => true, 'plan' => $plan );
 		}
 		LSCH_State::install();
+		LSCH_Future18::install();
 		LSCH_Content::seed_vocabularies();
 		LSCH_Activator::ensure_pages();
 		self::schedule();

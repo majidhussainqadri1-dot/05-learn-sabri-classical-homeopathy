@@ -4,6 +4,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
 python3 tests/static-invariants.py
+python3 tests/future18-invariants.py
 php tests/unit-policy.php
 php tests/security-invariants.php
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js

@@ -4,14 +4,14 @@ Tags: learning, curriculum, courses, homeopathy, assessments
 Requires at least: 6.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 3.3.0
+Stable tag: 4.0.0
 License: GPLv2 or later
 
 Canonical File 05 learning domain for the Sabri Social Homeopathy Platform.
 
 == Description ==
 
-Version 3.3.0 is the current-plans corrective source candidate for File 05. It implements the four-level/16-topic learning architecture, governed programs/courses/Founder-book slots/lessons, enrollment, progress, bookmarks, independently keyed AES-256-GCM private notes, assessments, assignments, teacher/assessor governance, completion/certificate-readiness, correction proposals/independent decisions, structured citation export, local saved learning searches, privacy-minimized learning-value events, learner-record export, File17 community context, File22 composer, File26 discovery projection and File16 source-safe AI context boundaries.
+Version 4.0.0 is the current-plans Future Superset 18 source candidate for File 05. It implements the four-level/16-topic learning architecture, governed programs/courses/Founder-book slots/lessons, enrollment, progress, bookmarks, independently keyed AES-256-GCM private notes, assessments, assignments, teacher/assessor governance, completion/certificate-readiness, correction proposals/independent decisions, structured citation export, local saved learning searches, privacy-minimized learning-value events, learner-record export, File17 community context, File22 composer, File26 discovery projection and File16 source-safe AI context boundaries.
 
 File 00 remains identity/policy authority through its public versioned assertion contract. File 20 remains application-shell owner. File 25 remains visual-token owner. File 26 remains global Search/Discovery/Ranking owner. File 05 does not read File 00 private user-meta/tables and does not duplicate companion domain truth.
 
@@ -28,6 +28,10 @@ All approved File 05 education is governed by the single-free-tier model. Paid/P
 7. Production deployment requires Founder approval and a separately verified package/exact-head record.
 
 == Changelog ==
+
+= 4.0.0 =
+* Added F05-FUT-01..18: mastery, spaced repetition, flashcards, eight educational laboratories, personal learning prescription, mistake ledger, portfolio, mentorship, CPD, source-grounded File16 Socratic tutor and correction-impact re-study.
+* Added Future-18 sub-schema 1, private REST/UI/privacy lifecycle and canonical-owner boundaries.
 
 = 3.3.0 =
 * Reconciled actual source with the current consolidated central plan and current File 05 plan.

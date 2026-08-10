@@ -12,11 +12,16 @@ global $wpdb;
 $tables = array(
 	'enrollments', 'progress', 'bookmarks', 'notes', 'attempts', 'submissions',
 	'staff_assignments', 'completions', 'related_links', 'case_consents',
-	'reminders', 'outbox', 'inbox', 'jobs', 'audit_log',
+	'reminders', 'outbox', 'inbox', 'jobs', 'audit_log', 'request_keys',
 	'saved_searches', 'corrections', 'value_events',
 );
 foreach ( $tables as $suffix ) {
 	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lsch_{$suffix}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+}
+
+$future18_tables = array( 'mastery', 'review_queue', 'practice', 'pathways', 'portfolio', 'mentorship', 'cpd', 'change_impacts' );
+foreach ( $future18_tables as $suffix ) {
+	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}lsch_f18_{$suffix}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 }
 
 $pages = (array) get_option( 'lsch_page_map', array() );
@@ -28,7 +33,7 @@ foreach ( $pages as $page_id ) {
 
 foreach (
 	array(
-		'lsch_schema_version', 'lsch_state_schema_version', 'lsch_version',
+		'lsch_schema_version', 'lsch_state_schema_version', 'lsch_future18_schema', 'lsch_version',
 		'lsch_plan_version', 'lsch_access_model', 'lsch_page_map',
 		'lsch_activation_checkpoint', 'lsch_runtime_failure', 'lsch_safe_mode',
 		'lsch_safe_mode_reason', 'lsch_legacy_migration', 'lsch_last_reconcile',

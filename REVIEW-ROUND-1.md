@@ -25,3 +25,7 @@ This was the first fresh adversarial review after the actual 3.3.0 source tree h
 The correction helper run completed successfully: PHP syntax, `tests/source-invariants.sh`, deterministic build and ZIP integrity all passed before the corrective source commit was pushed.
 
 **Round-1 disposition: CLOSED.** A separate fresh adversarial Round 2 was then required on the corrected source.
+
+## Future-18 Fresh Review Round 1 — 2026-08-10
+
+Findings corrected before materialization: (1) manual mastery evidence authority was too broad; (2) manual practice grading lacked source-object assessor scope; (3) CPD verification lacked mentor/manager scope; (4) File16 tutor did not enforce/sanitize citations; (5) change-impact versions were re-derived instead of consuming correction-event versions; (6) mentorship privacy erasure retained direct user IDs. Regression invariants added.

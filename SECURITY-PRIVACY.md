@@ -9,3 +9,7 @@
 - File 05 never claims global ranking, PDF/video/AI/message/notification/feed/visual ownership.
 - Privacy export/erasure covers account-owned learning state; governance/legal-hold records are pseudonymized or retained only under documented constraints.
 - Logs/audits must not contain note plaintext, assessment answers, patient identifiers, secrets or raw sensitive evidence.
+
+## Future-18 security/privacy additions
+
+Practice laboratories are educational/de-identified and reject common direct patient-identifier fields. Manual mastery updates require an active mentor or curriculum manager; manual practice grading requires a conflict-cleared assessor assignment (manager override remains governed); CPD self-recording does not elevate mastery until scoped independent verification. File16 Socratic responses require sanitized citations and cannot claim diagnosis, prescription or emergency authority. Future-18 personal data is included in WordPress privacy export/erasure independently of current entitlement state.

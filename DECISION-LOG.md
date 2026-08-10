@@ -25,3 +25,15 @@
 ## F05-D-2026-08-10-05 — File 26 owns global discovery
 
 **Decision:** File 05 exposes a learning-only search projection with current visibility/freshness/why metadata. File 26 remains global ranking owner.
+
+## F05-D-2026-08-10-08 — Future Superset 18
+
+**Decision:** Materialize all F05-FUT-01..18 in File 05 as learning/mastery/academic state with typed external-owner boundaries. No duplicate encyclopedia/PDF/repertory/AI/message/notification/global-ranking truth.
+
+## F05-D-2026-08-10-09 — Healthy mastery model
+
+**Decision:** Spaced review and personal learning guidance are mastery/value tools, not streak/leaderboard/shame engagement mechanics.
+
+## F05-D-2026-08-10-10 — Clinical education safety
+
+**Decision:** Future-18 case/reasoning/viva/OSCE tools are de-identified educational simulations. File16 AI remains source-grounded and non-clinical-authoritative.

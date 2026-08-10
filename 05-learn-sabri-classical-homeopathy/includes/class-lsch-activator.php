@@ -24,12 +24,13 @@ final class LSCH_Activator {
 		}
 
 		$checkpoint = array(
-			'started_at'          => gmdate( 'c' ),
-			'previous_schema'     => (int) get_option( LSCH_Database::OPTION, 0 ),
-			'previous_state_schema'=> (int) get_option( LSCH_State::OPTION, 0 ),
-			'previous_version'    => (string) get_option( 'lsch_version', '' ),
-			'created_pages'       => array(),
-			'status'              => 'started',
+			'started_at'              => gmdate( 'c' ),
+			'previous_schema'         => (int) get_option( LSCH_Database::OPTION, 0 ),
+			'previous_state_schema'   => (int) get_option( LSCH_State::OPTION, 0 ),
+			'previous_future18_schema'=> (int) get_option( LSCH_Future18::OPTION, 0 ),
+			'previous_version'        => (string) get_option( 'lsch_version', '' ),
+			'created_pages'           => array(),
+			'status'                  => 'started',
 		);
 		update_option( 'lsch_activation_checkpoint', $checkpoint, false );
 
@@ -39,6 +40,7 @@ final class LSCH_Activator {
 			LSCH_Content::register();
 			LSCH_Database::install();
 			LSCH_State::install();
+			LSCH_Future18::install();
 			LSCH_Content::seed_vocabularies();
 			LSCH_Content::seed_founder_book_slots();
 			self::ensure_pages();
@@ -57,10 +59,11 @@ final class LSCH_Activator {
 				'system',
 				'file05',
 				array(
-					'version'      => LSCH_VERSION,
-					'schema'       => LSCH_SCHEMA_VERSION,
-					'state_schema' => LSCH_State::SCHEMA,
-					'access_model' => LSCH_Policy::access_model(),
+					'version'         => LSCH_VERSION,
+					'schema'          => LSCH_SCHEMA_VERSION,
+					'state_schema'    => LSCH_State::SCHEMA,
+					'future18_schema' => LSCH_Future18::SCHEMA,
+					'access_model'    => LSCH_Policy::access_model(),
 				),
 				'operations'
 			);
@@ -90,6 +93,11 @@ final class LSCH_Activator {
 				'slug'    => 'learn-dashboard',
 				'title'   => __( 'My Learning', 'learn-sabri-classical-homeopathy' ),
 				'content' => '[lsch_learning_dashboard]',
+			),
+			'mastery' => array(
+				'slug'    => 'learn-mastery',
+				'title'   => __( 'Mastery and Clinical Education Center', 'learn-sabri-classical-homeopathy' ),
+				'content' => '[lsch_mastery_center]',
 			),
 		);
 		$map = (array) get_option( 'lsch_page_map', array() );

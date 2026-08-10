@@ -7,6 +7,8 @@ final class LSCH_Plugin {
 		add_action( 'init', array( 'LSCH_Content', 'register' ), 5 );
 		LSCH_Idempotency::hooks();
 		( new LSCH_REST() )->hooks();
+		LSCH_Future18::hooks();
+		( new LSCH_Future18_REST() )->hooks();
 		LSCH_State::hooks();
 		LSCH_Value::hooks();
 		( new LSCH_Frontend() )->hooks();
@@ -27,15 +29,23 @@ final class LSCH_Plugin {
 		$modules['file05-learning'] = array(
 			'version'        => LSCH_VERSION,
 			'schema'         => LSCH_SCHEMA_VERSION,
+			'future18_schema'=> LSCH_Future18::SCHEMA,
 			'plan'           => LSCH_PLAN_VERSION,
 			'owner'          => 'learning',
-			'routes'         => array( '/learn/', '/learn/program/{slug}', '/learn/course/{slug}', '/learn/lesson/{slug}', '/learn/dashboard', '/learn/assessment/{id}' ),
+			'routes'         => array( '/learn/', '/learn/program/{slug}', '/learn/course/{slug}', '/learn/lesson/{slug}', '/learn/dashboard', '/learn/mastery', '/learn/assessment/{id}' ),
 			'rest_namespace' => LSCH_REST::NS,
 			'access_model'   => LSCH_Policy::access_model(),
 			'policy_ready'   => LSCH_Policy::central_policy_ready(),
 			'health'         => array( 'callable' => array( 'LSCH_Operations', 'system_check' ) ),
+			'features'       => LSCH_Future18::feature_ids(),
 			'contracts'      => array(
 				'file00' => 'SMC_Contracts::assertions >= 1.2.2',
+				'file06' => 'canonical-encyclopedia-knowledge-owner',
+				'file12' => 'canonical-pdf-document-owner',
+				'file15' => 'canonical-repertory-owner',
+				'file16' => 'canonical-ai-answer-owner',
+				'file17' => 'canonical-messaging-transport-owner',
+				'file19' => 'canonical-notification-delivery-owner',
 				'file26' => 'global-search-discovery-ranking-owner',
 			),
 		);
@@ -44,10 +54,10 @@ final class LSCH_Plugin {
 
 	public function composer_adapter( $adapters ) {
 		$adapters = (array) $adapters;
-		$adapters['learning_lesson.v3'] = array(
+		$adapters['learning_lesson.v4'] = array(
 			'label'           => __( 'Learning Lesson', 'learn-sabri-classical-homeopathy' ),
 			'owner'           => 'file05',
-			'version'         => '3.0',
+			'version'         => '4.0',
 			'capability'      => LSCH_Capabilities::PUBLISH_LESSONS,
 			'post_type'       => LSCH_Content::LESSON,
 			'required_fields' => array( 'title', 'content', 'objectives', 'sources', 'reviewer', 'version', 'accessibility', 'safety' ),
@@ -70,15 +80,12 @@ final class LSCH_Plugin {
 		return true;
 	}
 
-	/**
-	 * File 05 exposes a bounded learning-only projection. File 26 remains the
-	 * canonical global search/discovery/ranking owner.
-	 */
+	/** File 26 remains the canonical global search/discovery/ranking owner. */
 	public function search_connector( $connectors ) {
 		$connectors = (array) $connectors;
-		$connectors['file05-learning.v3'] = array(
+		$connectors['file05-learning.v4'] = array(
 			'owner'              => 'file05',
-			'version'            => '3.0',
+			'version'            => '4.0',
 			'global_rank_owner'  => 'file26',
 			'public_types'       => array( LSCH_Content::PROGRAM, LSCH_Content::COURSE, LSCH_Content::BOOK, LSCH_Content::LESSON ),
 			'query'              => rest_url( LSCH_REST::NS . '/catalog' ),
@@ -93,7 +100,7 @@ final class LSCH_Plugin {
 
 	public function community_context_provider( $providers ) {
 		$providers = (array) $providers;
-		$providers['file05-learning.v2'] = array(
+		$providers['file05-learning.v4'] = array(
 			'owner'        => 'file05',
 			'object_types' => array( LSCH_Content::PROGRAM, LSCH_Content::COURSE, LSCH_Content::LESSON, LSCH_Content::COHORT ),
 			'resolver'     => array( $this, 'community_context_card' ),
@@ -179,19 +186,9 @@ final class LSCH_Plugin {
 		}
 		LSCH_Events::audit( 'content_status_changed', $post->post_type, $post->ID, array( 'from' => $old, 'to' => $new ), 'editorial_governance' );
 		if ( 'publish' === $new ) {
-			LSCH_Events::publish(
-				'LearningContentPublished.v1',
-				$post->post_type,
-				$post->ID,
-				array( 'version' => LSCH_Content::version( $post->ID ), 'url' => get_permalink( $post->ID ) )
-			);
+			LSCH_Events::publish( 'LearningContentPublished.v1', $post->post_type, $post->ID, array( 'version' => LSCH_Content::version( $post->ID ), 'url' => get_permalink( $post->ID ) ) );
 		} elseif ( 'publish' === $old ) {
-			LSCH_Events::publish(
-				'LearningContentRemoved.v1',
-				$post->post_type,
-				$post->ID,
-				array( 'previous_version' => LSCH_Content::version( $post->ID ), 'new_status' => $new )
-			);
+			LSCH_Events::publish( 'LearningContentRemoved.v1', $post->post_type, $post->ID, array( 'previous_version' => LSCH_Content::version( $post->ID ), 'new_status' => $new ) );
 		}
 	}
 }

@@ -23,6 +23,13 @@ final class LSCH_Events {
 			),
 			array( '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s', '%s' )
 		);
+		if ( $ok ) {
+			/**
+			 * Local, post-persistence projection hook. Consumers MUST remain
+			 * idempotent and may not treat this hook as canonical event storage.
+			 */
+			do_action( 'lsch_event_published', $id, sanitize_text_field( $name ), sanitize_key( $aggregate_type ), sanitize_text_field( (string) $aggregate_id ), $payload );
+		}
 		return $ok ? $id : false;
 	}
 

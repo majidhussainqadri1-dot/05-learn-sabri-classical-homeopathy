@@ -10,3 +10,7 @@ Rollback is evidence-driven and non-destructive by default.
 - After rollback: purge only derivative caches/indexes, run System Check/reconciliation, test representative guest/learner/reviewer paths and verify no schema/data loss.
 
 Live rollback must be rehearsed on staging before production release.
+
+## Future-18 rollback boundary
+
+Future-18 tables are additive and do not replace core File 05 data. Rollback to 3.3.x must first place File 05 in safe mode, preserve a verified database backup, disable Future-18 UI/routes, and retain `lsch_f18_*` tables unless an explicitly approved destructive purge is executed. Destructive purge now includes all Future-18 tables and the Future-18 schema option.

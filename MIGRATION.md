@@ -10,3 +10,7 @@
 8. Keep predecessor data required for rollback until staging acceptance explicitly authorizes retirement.
 
 A newer repository schema number is not proof that live/staging has migrated. Database state must be read from the target environment.
+
+## Runtime 4.0.0 / Future-18 sub-schema 1
+
+Additive migration creates eight `lsch_f18_*` tables and `lsch_future18_schema=1`; core schema remains 18 and auxiliary state schema remains 3. Existing learning rows are not rewritten. Activation/maybe-upgrade is idempotent through `dbDelta`. Roll forward is blocked/fail-closed if the new schema cannot be created; real upgrade evidence remains a Hostinger staging gate.

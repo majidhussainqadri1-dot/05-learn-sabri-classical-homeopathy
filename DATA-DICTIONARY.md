@@ -26,3 +26,16 @@
 ## Privacy classes
 
 Public catalog/content DTOs contain only publishable learning data. Enrollment/progress/notes/attempts/submissions/reminders/saved searches are account-private. Governance/audit/correction records are role-scoped. Patient-case consent evidence and private note keys are never public repository/browser payloads.
+
+## Future-18 sub-schema 1 — runtime 4.0.0
+
+- `lsch_f18_mastery` — private competency mastery/confidence/evidence state.
+- `lsch_f18_review_queue` — spaced reviews, private flashcards and mistake-ledger items.
+- `lsch_f18_practice` — de-identified clinical-learning/evidence practice submissions and scoped assessment.
+- `lsch_f18_pathways` — deterministic explainable personal learning prescriptions.
+- `lsch_f18_portfolio` — private/shareable-by-consent learning portfolio and competency passport items.
+- `lsch_f18_mentorship` — active mentor/learner/course relationships, goals and bounded feedback.
+- `lsch_f18_cpd` — verified-doctor/Founder CPD records and independent verification state.
+- `lsch_f18_change_impacts` — correction-version impact and mandatory targeted re-study state.
+
+These tables are File 05 learning state only; they do not duplicate File06/12/15/16/17/19/26 canonical truth.

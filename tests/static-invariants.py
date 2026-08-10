@@ -15,6 +15,8 @@ required_files = [
     '05-learn-sabri-classical-homeopathy/includes/class-lsch-rest.php',
     '05-learn-sabri-classical-homeopathy/includes/class-lsch-state.php',
     '05-learn-sabri-classical-homeopathy/includes/class-lsch-value.php',
+    '05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php',
+    '05-learn-sabri-classical-homeopathy/includes/class-lsch-future18-rest.php',
     '05-learn-sabri-classical-homeopathy/includes/class-lsch-idempotency.php',
     '05-learn-sabri-classical-homeopathy/includes/class-lsch-privacy.php',
     '05-learn-sabri-classical-homeopathy/includes/class-lsch-operations.php',
@@ -36,7 +38,7 @@ for path in required_docs:
         errors.append(f'Missing release/governance document: {path}')
 
 required_tokens = [
-    "LSCH_VERSION', '3.3.0'",
+    "LSCH_VERSION', '4.0.0'",
     'LSCH_SCHEMA_VERSION\', 18',
     'single-free-tier-v2',
     'SMC_Contracts',
@@ -78,6 +80,10 @@ required_tokens = [
     'error_code',
     'lsch_correction_object_busy',
     'privacy-minimized',
+    'F05-FUT-01',
+    'F05-FUT-18',
+    'lsch_future18_schema',
+    'source_grounded_socratic_ai',
     'کامیاب کیس',
 ]
 for token in required_tokens:
@@ -156,6 +162,10 @@ for i in range(1, 11):
 for cid in ['F05-CEN-01', 'F05-CEN-02']:
     if cid not in trace:
         errors.append(f'Missing central-plan trace {cid}')
+for i in range(1, 19):
+    rid = f'F05-FUT-{i:02d}'
+    if rid not in trace:
+        errors.append(f'Missing Future-18 trace {rid}')
 
 if (base / 'materialize-v3').exists():
     errors.append('Corrupt historical materialization transport must not remain in the release branch.')

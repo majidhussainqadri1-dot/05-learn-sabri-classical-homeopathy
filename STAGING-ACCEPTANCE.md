@@ -51,3 +51,7 @@ Test 320, 375, 768, 1024, 1440 and 1920 widths; Urdu/Arabic RTL and English LTR;
 - Record technical, security/privacy, academic/medical, accessibility/visual and Founder approvals.
 
 Only after these gates pass may status advance from `Automated-QA Green` to `Staging-Accepted`. Live deployment and operational acceptance remain later, separately evidenced statuses.
+
+## Future-18 staging acceptance matrix
+
+Before Future-18 may be called staging-accepted, test all 18 IDs with real Member/Doctor/Teacher/Assessor/Founder roles; suspended/guardian states; IDOR and self-assessment negatives; mastery concurrency; spaced-review scheduling; flashcards; all eight labs; File06/12/15 references; File16 citation/no-provider/failure paths; mentorship scope; verified vs self-recorded CPD; correction-impact fan-out and File19 event projection; privacy export/erase; RTL/mobile/keyboard/reduced-motion; weak connection; backup/restore and rollback. No live claim follows automatically.

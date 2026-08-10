@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.0.0 — 2026-08-10 — Future Superset 18 candidate
+
+- Added all Founder-approved F05-FUT-01..18 enhancements: mastery, spaced review, flashcards, eight clinical-learning/evidence labs, personal learning prescription, mistake ledger, portfolio, mentorship, CPD, File16 Socratic tutor and knowledge-change re-study.
+- Added independent Future-18 sub-schema 1 with eight private learning tables while retaining core schema 18 and auxiliary state schema 3.
+- Added versioned `/future18/*` REST surfaces under the existing v2 namespace and a managed `/learn-mastery` page/shortcode.
+- Preserved canonical ownership for Files 06/12/15/16/17/19/26; no foreign private-storage coupling or duplicate global ranking/AI/PDF/repertory backend.
+- Added de-identified practice payload guards, scoped assessor/mentor governance, independent CPD verification, and source-citation enforcement for File16 Socratic responses.
+- Added correction-impact re-study projection and local post-persistence event hook without replacing the canonical outbox.
+- Added Future-18 privacy export/erasure and destructive-purge coverage.
+- Fresh Review Round 1 and Round 2 both found defects and corrected them before release-candidate status; regression invariants were added for the repaired paths.
+
 ## 3.3.0 — 2026-08-10 — Current-plans corrective candidate
 
 - Reconciled source directly against the current consolidated central plan and current File 05 plan after the historical materialization transport was proven corrupt and non-recoverable.

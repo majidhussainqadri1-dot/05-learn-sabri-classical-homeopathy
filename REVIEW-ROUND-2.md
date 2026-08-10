@@ -24,3 +24,7 @@ Round 2 began only after Round 1 source corrections and their retest. The correc
 The Round-2 helper run passed PHP lint, Python invariant compilation, the full source-invariant suite, deterministic release build and ZIP integrity before pushing the corrected source.
 
 **Round-2 disposition: CLOSED — zero known unresolved repository-source blockers from these two fresh review cycles.** External Hostinger/browser/real-role/load/restore acceptance remains a separate status and is not claimed here.
+
+## Future-18 Fresh Review Round 2 — 2026-08-10
+
+Fresh review after Round-1 fixes found and corrected: (1) suspended/ineligible privileged actor gaps; (2) GET/mastery-center rendering persisted learning-path state; (3) mastery recalculation overwrote spaced-review scheduling; (4) self-recorded unverified CPD elevated mastery; (5) privacy export incorrectly depended on current learning eligibility. PHP syntax and dedicated Future-18 invariants were re-run after correction.

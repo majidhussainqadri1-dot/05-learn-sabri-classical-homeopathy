@@ -19,7 +19,7 @@ foreach ( $files as $file ) {
 }
 
 $required = array(
-	"Version: 3.3.0" => 'release version',
+	"Version: 4.0.0" => 'release version',
 	"SMC_Contracts" => 'File 00 public assertion contract',
 	"single-free-tier-v2" => 'single free tier',
 	"#087A4E" => 'Sabri Green fallback',

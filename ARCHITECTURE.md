@@ -23,3 +23,9 @@ Foreign domains are consumed through versioned APIs/events/adapters. Direct writ
 ## Security invariants
 
 Every protected action rechecks current File 00 assertions and native object/state authorization. Availability is not authorization. Sensitive data is private/no-cache. New private-note keys are independent from WordPress authentication salts. Corrections forbid proposer self-approval and require reviewer object scope. Heavy/retryable work is bounded and reconciled.
+
+## Future Superset 18 architecture
+
+Runtime 4.0.0 adds `LSCH_Future18` and `LSCH_Future18_REST`. The layer uses an additive sub-schema (`lsch_future18_schema=1`) rather than silently changing core schema 18. Existing outbox persistence remains canonical; a local post-persistence `lsch_event_published` hook feeds mastery, portfolio and correction-impact projections only after event storage succeeds.
+
+All practice modes are learning simulations; real patient identifiers are rejected by common-key guardrails and external clinical authority is not created.
