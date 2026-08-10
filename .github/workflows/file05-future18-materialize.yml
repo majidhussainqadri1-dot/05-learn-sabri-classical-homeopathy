@@ -1,0 +1,54 @@
+name: File 05 Future-18 Materialize Once
+
+on:
+  push:
+    branches: [ codex/file-05-complete-v3.0.0 ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: file05-future18-materialize
+  cancel-in-progress: false
+
+jobs:
+  materialize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: codex/file-05-complete-v3.0.0
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Materialize Future-18 actual source and governance
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .future18-payload-1 .future18-payload-2 .future18-payload-3 .future18-payload-4 > /tmp/f18.b64
+          base64 -d /tmp/f18.b64 | gzip -dc > /tmp/f18-materialize.py
+          python3 -m py_compile /tmp/f18-materialize.py
+          python3 /tmp/f18-materialize.py
+      - name: Verify corrected materialized source
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tests/source-invariants.sh
+          python3 scripts/build-release.py --root . --output /tmp/file05-f18-a.zip
+          python3 scripts/build-release.py --root . --output /tmp/file05-f18-b.zip
+          cmp /tmp/file05-f18-a.zip /tmp/file05-f18-b.zip
+          unzip -t /tmp/file05-f18-a.zip
+      - name: Commit actual source and remove one-shot transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/file05-future18-materialize.yml .future18-payload-1 .future18-payload-2 .future18-payload-3 .future18-payload-4
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Complete File 05 v4.0.0 Future-18 implementation"
+          git push origin HEAD:codex/file-05-complete-v3.0.0
