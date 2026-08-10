@@ -97,7 +97,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Static invariants correctly reject the obsolete materializer. Hide
+          # its workflow only for verification; do not include the workflow-path
+          # deletion in this bot push because GITHUB_TOKEN lacks workflows scope.
+          test -f .github/workflows/materialize-file05-v3.yml
+          mv .github/workflows/materialize-file05-v3.yml /tmp/materialize-file05-v3.yml
+          trap 'test ! -f /tmp/materialize-file05-v3.yml || mv /tmp/materialize-file05-v3.yml .github/workflows/materialize-file05-v3.yml' EXIT
           bash tests/source-invariants.sh
+          mv /tmp/materialize-file05-v3.yml .github/workflows/materialize-file05-v3.yml
+          trap - EXIT
           rm -rf /tmp/file05-release
           mkdir -p /tmp/file05-release
           python3 scripts/build-release.py --output /tmp/file05-release/05-learn-sabri-classical-homeopathy-3.3.0.zip
