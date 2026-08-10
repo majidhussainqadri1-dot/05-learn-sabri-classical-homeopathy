@@ -1,28 +1,28 @@
-name: File 05 Complete Integrity
+name: File 05 Current Plans Integrity
 
 on:
   pull_request:
     branches: [ main ]
-  push:
-    branches: [ codex/file-05-complete-v2.0.0 ]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: file-05-v2-${{ github.ref }}
+  group: file05-current-plans-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  invariants:
+  source-integrity:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Static architecture and security invariants
-        run: python3 tests/static-invariants.py
-      - name: Policy and crypto unit tests
-        run: php tests/unit-policy.php
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Current-plan architecture, security, policy and JavaScript checks
+        run: bash tests/source-invariants.sh
 
   php-syntax:
     runs-on: ubuntu-latest
@@ -36,31 +36,42 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
-      - name: Lint PHP
+      - name: Lint canonical PHP source and tests
         shell: bash
         run: |
           set -euo pipefail
-          while IFS= read -r -d '' file; do php -l "$file"; done < <(find 05-learn-sabri-classical-homeopathy tests -type f -name '*.php' -print0 | sort -z)
+          find 05-learn-sabri-classical-homeopathy tests -type f -name '*.php' -print0 \
+            | sort -z | xargs -0 -n1 php -l
 
   reproducible-package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Build twice and compare
+      - name: Build twice and compare exact bytes
+        shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/source-tree-hash.py --manifest SOURCE-CHECKSUMS.sha256
-          python3 scripts/build-release.py --output file05-a.zip
-          python3 scripts/build-release.py --output file05-b.zip
-          cmp file05-a.zip file05-b.zip
-          sha256sum file05-a.zip file05-b.zip
-      - name: Upload candidate evidence
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: file-05-2.0.0-candidate
-          path: |
-            file05-a.zip
-            file05-a.zip.sha256
-            SOURCE-CHECKSUMS.sha256
-          if-no-files-found: error
-          retention-days: 30
+          mkdir -p build-a build-b
+          python3 scripts/build-release.py --root . --output build-a/05-learn-sabri-classical-homeopathy-3.3.0.zip
+          python3 scripts/build-release.py --root . --output build-b/05-learn-sabri-classical-homeopathy-3.3.0.zip
+          cmp build-a/05-learn-sabri-classical-homeopathy-3.3.0.zip build-b/05-learn-sabri-classical-homeopathy-3.3.0.zip
+          unzip -t build-a/05-learn-sabri-classical-homeopathy-3.3.0.zip
+          rm -rf build-a/extracted
+          mkdir -p build-a/extracted
+          unzip -q build-a/05-learn-sabri-classical-homeopathy-3.3.0.zip -d build-a/extracted
+          test -s build-a/extracted/05-learn-sabri-classical-homeopathy/MANIFEST.sha256
+          test -s build-a/extracted/05-learn-sabri-classical-homeopathy/SBOM.spdx.json
+          (cd build-a/extracted/05-learn-sabri-classical-homeopathy && sha256sum -c MANIFEST.sha256)
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('build-a/extracted/05-learn-sabri-classical-homeopathy/SBOM.spdx.json')
+          data=json.loads(p.read_text(encoding='utf-8'))
+          assert data['spdxVersion']=='SPDX-2.3'
+          assert data['packages'][0]['versionInfo']=='3.3.0'
+          PY
+          diff -u \
+            <(cd 05-learn-sabri-classical-homeopathy && find . -type f -print | sort) \
+            <(cd build-a/extracted/05-learn-sabri-classical-homeopathy && find . -type f ! -name MANIFEST.sha256 ! -name SBOM.spdx.json -print | sort)
+          python3 scripts/source-tree-hash.py --root . --manifest build-a/SOURCE-MANIFEST.sha256
+          sha256sum build-a/05-learn-sabri-classical-homeopathy-3.3.0.zip
