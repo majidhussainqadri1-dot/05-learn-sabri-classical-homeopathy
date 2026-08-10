@@ -1,44 +1,53 @@
-# File 05 — Mandatory Real WordPress Staging Acceptance
+# File 05 — Mandatory Hostinger/WordPress Staging Acceptance
 
-Source completion and automated checks do not replace real-environment evidence. Do not merge to production or activate live until every gate below passes on the Hostinger-equivalent staging site.
+Repository source, CI and a deterministic ZIP do not prove real runtime correctness. Production deployment is blocked until every applicable gate below is evidenced on the actual staging environment.
 
-## Environment and backup
+## 1. Reality freeze and backup
 
-- Record exact WordPress, PHP, database, LiteSpeed, object-cache and companion-plugin versions.
-- Create database/files backup and prove isolated restoration.
-- Record current SLC data counts and checksum samples.
+- Record exact deployed/staging File 05 version, File 00 contract/runtime, File 01, File 20 and every companion provider used by File 05.
+- Record WordPress, PHP, database, LiteSpeed/object-cache configuration and relevant feature flags.
+- Record File 05 core schema and auxiliary state schema from the database.
+- Create database/files/key/config backup and prove isolated restoration before migration.
 
-## Installation and migration
+## 2. Fresh install and upgrade
 
-- Fresh install.
-- Upgrade from SLC 1.0.0 with books, lessons, progress, bookmarks and consent-linked content.
-- Concurrent activation lock/idempotency test.
-- Deactivate/reactivate and retention-first uninstall.
-- Rollback rehearsal preserving new post-cutover records.
+- Fresh install of the exact release ZIP; plugin header/readme/package/checksum parity.
+- Upgrade from the actual staging/production-like predecessor, including legacy SLC/LSCH posts, progress, bookmarks and private notes.
+- Verify schema idempotency, migration checkpoints, concurrent activation behavior and no unauthorized foreign data mutation.
+- Configure independent note keyring; verify legacy-note decrypt and bounded re-encryption to current key generation.
+- Deactivate/reactivate and non-destructive uninstall behavior.
 
-## Real-role journeys
+## 3. Real-role journeys
 
-- Guest reads a public lesson without login.
-- Unapproved account can read public material but cannot enroll, save, note or assess.
-- Approved adult account enrolls, resumes, saves encrypted notes, completes lessons and assessments.
-- Minor account is denied protected action until verified guardian context passes.
-- Founder publishes directly; verified doctor contribution follows governed review; self-review is denied.
-- Assigned assessor grades; unassigned/self/conflicted assessor is denied.
-- Correction marks affected progress `needs_review` and preserves old result versions.
-- Completion record survives access-model/account-plan changes and supports correction/revocation.
+- Guest public catalog/lesson reading where eligible, with no protected-state leakage.
+- Approved adult learner enrollment, prerequisites, progress/resume/reset/export, bookmark, encrypted note, assessment, assignment, appeal and completion.
+- Ineligible/suspended/guardian-blocked account denied at the protected action with no side effect.
+- Founder/curriculum lead/teacher/assessor/reviewer scope and conflict rules.
+- Correction proposal → needs information → resubmit → independent decision → content version → learner `needs_review`; withdrawal and stale-content conflict paths.
+- Completion and certificate-readiness correction/revocation behavior.
+- Saved learning search and File 26 discovery handoff without File 05 claiming global ranking.
+- Citation exports, File 16 source context, File 12/06/10 related references and account learning-record export.
 
-## Cross-file contracts
+## 4. Integration failures
 
-Validate Files 00, 01, 17, 19, 20, 21, 22, 24, 25 and 26 with real installed versions. Prove fail-closed behavior for missing/incompatible/malformed dependencies without breaking public safe reading.
+Validate real Files 00, 01, 06, 10, 12, 15, 16, 17, 19, 20, 21, 22, 24, 25 and 26 as applicable. Exercise missing, incompatible, malformed, stale and partially available provider states. Public-safe reading may degrade safely; protected actions must fail closed.
 
-## UI/accessibility/performance
+## 5. Security/privacy/reliability
 
-Test 320, 375, 768, 1024, 1440 and 1920 widths; English and Urdu/RTL; keyboard-only; screen reader; visible focus; 200%/400% zoom; reduced motion; long labels; slow/offline network. Record Core Web Vitals and API p75/p95.
+- Role/object/field IDOR matrix, CSRF/nonces where browser, replay/idempotency, rate limits and privilege loss mid-request.
+- Private DTO/noindex/no-cache behavior, export, erasure, legal hold and pseudonymization.
+- Note key loss/rotation/recovery; no plaintext or key leakage in logs/errors/backups.
+- Concurrent outbox workers, queue retries/dead states, stale job recovery, correction application recovery, database failures and disk/provider failure injection.
+- Secret/supply-chain scan and package manifest/SBOM verification.
 
-## Operations
+## 6. UI/accessibility/performance
 
-Exercise System Check, safe mode, dry-run repair, queue retry/dead state, cache/index purge, privacy export/erase/legal hold, alerts, incident/rollback runbooks and post-deployment monitoring.
+Test 320, 375, 768, 1024, 1440 and 1920 widths; Urdu/Arabic RTL and English LTR; keyboard-only; screen reader; visible focus; 200%/400% zoom; reduced motion; long labels; slow/offline connection. Measure representative p75/p95 page/API performance and confirm no cross-user private caching.
 
-## Sign-off
+## 7. Rollback and sign-off
 
-Required explicit, dated approvals: technical review, security/privacy, medical/academic governance, Sharīʿah where applicable, visual/accessibility, and Founder acceptance.
+- Rehearse code rollback with schema/data compatibility and preserve valid post-cutover records.
+- Restore backup in an isolated environment and verify counts, hashes, key decrypt, cache/index rebuild and representative roles.
+- Record technical, security/privacy, academic/medical, accessibility/visual and Founder approvals.
+
+Only after these gates pass may status advance from `Automated-QA Green` to `Staging-Accepted`. Live deployment and operational acceptance remain later, separately evidenced statuses.

@@ -1,5 +1,5 @@
 <?php
-/** Least-privilege capability model. */
+/** Least-privilege capability model backed by File 00 public assertions. */
 defined( 'ABSPATH' ) || exit;
 
 final class LSCH_Capabilities {
@@ -65,17 +65,38 @@ final class LSCH_Capabilities {
 
 	public static function verified_doctor( $user_id = 0 ) {
 		$claims = LSCH_Dependencies::claims( $user_id );
-		return ! empty( $claims['doctor_verified'] ) && ! empty( $claims['identity_verified'] ) && ! empty( $claims['email_verified'] ) && ! empty( $claims['mobile_verified'] ) && ! empty( $claims['two_factor'] ) && $claims['approval_version'] >= 1 && in_array( $claims['status'], array( 'approved', 'verified' ), true ) && empty( $claims['suspended'] );
+		return
+			! empty( $claims['doctor_verified'] ) &&
+			! empty( $claims['eligible'] ) &&
+			empty( $claims['suspended'] );
 	}
 
 	public static function can_author( $user_id = 0 ) {
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
-		return $user_id && ( self::is_founder( $user_id ) || user_can( $user_id, self::PUBLISH_LESSONS ) || self::verified_doctor( $user_id ) );
+		if ( ! $user_id ) {
+			return false;
+		}
+		$claims = LSCH_Dependencies::claims( $user_id );
+		if ( empty( $claims['eligible'] ) || ! empty( $claims['suspended'] ) ) {
+			return self::is_founder( $user_id ) || user_can( $user_id, 'manage_options' );
+		}
+		$publishing = (array) ( $claims['publishing'] ?? array() );
+		return
+			self::is_founder( $user_id ) ||
+			user_can( $user_id, self::PUBLISH_LESSONS ) ||
+			self::verified_doctor( $user_id ) ||
+			! empty( $publishing['can_submit_for_review'] );
 	}
 
 	public static function can_review( $user_id = 0 ) {
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
-		return $user_id && ( self::is_founder( $user_id ) || user_can( $user_id, self::REVIEW_LESSONS ) );
+		if ( ! $user_id ) {
+			return false;
+		}
+		$claims = LSCH_Dependencies::claims( $user_id );
+		return
+			self::is_founder( $user_id ) ||
+			( empty( $claims['suspended'] ) && ! empty( $claims['eligible'] ) && user_can( $user_id, self::REVIEW_LESSONS ) );
 	}
 
 	public static function approved_account( $user_id = 0 ) {
@@ -83,23 +104,26 @@ final class LSCH_Capabilities {
 		if ( ! $user_id ) {
 			return false;
 		}
-		if ( user_can( $user_id, 'manage_options' ) || self::is_founder( $user_id ) ) {
+		if ( self::is_founder( $user_id ) || user_can( $user_id, 'manage_options' ) ) {
 			return true;
 		}
 		$claims = LSCH_Dependencies::claims( $user_id );
-		return in_array( $claims['status'], array( 'approved', 'verified' ), true ) && ! empty( $claims['identity_verified'] ) && ! empty( $claims['email_verified'] ) && ! empty( $claims['mobile_verified'] ) && empty( $claims['suspended'] );
+		return ! empty( $claims['approved'] ) && ! empty( $claims['eligible'] ) && empty( $claims['suspended'] );
 	}
 
+	/**
+	 * File 00 owns age/jurisdiction/guardian truth. File 05 consumes the
+	 * resulting guardian assertion instead of re-deriving private age fields.
+	 */
 	public static function guardian_gate_passes( $user_id = 0 ) {
-		$claims = LSCH_Dependencies::claims( $user_id );
-		$age    = absint( $claims['age'] );
-		if ( ! $age ) {
+		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
+		if ( ! $user_id ) {
+			return false;
+		}
+		if ( self::is_founder( $user_id ) || user_can( $user_id, 'manage_options' ) ) {
 			return true;
 		}
-		$threshold = 'female' === $claims['gender'] ? 12 : 15;
-		if ( $age < $threshold || $age < 18 ) {
-			return ! empty( $claims['guardian_verified'] );
-		}
-		return true;
+		$claims = LSCH_Dependencies::claims( $user_id );
+		return ! empty( $claims['guardian_verified'] ) && ! empty( $claims['eligible'] ) && empty( $claims['suspended'] );
 	}
 }

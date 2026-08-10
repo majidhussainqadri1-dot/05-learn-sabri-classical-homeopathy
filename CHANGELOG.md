@@ -1,20 +1,30 @@
 # Changelog
 
-## 1.0.0 RC1 — 2026-07-29
+## 3.3.0 — 2026-08-10 — Current-plans corrective candidate
 
-- Added fail-closed File 00, File 01, and File 20 dependency contracts.
-- Replaced generic WordPress post permissions with File 05-specific capabilities.
-- Added idempotent schema v2, migration checkpoints, metrics, consent, audit, and rate-limit tables.
-- Added authoritative doctor eligibility and immediate revocation enforcement.
-- Added managed-page ownership validation and collision-safe creation.
-- Added strict server-side lesson validation and rollback-safe image uploads.
-- Added independent moderation, explicit state transitions, self-review prohibition, and optimistic concurrency.
-- Added versioned patient-case consent and withdrawal-to-hidden workflow.
-- Added privacy export, erasure, anonymization, legal-hold behavior, and guarded multisite uninstall.
-- Removed global comment-setting mutation and hard-coded platform navigation.
-- Added File 20 integration shortcode/layout handling, catalog pagination, atomic metrics, and safe quiz DOM rendering.
-- Added pinned corrective CI, static security invariants, canonical tree hashing, reproducible packaging, and comprehensive staging gates.
+- Reconciled source directly against the current consolidated central plan and current File 05 plan after the historical materialization transport was proven corrupt and non-recoverable.
+- Replaced File 00 private meta/table coupling with `SMC_Contracts::assertions()` and current `smc_policy()` guardrails; requires File 00 contract `1.2.2+`.
+- Enforced single free tier, free baseline, optional donation with no donor advantage, zero commission, Sabri Green `#087A4E`, numbered-file maximum 26 and File 26 global discovery ownership at runtime.
+- Added independent AES-256-GCM private-note keyring with write-key generation rotation and bounded re-encryption support; new writes no longer derive keys from WordPress auth salts.
+- Added File 05-owned saved learning searches, governed correction proposals/review/resubmission/withdrawal, stale-object protection, independent reviewer scope and recoverable application states.
+- Added privacy-minimized learning-value events with bounded retention and aggregate-only analytics.
+- Added File 26 learning-domain provider with owner/freshness/why metadata while preserving File 26 as global rank owner.
+- Added source-grounded File 16 AI context contract without diagnosis, prescription or emergency-replacement authority.
+- Added citation exports (text, APA, Vancouver, BibTeX, RIS) and account-owned learning-record export.
+- Strengthened outbox and background-job concurrency claims, stale-job reconciliation, System Check, Safe Mode/repair and note-key rotation diagnostics.
+- Removed direct Founder lookup through `wp_usermeta`; Founder identity is validated only through the public File 00 owner contract/filter path.
+- Extended privacy export/erasure/pseudonymization to new File 05 state.
+- Added current-plan security/static tests, PHP 7.4/8.3 syntax matrix, deterministic package parity, embedded manifest and deterministic SPDX SBOM verification.
+- Removed obsolete/corrupt v3 materialization workflow/transport from the release branch.
+
+## 2.0.0 — Historical candidate
+
+- Earlier canonical LSCH source candidate. Superseded by 3.3.0 current-plan corrective work.
+
+## 1.0.0 RC1 — Historical corrective baseline
+
+- Earlier SLC corrective release lineage retained only for provenance/migration history.
 
 ## 0.1.0 — Baseline
 
-- Original supplied modular source preserved unchanged on the baseline branch.
+- Original supplied source preserved in repository history/baseline branch.

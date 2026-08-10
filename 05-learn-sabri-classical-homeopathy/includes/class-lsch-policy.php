@@ -3,13 +3,20 @@
 defined( 'ABSPATH' ) || exit;
 
 final class LSCH_Policy {
+	const NOTE_KEY_VERSION = 2;
+
 	/** Latest Founder directive: one complete free tier; no paid education gate. */
 	public static function access_model() {
 		return 'single-free-tier-v2';
 	}
 
+	public static function central_policy_ready() {
+		return LSCH_Dependencies::governing_policy_ready();
+	}
+
 	public static function can_read_post( $post_id, $user_id = 0 ) {
 		$post_id = absint( $post_id );
+		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
 		$post    = get_post( $post_id );
 		if ( ! $post || ! LSCH_Content::object_type( $post_id ) ) {
 			return false;
@@ -27,10 +34,8 @@ final class LSCH_Policy {
 		if ( 'public' === $access ) {
 			return true;
 		}
-		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
-		return $user_id && LSCH_Capabilities::approved_account( $user_id ) && LSCH_Capabilities::guardian_gate_passes( $user_id );
+		return $user_id && self::central_policy_ready() && LSCH_Capabilities::approved_account( $user_id ) && LSCH_Capabilities::guardian_gate_passes( $user_id );
 	}
-
 
 	public static function valid_case_consent( $lesson_id ) {
 		global $wpdb;
@@ -40,12 +45,20 @@ final class LSCH_Policy {
 
 	public static function can_use_learning_actions( $user_id = 0 ) {
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
-		return $user_id && LSCH_Capabilities::approved_account( $user_id ) && LSCH_Capabilities::guardian_gate_passes( $user_id );
+		return
+			$user_id &&
+			self::central_policy_ready() &&
+			LSCH_Capabilities::approved_account( $user_id ) &&
+			LSCH_Capabilities::guardian_gate_passes( $user_id );
 	}
 
 	public static function can_manage_object( $post_id, $user_id = 0 ) {
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
-		return $user_id && user_can( $user_id, 'edit_post', absint( $post_id ) ) && ( LSCH_Capabilities::can_author( $user_id ) || user_can( $user_id, LSCH_Capabilities::MANAGE_CURRICULUM ) );
+		return
+			$user_id &&
+			self::central_policy_ready() &&
+			user_can( $user_id, 'edit_post', absint( $post_id ) ) &&
+			( LSCH_Capabilities::can_author( $user_id ) || user_can( $user_id, LSCH_Capabilities::MANAGE_CURRICULUM ) );
 	}
 
 	public static function validate_prerequisites( $course_id, $user_id ) {
@@ -84,33 +97,137 @@ final class LSCH_Policy {
 		return $json;
 	}
 
+	/** Decode deployment key material without accepting short/passphrase secrets. */
+	private static function decode_note_material( $value ) {
+		$value = trim( (string) $value );
+		if ( 0 === strpos( $value, 'base64:' ) ) {
+			$decoded = base64_decode( substr( $value, 7 ), true );
+			return is_string( $decoded ) && 32 === strlen( $decoded ) ? $decoded : false;
+		}
+		if ( 0 === strpos( $value, 'hex:' ) && preg_match( '/^[a-f0-9]{64}$/i', substr( $value, 4 ) ) ) {
+			$decoded = hex2bin( substr( $value, 4 ) );
+			return is_string( $decoded ) && 32 === strlen( $decoded ) ? $decoded : false;
+		}
+		return false;
+	}
+
+	/**
+	 * Keyring for private learning notes.
+	 *
+	 * New notes never derive keys from WordPress authentication salts. Key
+	 * material must be supplied by deployment configuration or an approved
+	 * File 24/key-management adapter through `lsch_note_keyring`.
+	 */
+	public static function note_keyring() {
+		$raw = array();
+		if ( defined( 'LSCH_NOTE_MASTER_KEY' ) ) {
+			$raw[ self::NOTE_KEY_VERSION ] = LSCH_NOTE_MASTER_KEY;
+		}
+		$raw = (array) apply_filters( 'lsch_note_keyring', $raw );
+		$keys = array();
+		foreach ( $raw as $version => $material ) {
+			$version = absint( $version );
+			$decoded = self::decode_note_material( $material );
+			if ( $version >= self::NOTE_KEY_VERSION && false !== $decoded ) {
+				$keys[ $version ] = $decoded;
+			}
+		}
+		ksort( $keys, SORT_NUMERIC );
+		return $keys;
+	}
+
+	public static function note_write_key_version() {
+		$keys = self::note_keyring();
+		return $keys ? max( array_map( 'absint', array_keys( $keys ) ) ) : 0;
+	}
+
+	public static function note_encryption_ready() {
+		$keys = self::note_keyring();
+		$version = self::note_write_key_version();
+		return
+			function_exists( 'openssl_encrypt' ) &&
+			function_exists( 'openssl_decrypt' ) &&
+			$version >= self::NOTE_KEY_VERSION &&
+			isset( $keys[ $version ] ) &&
+			32 === strlen( $keys[ $version ] );
+	}
+
+	private static function note_aad( $user_id, $lesson_id, $key_version ) {
+		return 'file05-note|' . absint( $user_id ) . '|' . absint( $lesson_id ) . '|v' . absint( $key_version );
+	}
+
 	public static function encrypt_note( $plain, $user_id, $lesson_id ) {
-		if ( ! function_exists( 'openssl_encrypt' ) ) {
-			return new WP_Error( 'lsch_crypto_unavailable', __( 'Private notes are unavailable because encryption support is missing.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		if ( ! self::note_encryption_ready() ) {
+			return new WP_Error(
+				'lsch_note_key_unavailable',
+				__( 'Private notes are safely paused until an independent File 05 note-encryption key is configured.', 'learn-sabri-classical-homeopathy' ),
+				array( 'status' => 503 )
+			);
 		}
 		$plain = trim( wp_strip_all_tags( (string) $plain ) );
 		if ( strlen( $plain ) > 20000 ) {
 			return new WP_Error( 'lsch_note_too_large', __( 'The private note is too long.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
 		}
-		$key = hash( 'sha256', AUTH_KEY . SECURE_AUTH_SALT . 'lsch-note-v1', true );
-		$iv  = random_bytes( 12 );
-		$aad = $user_id . ':' . $lesson_id . ':v1';
+		$keys = self::note_keyring();
+		$key_version = self::note_write_key_version();
+		$key = $keys[ $key_version ];
+		$iv = random_bytes( 12 );
+		$aad = self::note_aad( $user_id, $lesson_id, $key_version );
 		$tag = '';
 		$ciphertext = openssl_encrypt( $plain, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag, $aad, 16 );
 		if ( false === $ciphertext ) {
 			return new WP_Error( 'lsch_note_encrypt_failed', __( 'The private note could not be encrypted.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
 		}
-		return array( 'ciphertext' => base64_encode( $ciphertext ), 'iv' => base64_encode( $iv ), 'tag' => base64_encode( $tag ), 'key_version' => 1 );
+		return array(
+			'ciphertext' => base64_encode( $ciphertext ),
+			'iv'         => base64_encode( $iv ),
+			'tag'        => base64_encode( $tag ),
+			'key_version'=> $key_version,
+		);
+	}
+
+	public static function decrypt_note_checked( array $row, $user_id, $lesson_id ) {
+		if ( ! function_exists( 'openssl_decrypt' ) || empty( $row['ciphertext'] ) || empty( $row['iv'] ) || empty( $row['tag'] ) ) {
+			return new WP_Error( 'lsch_note_cipher_missing', __( 'The encrypted private-note record is incomplete.', 'learn-sabri-classical-homeopathy' ) );
+		}
+		$key_version = max( 1, absint( $row['key_version'] ?? 1 ) );
+		$key = false;
+		$aad = '';
+
+		if ( 1 === $key_version ) {
+			/* Read-only compatibility for schema-7 notes; never used for new writes. */
+			if ( defined( 'AUTH_KEY' ) && defined( 'SECURE_AUTH_SALT' ) ) {
+				$key = hash( 'sha256', AUTH_KEY . SECURE_AUTH_SALT . 'lsch-note-v1', true );
+				$aad = absint( $user_id ) . ':' . absint( $lesson_id ) . ':v1';
+			}
+		} else {
+			$keys = self::note_keyring();
+			if ( isset( $keys[ $key_version ] ) ) {
+				$key = $keys[ $key_version ];
+				$aad = self::note_aad( $user_id, $lesson_id, $key_version );
+			}
+		}
+
+		if ( false === $key ) {
+			return new WP_Error( 'lsch_note_key_generation_unavailable', __( 'The key generation required for this private note is unavailable.', 'learn-sabri-classical-homeopathy' ) );
+		}
+
+		$cipher = base64_decode( (string) $row['ciphertext'], true );
+		$iv = base64_decode( (string) $row['iv'], true );
+		$tag = base64_decode( (string) $row['tag'], true );
+		if ( false === $cipher || false === $iv || false === $tag || 12 !== strlen( $iv ) || 16 !== strlen( $tag ) ) {
+			return new WP_Error( 'lsch_note_cipher_invalid', __( 'The encrypted private-note record failed structural validation.', 'learn-sabri-classical-homeopathy' ) );
+		}
+		$plain = openssl_decrypt( $cipher, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag, $aad );
+		if ( false === $plain ) {
+			return new WP_Error( 'lsch_note_authentication_failed', __( 'The private note could not be authenticated with its recorded key generation.', 'learn-sabri-classical-homeopathy' ) );
+		}
+		return $plain;
 	}
 
 	public static function decrypt_note( array $row, $user_id, $lesson_id ) {
-		if ( ! function_exists( 'openssl_decrypt' ) || empty( $row['ciphertext'] ) || empty( $row['iv'] ) || empty( $row['tag'] ) ) {
-			return '';
-		}
-		$key = hash( 'sha256', AUTH_KEY . SECURE_AUTH_SALT . 'lsch-note-v1', true );
-		$aad = $user_id . ':' . $lesson_id . ':v1';
-		$plain = openssl_decrypt( base64_decode( $row['ciphertext'], true ), 'aes-256-gcm', $key, OPENSSL_RAW_DATA, base64_decode( $row['iv'], true ), base64_decode( $row['tag'], true ), $aad );
-		return false === $plain ? '' : $plain;
+		$result = self::decrypt_note_checked( $row, $user_id, $lesson_id );
+		return is_wp_error( $result ) ? '' : $result;
 	}
 
 	public static function request_id() {
@@ -123,7 +240,7 @@ final class LSCH_Policy {
 		if ( ! preg_match( '/^[A-Za-z0-9._:-]{12,128}$/', $provided ) ) {
 			return new WP_Error( 'lsch_idempotency_required', __( 'A valid idempotency key is required.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
 		}
-		return hash( 'sha256', $user_id . '|' . sanitize_key( $action ) . '|' . $provided );
+		return hash( 'sha256', absint( $user_id ) . '|' . sanitize_key( $action ) . '|' . $provided );
 	}
 
 	public static function rate_limit( $bucket, $subject, $limit, $window ) {

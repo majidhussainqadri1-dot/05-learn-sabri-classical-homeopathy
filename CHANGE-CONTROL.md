@@ -1,27 +1,42 @@
-# File 05 Change-Control Record — 2.0.0
+# File 05 Change-Control Record — 3.3.0
 
-## Governing sources
+## Governing order
 
-1. Founder’s latest explicit directives.
-2. Sabri Social Homeopathy Platform Definitive Master Plan 2026 v3.0.
-3. File 05 Complete Master Plan 2026 v1.0.
-4. Corrected companion ownership contracts for Files 00, 01, 06, 10, 12, 15, 16, 17, 19, 20, 21, 22, 24, 25 and 26.
-5. Historical SLC 1.0.0 code only as migration evidence.
+1. Founder’s latest explicit approved directives.
+2. Current consolidated central governing plan corpus.
+3. Current File 05 Complete Master Plan.
+4. Current versioned companion owner contracts.
+5. Exact repository HEAD as implementation truth; historical packages/PRs only as provenance.
 
-## Founder amendments applied
+## 2026-08-10 corrective decision
 
-### Free education
+### Trigger
 
-The older PKR 400 education entitlement text is superseded. Version 2.0.0 uses one complete free tier (`single-free-tier-v2`). Public approved content is readable without login. Enrollment, progress, notes, assessments and other protected actions require an approved verified-entry account, but no payment.
+The active Draft PR described a newer candidate than the source tree actually materialized, and the historical materialization transport failed exact-head execution. Repeated diagnostic runs showed the transport itself was corrupt rather than a simple workflow-pin defect. Root-cause-first policy therefore forbids further patch stacking on the materializer.
 
-### Visual identity
+### Decision
 
-The former orange primary styling is superseded. Green is the identity color; secondary colors remain contextual. Functional controls include semantic icons and remain WCAG-oriented.
+The materialization workflow and payload are retired. The current-plan release is implemented directly in reviewable repository source. Runtime `3.3.0` is intentionally chosen so it does not falsely claim byte parity with an unavailable historical local `3.2.0` artifact.
 
-### Namespace migration
+### Contract changes
 
-The old `sabri-learning` / `SLC_` runtime is replaced by the plan-canonical `05-learn-sabri-classical-homeopathy` / `learn-sabri-classical-homeopathy` / `LSCH_` identity. Migration is additive: legacy File 05 posts, progress and bookmarks are mapped; old tables remain available for rollback until staging acceptance authorizes retirement.
+- File 00: consume only `SMC_Contracts::assertions()` plus `smc_policy()`; minimum contract `1.2.2`.
+- File 26: owns global search/discovery/ranking; File 05 registers a learning-only projection.
+- File 25: owns design tokens; File 05 carries only `#087A4E` fallback and semantic component styling.
+- File 16: receives source-safe educational context only; no clinical authority.
+- File 12/06/10/17/19/20/21/22/24/25/26: remain native owners of their domains; File 05 stores only owned state or typed references.
 
-## Ownership invariants
+### Business and safety changes
 
-File 05 owns curriculum, programs, courses, learning books, lessons, assessments, assignments, enrollments, private progress, notes, learning staff scope and completion records. It does not duplicate identity, shell, visual system, feed, messages, notifications, PDF, video, Encyclopedia, Radar, AI, search index or payment truth.
+- Single free tier is mandatory; no PKR 400, Pro/Premium, paid unlock or donor advantage.
+- Public-safe learning may be read without account where content policy permits; protected actions require current eligible File 00 claims.
+- Patient-case learning publication requires valid consent and the approved successful-case taxonomy policy.
+- Private note writes require independent key material; missing key fails closed.
+
+### Migration / rollback
+
+Schema changes are additive. Existing core tables remain; File 05 auxiliary state schema is `3`. Historical note key generation `1` is decrypt-only for controlled migration. Destructive uninstall remains separately guarded. Rollback must preserve post-cutover data and follow `ROLLBACK.md` / `BACKUP-RESTORE.md`; no destructive down-migration is assumed safe.
+
+### Acceptance
+
+This record authorizes repository-source correction only. It does not authorize live deployment. Exact-head CI, two fresh review/fix rounds, deterministic package evidence and then Hostinger staging acceptance remain separate gates.

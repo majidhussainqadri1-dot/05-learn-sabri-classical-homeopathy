@@ -1,32 +1,40 @@
 === Learn Sabri Classical Homeopathy ===
 Contributors: majidhussainqadri1-dot
 Tags: learning, curriculum, courses, homeopathy, assessments
-Requires at least: 6.0
+Requires at least: 6.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 2.0.0
+Stable tag: 3.3.0
 License: GPLv2 or later
 
 Canonical File 05 learning domain for the Sabri Social Homeopathy Platform.
 
 == Description ==
 
-Version 2.0.0 implements the complete code foundation defined by SSH-F05-PLAN-2026-v1.0: four-level curriculum, 16-topic vocabulary, governed programs/courses/books/lessons, verified-entry learning actions, free education access, enrollment, progress, encrypted private notes, bookmarks, assessments, assignments, grading and appeals, staff governance, completion and certificate-readiness records, content correction/versioning, related-knowledge links, File 17/19/21/22/24/25/26 adapters, reliable outbox/inbox/jobs, privacy export/erasure, System Check, Safe Mode, migration, and guarded uninstall.
+Version 3.3.0 is the current-plans corrective source candidate for File 05. It implements the four-level/16-topic learning architecture, governed programs/courses/Founder-book slots/lessons, enrollment, progress, bookmarks, independently keyed AES-256-GCM private notes, assessments, assignments, teacher/assessor governance, completion/certificate-readiness, correction proposals/independent decisions, structured citation export, local saved learning searches, privacy-minimized learning-value events, learner-record export, File17 community context, File22 composer, File26 discovery projection and File16 source-safe AI context boundaries.
 
-File 00 remains identity and account-state authority. File 20 remains shell owner. File 25 remains visual-system owner. File 05 does not duplicate companion data.
+File 00 remains identity/policy authority through its public versioned assertion contract. File 20 remains application-shell owner. File 25 remains visual-token owner. File 26 remains global Search/Discovery/Ranking owner. File 05 does not read File 00 private user-meta/tables and does not duplicate companion domain truth.
+
+All approved File 05 education is governed by the single-free-tier model. Paid/Pro/Premium/donor advantages are not part of this plugin.
 
 == Installation ==
 
-1. Back up and restore-test the database and files.
-2. Activate required File 00, File 01, and File 20 contracts on staging.
-3. Install the ZIP whose top-level folder is `05-learn-sabri-classical-homeopathy`.
-4. Activate on staging and open Learning > System Check.
-5. Complete the documented real-role staging acceptance before production.
+1. Back up and restore-test database/files/configuration.
+2. On staging, activate compatible File 00 (public assertion contract 1.2.2+), File 01 and File 20 runtimes.
+3. Configure an independent 256-bit File 05 private-note key as `LSCH_NOTE_MASTER_KEY` (`base64:` or `hex:` form) or through the approved `lsch_note_keyring` adapter.
+4. Install the ZIP whose top-level folder is `05-learn-sabri-classical-homeopathy`.
+5. Activate on staging and open Learning > System Check.
+6. Run fresh-install/upgrade, real-role, privacy, accessibility, concurrency/failure, backup/restore and rollback acceptance.
+7. Production deployment requires Founder approval and a separately verified package/exact-head record.
 
 == Changelog ==
 
-= 2.0.0 =
-* Replaced the limited SLC 1.0.0 foundation with the canonical LSCH architecture.
-* Added additive legacy progress/bookmark migration.
-* Added all File 05 domain entities, workflows, REST contracts, privacy, operations, and integrations.
-* Applied the Founder’s latest single-free-tier and green visual directives.
+= 3.3.0 =
+* Reconciled actual source with the current consolidated central plan and current File 05 plan.
+* Replaced File 00 private meta/table coupling with `SMC_Contracts::assertions()` 1.2.2+.
+* Enforced File 00 current single-free-tier, no-donor-advantage, Sabri Green and File26 ownership policy.
+* Removed new-note dependence on WordPress auth salts; added independent keyring with read-only v1 decrypt compatibility.
+* Added local saved learning searches, correction governance, privacy-minimized value telemetry, citation exports and learning-record download provider.
+* Added File26 global search/discovery/ranking boundary and File16 source-safe AI context provider.
+* Added auxiliary state schema, privacy lifecycle coverage, improved queue concurrency controls and stronger System Check.
+* Removed the corrupt historical materialization transport from the release branch.

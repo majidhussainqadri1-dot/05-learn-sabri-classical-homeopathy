@@ -2,9 +2,9 @@
 /**
  * Plugin Name: Learn Sabri Classical Homeopathy
  * Plugin URI: https://sabrihomeopathy.com/learn/
- * Description: Canonical curriculum, courses, lessons, enrollment, progress, assessment, assignments, governed completion records, and education integrations for the Sabri Social Homeopathy Platform.
- * Version: 2.0.0
- * Requires at least: 6.0
+ * Description: Canonical curriculum, courses, lessons, enrollment, progress, assessments, governed correction/citation/value tools and education integrations for the Sabri Social Homeopathy Platform.
+ * Version: 3.3.0
+ * Requires at least: 6.6
  * Requires PHP: 7.4
  * Author: Dr. Allamah Majid Hussain Sabri
  * License: GPL-2.0-or-later
@@ -14,9 +14,9 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'LSCH_VERSION', '2.0.0' );
-define( 'LSCH_SCHEMA_VERSION', 7 );
-define( 'LSCH_PLAN_VERSION', 'SSH-F05-PLAN-2026-v1.0' );
+define( 'LSCH_VERSION', '3.3.0' );
+define( 'LSCH_SCHEMA_VERSION', 17 );
+define( 'LSCH_PLAN_VERSION', 'SSH-F05-PLAN-2026-v1.0-current-central-2026-08-10' );
 define( 'LSCH_FILE', __FILE__ );
 define( 'LSCH_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LSCH_URL', plugin_dir_url( __FILE__ ) );
@@ -31,6 +31,8 @@ $lsch_files = array(
 	'class-lsch-events.php',
 	'class-lsch-services.php',
 	'class-lsch-rest.php',
+	'class-lsch-state.php',
+	'class-lsch-value.php',
 	'class-lsch-frontend.php',
 	'class-lsch-admin.php',
 	'class-lsch-privacy.php',
@@ -57,6 +59,7 @@ function lsch_bootstrap() {
 
 	try {
 		LSCH_Database::maybe_upgrade();
+		LSCH_State::maybe_upgrade();
 	} catch ( Throwable $error ) {
 		update_option(
 			'lsch_runtime_failure',

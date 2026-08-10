@@ -1,6 +1,6 @@
 <?php
-/** Deterministic source-level security and architecture invariants. */
-$root = realpath( __DIR__ . '/../sabri-learning' );
+/** Deterministic current-plan security and ownership invariants. */
+$root = realpath( __DIR__ . '/../05-learn-sabri-classical-homeopathy' );
 if ( ! $root ) {
 	fwrite( STDERR, "Plugin root missing.\n" );
 	exit( 1 );
@@ -19,19 +19,21 @@ foreach ( $files as $file ) {
 }
 
 $required = array(
-	"Version: 1.0.0" => 'corrected version',
-	"class SLC_Dependencies" => 'dependency gate',
-	"smc_user_status" => 'File 00 authority',
-	"_smc_doctor_verified" => 'File 00 doctor verification',
-	"slc_review_lessons" => 'separate reviewer capability',
-	"A lesson author cannot review their own submission" => 'self-review prohibition',
-	"_slc_row_version" => 'optimistic concurrency',
-	"slc_consents" => 'versioned consent persistence',
-	"SLC_PURGE_ON_UNINSTALL" => 'guarded uninstall',
-	"replaceChildren" => 'safe quiz result rendering',
-	"sabri_shell_layout_mode" => 'File 20 shell integration',
-	"lesson_page" => 'catalog pagination',
-	"ON DUPLICATE KEY UPDATE view_count=view_count+1" => 'atomic view counter',
+	"Version: 3.3.0" => 'release version',
+	"SMC_Contracts" => 'File 00 public assertion contract',
+	"single-free-tier-v2" => 'single free tier',
+	"#087A4E" => 'Sabri Green fallback',
+	"global_rank_owner" => 'File26 global discovery owner',
+	"LSCH_NOTE_MASTER_KEY" => 'independent private-note key',
+	"note_write_key_version" => 'rotatable note key generation',
+	"const SCHEMA = 3" => 'auxiliary state schema',
+	"LearningCorrectionResubmitted.v1" => 'correction resubmission lifecycle',
+	"LearningCorrectionWithdrawn.v1" => 'correction withdrawal lifecycle',
+	"saved_searches" => 'account-owned saved learning search',
+	"corrections" => 'correction governance ledger',
+	"value_events" => 'privacy-minimized value telemetry',
+	"independent_reviewer_required" => 'independent review gate',
+	"کامیاب کیس" => 'successful-case learning tag',
 );
 foreach ( $required as $needle => $label ) {
 	if ( false === strpos( $all, $needle ) ) {
@@ -41,24 +43,28 @@ foreach ( $required as $needle => $label ) {
 }
 
 $forbidden = array(
-	"add_filter( 'option_comment_registration'" => 'site-wide comment setting override',
-	'SPD_Helpers' => 'File 03 verification fallback',
-	"'capability_type' => 'post'" => 'generic post capabilities',
+	"_smc_identity_verified" => 'File 00 private identity meta coupling',
+	"_smc_doctor_verified" => 'File 00 private doctor meta coupling',
+	"_smc_2fa_enabled" => 'retired local MFA storage coupling',
+	'$wpdb->usermeta' => 'direct File00/UserMeta implementation query',
 	'.innerHTML' => 'unsafe dynamic HTML assignment',
-	'actions/checkout@v4' => 'mutable checkout action reference',
-	'shivammathur/setup-php@v2' => 'mutable setup-php action reference',
+	"global_rank_owner' => 'file05'" => 'File05 claiming global ranking ownership',
+	'PKR 400' => 'obsolete education pricing',
+	'#167447' => 'obsolete File05 green fallback',
 );
 foreach ( $forbidden as $needle => $label ) {
-	if ( false !== strpos( $all, $needle ) ) {
+	if ( false !== stripos( $all, $needle ) ) {
 		fwrite( STDERR, "Forbidden invariant found: {$label}\n" );
 		exit( 1 );
 	}
 }
 
-$php = array_values( array_filter( $files, static function( $file ) { return '.php' === substr( $file, -4 ); } ) );
-if ( 21 !== count( $files ) || 15 !== count( $php ) ) {
-	fwrite( STDERR, sprintf( "Unexpected plugin inventory: %d files, %d PHP.\n", count( $files ), count( $php ) ) );
+$policy = file_get_contents( $root . '/includes/class-lsch-policy.php' );
+$parts = explode( 'public static function decrypt_note', $policy, 2 );
+$new_write = $parts[0];
+if ( false !== strpos( $new_write, "AUTH_KEY . SECURE_AUTH_SALT . 'lsch-note-v1'" ) ) {
+	fwrite( STDERR, "New note writes still derive from WordPress authentication salts.\n" );
 	exit( 1 );
 }
 
-echo "Security and architecture invariants passed.\n";
+echo "PASS: File 05 current-plan security and ownership invariants.\n";

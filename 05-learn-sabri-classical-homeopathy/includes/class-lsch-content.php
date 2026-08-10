@@ -65,20 +65,20 @@ final class LSCH_Content {
 		register_post_type(
 			$type,
 			array(
-				'labels'          => array( 'name' => $plural, 'singular_name' => $singular ),
-				'public'          => $public,
-				'publicly_queryable' => $public,
+				'labels'              => array( 'name' => $plural, 'singular_name' => $singular ),
+				'public'              => $public,
+				'publicly_queryable'  => $public,
 				'exclude_from_search' => ! $public,
-				'show_ui'         => true,
-				'show_in_menu'    => 'lsch-learning',
-				'show_in_rest'    => false,
-				'has_archive'     => $public,
-				'rewrite'         => array( 'slug' => $slug, 'with_front' => false ),
-				'supports'        => $supports,
-				'map_meta_cap'    => true,
-				'capability_type' => array( $type, $type . 's' ),
-				'capabilities'    => LSCH_Capabilities::post_type_caps( $type, $type . 's' ),
-				'delete_with_user'=> false,
+				'show_ui'             => true,
+				'show_in_menu'        => 'lsch-learning',
+				'show_in_rest'        => false,
+				'has_archive'         => $public,
+				'rewrite'             => array( 'slug' => $slug, 'with_front' => false ),
+				'supports'            => $supports,
+				'map_meta_cap'        => true,
+				'capability_type'     => array( $type, $type . 's' ),
+				'capabilities'        => LSCH_Capabilities::post_type_caps( $type, $type . 's' ),
+				'delete_with_user'    => false,
 			)
 		);
 	}
@@ -97,7 +97,17 @@ final class LSCH_Content {
 	private static function register_meta() {
 		$text = array( 'type' => 'string', 'single' => true, 'show_in_rest' => false, 'sanitize_callback' => 'sanitize_text_field', 'auth_callback' => array( __CLASS__, 'can_edit_meta' ) );
 		$int  = array( 'type' => 'integer', 'single' => true, 'show_in_rest' => false, 'sanitize_callback' => 'absint', 'auth_callback' => array( __CLASS__, 'can_edit_meta' ) );
-		foreach ( array( '_lsch_language', '_lsch_access', '_lsch_duration', '_lsch_status', '_lsch_version', '_lsch_reviewer', '_lsch_copyright', '_lsch_sources', '_lsch_objectives', '_lsch_key_terms', '_lsch_examples', '_lsch_safety', '_lsch_prerequisites', '_lsch_equivalence', '_lsch_rubric', '_lsch_blueprint', '_lsch_questions', '_lsch_correction_note', '_lsch_required_components', '_lsch_accessibility', '_lsch_format', '_lsch_certificate_wording_gate', '_lsch_randomize', '_lsch_consent_withdrawal_reason' ) as $key ) {
+		foreach (
+			array(
+				'_lsch_language', '_lsch_access', '_lsch_duration', '_lsch_status', '_lsch_version',
+				'_lsch_reviewer', '_lsch_copyright', '_lsch_sources', '_lsch_objectives', '_lsch_key_terms',
+				'_lsch_examples', '_lsch_safety', '_lsch_prerequisites', '_lsch_equivalence', '_lsch_rubric',
+				'_lsch_blueprint', '_lsch_questions', '_lsch_correction_note', '_lsch_required_components',
+				'_lsch_accessibility', '_lsch_format', '_lsch_certificate_wording_gate', '_lsch_randomize',
+				'_lsch_consent_withdrawal_reason', '_lsch_chapter_map', '_lsch_source_edition',
+				'_lsch_citation_style', '_lsch_low_bandwidth', '_lsch_lifelong_learning',
+			) as $key
+		) {
 			register_meta( 'post', $key, $text );
 		}
 		foreach ( array( '_lsch_program_id', '_lsch_course_id', '_lsch_book_id', '_lsch_teacher_id', '_lsch_pass_mark', '_lsch_max_attempts', '_lsch_time_limit', '_lsch_required', '_lsch_lesson_id', '_lsch_reviewer_id', '_lsch_cohort_id' ) as $key ) {
@@ -107,7 +117,7 @@ final class LSCH_Content {
 
 	public static function can_edit_meta( $allowed, $meta_key, $post_id, $user_id ) {
 		unset( $allowed, $meta_key );
-		return user_can( $user_id, 'edit_post', $post_id ) && ( LSCH_Capabilities::can_author( $user_id ) || user_can( $user_id, LSCH_Capabilities::MANAGE_CURRICULUM ) );
+		return LSCH_Policy::central_policy_ready() && user_can( $user_id, 'edit_post', $post_id ) && ( LSCH_Capabilities::can_author( $user_id ) || user_can( $user_id, LSCH_Capabilities::MANAGE_CURRICULUM ) );
 	}
 
 	public static function seed_vocabularies() {
@@ -123,9 +133,21 @@ final class LSCH_Content {
 		}
 	}
 
-	/** Eight non-public founder-book slots avoid inventing titles while completing the governed catalog structure. */
+	/**
+	 * Eight non-public Founder-book slots avoid inventing titles while
+	 * completing the governed catalog structure.
+	 */
 	public static function seed_founder_book_slots() {
-		$existing = get_posts( array( 'post_type' => self::BOOK, 'post_status' => array( 'publish', 'draft', 'private' ), 'posts_per_page' => -1, 'fields' => 'ids', 'meta_key' => '_lsch_founder_seed_slot', 'no_found_rows' => true ) );
+		$existing = get_posts(
+			array(
+				'post_type'      => self::BOOK,
+				'post_status'    => array( 'publish', 'draft', 'private' ),
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+				'meta_key'       => '_lsch_founder_seed_slot',
+				'no_found_rows'  => true,
+			)
+		);
 		$used = array();
 		foreach ( $existing as $id ) {
 			$used[] = absint( get_post_meta( $id, '_lsch_founder_seed_slot', true ) );
@@ -151,12 +173,20 @@ final class LSCH_Content {
 			update_post_meta( $id, '_lsch_founder_seed_slot', $slot );
 			update_post_meta( $id, '_lsch_status', 'draft' );
 			update_post_meta( $id, '_lsch_version', '1' );
+			update_post_meta( $id, '_lsch_access', 'restricted' );
 		}
 	}
 
+	/**
+	 * Founder identity is resolved only through a public provider hook and then
+	 * validated by File 00. File 05 never queries File 00 private storage.
+	 */
 	private static function founder_id() {
-		global $wpdb;
-		return (int) $wpdb->get_var( "SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key='_smc_official_founder' AND meta_value NOT IN ('','0') ORDER BY user_id ASC LIMIT 1" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$user_id = absint( apply_filters( 'lsch_founder_user_id', 0 ) );
+		if ( $user_id && function_exists( 'smc_is_founder' ) && smc_is_founder( $user_id ) ) {
+			return $user_id;
+		}
+		return 0;
 	}
 
 	public static function object_type( $post_id ) {
