@@ -41,6 +41,7 @@ final class LSCH_Future18_REST {
 			array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'learning_path' ), 'permission_callback' => array( $this, 'approved' ) ),
 		) );
 		register_rest_route( $ns, '/future18/portfolio', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'portfolio' ), 'permission_callback' => array( $this, 'approved' ) ) );
+		register_rest_route( $ns, '/future18/portfolio/(?P<id>\d+)/visibility', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'portfolio_visibility' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( $ns, '/future18/mentorship', array(
 			array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'mentorships' ), 'permission_callback' => array( $this, 'approved_or_teacher' ) ),
 			array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( $this, 'mentorship_assign' ), 'permission_callback' => array( $this, 'manager' ) ),
@@ -125,6 +126,10 @@ final class LSCH_Future18_REST {
 		$response = rest_ensure_response( LSCH_Future18::portfolio( get_current_user_id(), $request->get_param( 'limit' ) ?: 200 ) );
 		$response->header( 'Cache-Control', 'private, no-store' );
 		return $response;
+	}
+
+	public function portfolio_visibility( WP_REST_Request $request ) {
+		return LSCH_Future18::set_portfolio_visibility( get_current_user_id(), absint( $request['id'] ), $request->get_param( 'visibility' ), absint( $request->get_param( 'version' ) ) );
 	}
 
 	public function mentorship_assign( WP_REST_Request $request ) {

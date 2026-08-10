@@ -132,6 +132,12 @@ grade = f.split('public static function grade_practice',1)[-1].split('public sta
 if "$row['competency_key']" not in grade or 'self::blueprint(' in grade:
     errors.append('Manual practice grading can drift to a later mutable blueprint competency.')
 
+# Portfolio sharing must be explicit, owner-scoped, versioned and revocable.
+if 'set_portfolio_visibility' not in f or 'LearningPortfolioConsentChanged.v1' not in f or "'revoked' => 'private' === $visibility" not in f:
+    errors.append('Portfolio consent/revocation lifecycle is incomplete.')
+if '/future18/portfolio/(?P<id>\\d+)/visibility' not in r or 'portfolio_visibility' not in r:
+    errors.append('Portfolio consent/revocation REST surface is missing.')
+
 # Read paths must not mutate personalized pathway state.
 if "'GET', 'HEAD'" not in r or "build_learning_path( get_current_user_id(), $goal ?: 'balanced_mastery', $persist )" not in r:
     errors.append('Learning-path GET/HEAD persistence guard is missing.')
