@@ -44,95 +44,69 @@ def decode_payload(payload):
 
 
 def recover_one_missing_base64_char(parts):
-    """Recover exactly one missing base64 character without guessing.
+    """Exhaustively recover one lost base64 character, verified by gzip+tar.
 
-    The historical transport has one non-final chunk of length 18,999 while the
-    surrounding fixed-size chunks are 19,000 bytes. Search every possible
-    insertion position in that short chunk. Work at base64-group granularity:
-    all four insertion positions in one group share the same decoded suffix, so
-    the expensive suffix decode is done once per group rather than once per
-    candidate. A candidate is accepted only when zlib reaches a valid gzip EOF
-    (which verifies gzip CRC/length) and the resulting tar passes the archive
-    safety checks. Exactly one full candidate must exist.
+    The checked-in transport has length 3 mod 4 while the original materializer
+    expected strict base64. Instead of guessing a boundary, search every possible
+    insertion position that can precede the first zlib failure. Work by base64
+    group so each 4-position/64-character family shares one decoded suffix. A
+    repair is accepted only when gzip reaches EOF with CRC/length validation and
+    the tar archive passes path/link safety checks. More than one valid repair is
+    treated as corruption and aborts.
     """
-    short = [
-        (index, path, chunk)
-        for index, (path, chunk) in enumerate(parts[:-1])
-        if len(chunk) % 4 == 3
-    ]
-    if len(short) != 1:
-        raise ValueError(f'Expected exactly one short transport chunk, found {len(short)}.')
-
-    short_index, short_path, short_chunk = short[0]
     whole = ''.join(chunk for _, chunk in parts)
-    short_start = sum(len(chunk) for _, chunk in parts[:short_index])
-    short_end = short_start + len(short_chunk)
-
     if len(whole) % 4 != 3:
         raise ValueError('Transport length does not match a one-character-loss pattern.')
 
-    # The missing character is known to be inside the uniquely short chunk.
-    first_group = short_start // 4
-    last_group = short_end // 4
     candidates = []
-
-    # Prefix state for gzip decompression. Before the true missing character,
-    # the corrupted transport prefix is byte-for-byte correct. We advance one
-    # base64 group at a time and stop once the corrupted stream itself becomes
-    # undecodable by zlib; the true insertion cannot lie after that point.
     inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
     group_count = (len(whole) - 3) // 4
 
     for group_index in range(group_count + 1):
         group_start = group_index * 4
+        three = whole[group_start:group_start + 3]
+        if len(three) == 3:
+            suffix_text = whole[group_start + 3:]
+            try:
+                suffix_raw = base64.b64decode(suffix_text.encode('ascii'), validate=True)
+            except binascii.Error:
+                suffix_raw = None
 
-        if first_group <= group_index <= last_group:
-            prefix = whole[:group_start]
-            three = whole[group_start:group_start + 3]
-            if len(three) == 3:
-                # After inserting one character into these three bytes, the
-                # remaining source starts at group_start+3 and is 4-aligned.
-                suffix_text = whole[group_start + 3:]
-                try:
-                    suffix_raw = base64.b64decode(suffix_text.encode('ascii'), validate=True)
-                except binascii.Error:
-                    suffix_raw = None
-
-                if suffix_raw is not None:
-                    # Positions 0..3 within this candidate group. Restrict the
-                    # absolute insertion point to the short chunk itself.
-                    for relative_pos in range(4):
-                        absolute_pos = group_start + relative_pos
-                        if absolute_pos < short_start or absolute_pos > short_end:
+            if suffix_raw is not None:
+                for relative_pos in range(4):
+                    absolute_pos = group_start + relative_pos
+                    if absolute_pos > len(whole):
+                        continue
+                    for char in BASE64_ALPHABET:
+                        group_text = three[:relative_pos] + char + three[relative_pos:]
+                        if len(group_text) != 4:
                             continue
-                        for char in BASE64_ALPHABET:
-                            group_text = three[:relative_pos] + char + three[relative_pos:]
-                            if len(group_text) != 4:
-                                continue
-                            try:
-                                group_raw = base64.b64decode(group_text.encode('ascii'), validate=True)
-                                trial = inflater.copy()
-                                trial.decompress(group_raw)
-                                trial.decompress(suffix_raw)
-                                trial.flush()
-                            except (binascii.Error, zlib.error):
-                                continue
-                            if not trial.eof:
-                                continue
+                        try:
+                            group_raw = base64.b64decode(group_text.encode('ascii'), validate=True)
+                            trial = inflater.copy()
+                            trial.decompress(group_raw)
+                            trial.decompress(suffix_raw)
+                            trial.flush()
+                        except (binascii.Error, zlib.error):
+                            continue
+                        if not trial.eof:
+                            continue
 
-                            repaired = whole[:absolute_pos] + char + whole[absolute_pos:]
-                            try:
-                                candidate_raw = decode_payload(repaired)
-                            except DECODE_ERRORS:
-                                continue
-                            candidates.append((absolute_pos, char, candidate_raw))
-                            if len(candidates) > 1:
-                                raise ValueError('More than one valid payload repair candidate exists.')
+                        repaired = whole[:absolute_pos] + char + whole[absolute_pos:]
+                        try:
+                            candidate_raw = decode_payload(repaired)
+                        except DECODE_ERRORS:
+                            continue
+                        candidates.append((absolute_pos, char, candidate_raw))
+                        if len(candidates) > 1:
+                            raise ValueError('More than one valid payload repair candidate exists.')
 
-        # Advance the corrupted prefix state to the next group. Once zlib fails,
-        # no later insertion can restore bytes already consumed before it.
         if group_index >= group_count:
             break
+
+        # If the corrupted stream fails while consuming this group, any missing
+        # character located after this group cannot repair bytes already parsed;
+        # therefore the exhaustive search can safely stop here.
         current = whole[group_start:group_start + 4]
         if len(current) != 4:
             break
@@ -146,7 +120,20 @@ def recover_one_missing_base64_char(parts):
         raise ValueError(f'Expected one valid payload repair candidate, found {len(candidates)}.')
 
     absolute_pos, char, raw = candidates[0]
-    return raw, short_path.name, absolute_pos - short_start
+
+    # Map the recovered absolute offset back to its transport part for a useful
+    # audit receipt without exposing or persisting a mutated payload file.
+    running = 0
+    part_name = 'unknown'
+    part_offset = absolute_pos
+    for path, chunk in parts:
+        if absolute_pos <= running + len(chunk):
+            part_name = path.name
+            part_offset = absolute_pos - running
+            break
+        running += len(chunk)
+
+    return raw, part_name, part_offset
 
 
 parts = normalized_parts()
