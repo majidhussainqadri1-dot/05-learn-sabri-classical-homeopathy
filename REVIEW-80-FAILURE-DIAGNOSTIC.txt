@@ -1,2 +1,2 @@
 PASS: 25 plugin files; current-plan ownership/security/value invariants and 48 requirement traces present.
-ERROR: Privacy export query does not carry the immutable Future18 practice competency snapshot in schema order.
+ERROR: Privacy export query does not carry the immutable Future18 practice competency snapshot.
