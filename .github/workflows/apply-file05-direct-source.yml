@@ -63,6 +63,10 @@ jobs:
 
               manifest = json.loads((temp / 'PATCH-MANIFEST.json').read_text(encoding='utf-8'))
               for rel in manifest['files']:
+                  # GITHUB_TOKEN cannot modify workflow files; those are applied
+                  # immediately afterwards through the repository connector.
+                  if rel.startswith('.github/workflows/'):
+                      continue
                   src = (temp / 'overlay' / rel).resolve()
                   dst = (root / rel).resolve()
                   if root not in dst.parents:
@@ -73,6 +77,8 @@ jobs:
                   shutil.copy2(src, dst)
 
               for rel in manifest['delete']:
+                  if rel.startswith('.github/workflows/'):
+                      continue
                   target = (root / rel).resolve()
                   if root not in target.parents:
                       raise SystemExit(f'Unsafe deletion: {rel}')
@@ -81,11 +87,10 @@ jobs:
                   elif target.exists() or target.is_symlink():
                       target.unlink()
 
-          # Transient transport and this one-shot workflow must not survive in
-          # the repository-source candidate.
+          # Transient payload can be removed by the bot commit; workflow files
+          # are deliberately left untouched until the connector applies them.
           shutil.rmtree(parts_dir)
-          Path('.github/workflows/apply-file05-direct-source.yml').unlink()
-          print('Applied verified File 05 3.3.0 direct-source overlay.')
+          print('Applied verified File 05 3.3.0 direct-source overlay (workflow changes deferred).')
           PY
           chmod +x tests/source-invariants.sh scripts/build-release.py
       - name: Pre-commit source verification
