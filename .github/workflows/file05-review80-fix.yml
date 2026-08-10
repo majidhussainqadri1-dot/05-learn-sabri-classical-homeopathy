@@ -29,7 +29,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sed -i "s/'items_retained'=>false/'items_retained' => false/g; s/'items_retained'=>true/'items_retained' => true/g" scripts/review80-fix.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('scripts/review80-fix.py')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("'items_retained'=>false","'items_retained' => false").replace("'items_retained'=>true","'items_retained' => true")
+          for n in ['06','12','15','16','17','19','26']:
+              s=s.replace(f'\"file{n}\" in doc.lower()', f'(\"file{n}\" in doc.lower() or \"file {n}\" in doc.lower())')
+          p.write_text(s,encoding='utf-8')
+          PY
           python3 scripts/review80-fix.py
       - name: Verify final corrected source
         shell: bash
