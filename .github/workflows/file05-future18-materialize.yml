@@ -60,11 +60,15 @@ jobs:
           python3 scripts/build-release.py --root . --output /tmp/file05-f18-b.zip
           cmp /tmp/file05-f18-a.zip /tmp/file05-f18-b.zip
           unzip -t /tmp/file05-f18-a.zip
-      - name: Commit actual source and remove one-shot transport
+      - name: Commit actual source without workflow mutation
         shell: bash
         run: |
           set -euo pipefail
-          git rm .github/workflows/file05-future18-materialize.yml .future18-payload-1 .future18-payload-2 .future18-payload-3 .future18-payload-4
+          # GitHub Actions' repository token cannot update workflow files. Keep
+          # the existing workflow byte-for-byte here; it is reconciled through
+          # the authenticated GitHub connector after source materialization.
+          git checkout HEAD -- .github/workflows/file-05-complete.yml .github/workflows/file05-future18-materialize.yml
+          git rm .future18-payload-1 .future18-payload-2 .future18-payload-3 .future18-payload-4
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
