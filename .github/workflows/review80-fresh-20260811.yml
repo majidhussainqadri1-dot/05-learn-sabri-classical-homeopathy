@@ -41,7 +41,21 @@ jobs:
           coverage: none
 
       - name: Full source/security/policy/Future18 regression gate
-        run: bash tests/source-invariants.sh
+        shell: bash
+        run: |
+          set +e
+          bash tests/source-invariants.sh > /tmp/file05-review80-regression.log 2>&1
+          status=$?
+          cat /tmp/file05-review80-regression.log
+          if [ "$status" -ne 0 ]; then
+            {
+              echo '## Review-80 regression failure diagnostics'
+              echo '```text'
+              cat /tmp/file05-review80-regression.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit "$status"
+          fi
 
       - name: PHP 8.3 full syntax gate
         shell: bash
