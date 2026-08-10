@@ -23,13 +23,18 @@ jobs:
           ref: codex/file-05-complete-v3.0.0
           fetch-depth: 0
 
+      - name: Repair temporary Review-80 harness
+        run: python3 scripts/review80-runner-hotfix.py
+
       - name: Apply sequential Review-80 corrections
         run: python3 scripts/review80-fresh-20260811.py
 
       - name: Remove temporary review transport before final-tree QA
         run: |
           rm -f scripts/review80-fresh-20260811.py
+          rm -f scripts/review80-runner-hotfix.py
           rm -f .github/workflows/review80-fresh-20260811.yml
+          rm -f REVIEW-80-FAILURE-DIAGNOSTIC.txt
 
       - name: Diff hygiene
         run: git diff --check
@@ -49,12 +54,6 @@ jobs:
           status=$?
           cat /tmp/file05-review80-regression.log
           if [ "$status" -ne 0 ]; then
-            {
-              echo '## Review-80 regression failure diagnostics'
-              echo '```text'
-              cat /tmp/file05-review80-regression.log
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
             exit "$status"
           fi
 
