@@ -25,7 +25,7 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
-      - uses: actions/setup-node@1e60f620b9541d27c13014132f7f7f409926e920 # v4.0.3
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
       - name: Materialize reviewed source tree
