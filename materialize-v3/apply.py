@@ -46,39 +46,43 @@ try:
     raw = decode_and_validate(chunks)
     recovery_note = 'payload validated without repair'
 except DECODE_ERRORS as direct_error:
-    # Historical transport split left exactly one base64 character missing at a
-    # chunk boundary. Recover only when the archive itself cryptographically/
-    # structurally disambiguates the missing character: exactly one candidate
-    # must produce a complete safe gzip/tar archive. Never guess or continue on
-    # zero/multiple candidates.
+    # Historical transport contains one short non-final base64 chunk. First
+    # test the only non-speculative boundary repairs: one missing character at
+    # either edge of that short chunk. Accept a repair only when exactly one
+    # candidate produces a complete, safe gzip/tar archive.
     candidates = []
     for index, (path, chunk) in enumerate(parts[:-1]):
         if len(chunk) % 4 != 3:
             continue
-        for char in BASE64_ALPHABET:
-            test_chunks = list(chunks)
-            test_chunks[index] = chunk + char
-            try:
-                candidate_raw = decode_and_validate(test_chunks)
-            except DECODE_ERRORS:
-                continue
-            candidates.append((index, path.name, char, candidate_raw))
+        for position_name, position in (('start', 0), ('end', len(chunk))):
+            for char in BASE64_ALPHABET:
+                test_chunks = list(chunks)
+                test_chunks[index] = chunk[:position] + char + chunk[position:]
+                try:
+                    candidate_raw = decode_and_validate(test_chunks)
+                except DECODE_ERRORS:
+                    continue
+                candidates.append((index, path.name, position_name, char, candidate_raw))
 
     if len(candidates) != 1:
         raise SystemExit(
-            'Materialization payload is corrupt and cannot be uniquely repaired: '
-            f'{len(candidates)} valid boundary candidates (direct error: {direct_error}).'
+            'Materialization payload is corrupt and cannot be uniquely repaired at a '
+            f'chunk edge: {len(candidates)} valid candidates (direct error: {direct_error}).'
         )
 
-    index, part_name, recovered_char, raw = candidates[0]
-    chunks[index] = chunks[index] + recovered_char
-    # Re-validate the chosen candidate once more before any destructive action.
+    index, part_name, position_name, recovered_char, raw = candidates[0]
+    if position_name == 'start':
+        chunks[index] = recovered_char + chunks[index]
+    else:
+        chunks[index] = chunks[index] + recovered_char
     raw = decode_and_validate(chunks)
-    recovery_note = f'uniquely repaired one missing base64 character at end of {part_name}'
+    recovery_note = (
+        f'uniquely repaired one missing base64 character at {position_name} of {part_name}'
+    )
 
 # Only after the complete candidate archive has been validated do we replace
-# the checked-out transport/materializer tree. This guarantees a corrupt
-# payload cannot destructively remove the current source.
+# the checked-out transport/materializer tree. A corrupt payload therefore
+# cannot destructively remove the current source.
 for item in list(ROOT.iterdir()):
     if item.name == '.git':
         continue
