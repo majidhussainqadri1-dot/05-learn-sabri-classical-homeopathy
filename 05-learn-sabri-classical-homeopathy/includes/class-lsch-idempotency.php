@@ -10,8 +10,9 @@ final class LSCH_Idempotency {
 	private static $route = '';
 
 	public static function hooks() {
-		add_filter( 'rest_pre_dispatch', array( __CLASS__, 'pre_dispatch' ), 10, 3 );
-		add_filter( 'rest_post_dispatch', array( __CLASS__, 'post_dispatch' ), 10, 3 );
+		/* These hooks execute after route permission callbacks, preventing denied callers from filling the replay ledger. */
+		add_filter( 'rest_request_before_callbacks', array( __CLASS__, 'before_callbacks' ), 10, 3 );
+		add_filter( 'rest_request_after_callbacks', array( __CLASS__, 'after_callbacks' ), 10, 3 );
 		add_action( 'shutdown', array( __CLASS__, 'release' ), 0 );
 	}
 
@@ -24,7 +25,7 @@ final class LSCH_Idempotency {
 
 	private static function normalized( $value ) {
 		if ( is_array( $value ) ) {
-			if ( array_keys( $value ) !== range( 0, count( $value ) - 1 ) ) {
+			if ( $value && array_keys( $value ) !== range( 0, count( $value ) - 1 ) ) {
 				ksort( $value );
 			}
 			foreach ( $value as $key => $item ) {
@@ -42,10 +43,21 @@ final class LSCH_Idempotency {
 			'route'  => (string) $request->get_route(),
 			'params' => self::normalized( $params ),
 		);
-		return hash( 'sha256', wp_json_encode( $payload ) );
+		$json = wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE );
+		if ( false === $json ) {
+			return new WP_Error( 'lsch_idempotency_request_encoding', __( 'The protected request could not be normalized safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
+		}
+		return hash( 'sha256', $json );
 	}
 
-	private static function response_reference( WP_REST_Response $response ) {
+	private static function response_reference( $response ) {
+		if ( is_wp_error( $response ) ) {
+			return array( 'error_code' => sanitize_key( (string) $response->get_error_code() ) );
+		}
+		$response = rest_ensure_response( $response );
+		if ( ! $response instanceof WP_REST_Response ) {
+			return array();
+		}
 		$data = $response->get_data();
 		if ( ! is_array( $data ) ) {
 			return array();
@@ -60,6 +72,15 @@ final class LSCH_Idempotency {
 		return $out;
 	}
 
+	private static function response_status( $response ) {
+		if ( is_wp_error( $response ) ) {
+			$data = $response->get_error_data();
+			return is_array( $data ) && ! empty( $data['status'] ) ? absint( $data['status'] ) : 500;
+		}
+		$response = rest_ensure_response( $response );
+		return $response instanceof WP_REST_Response ? absint( $response->get_status() ) : 200;
+	}
+
 	private static function gc() {
 		if ( get_transient( 'lsch_idempotency_gc_v1' ) ) {
 			return;
@@ -70,8 +91,8 @@ final class LSCH_Idempotency {
 		set_transient( 'lsch_idempotency_gc_v1', 1, HOUR_IN_SECONDS );
 	}
 
-	public static function pre_dispatch( $result, $server, $request ) {
-		unset( $server );
+	public static function before_callbacks( $result, $handler, $request ) {
+		unset( $handler );
 		if ( null !== $result || ! $request instanceof WP_REST_Request || ! self::is_mutation( $request ) ) {
 			return $result;
 		}
@@ -88,6 +109,9 @@ final class LSCH_Idempotency {
 			return $key_hash;
 		}
 		$request_hash = self::request_hash( $request );
+		if ( is_wp_error( $request_hash ) ) {
+			return $request_hash;
+		}
 		$lock_name = 'lsch:idem:' . substr( $key_hash, 0, 48 );
 
 		global $wpdb;
@@ -108,11 +132,15 @@ final class LSCH_Idempotency {
 			if ( 'completed' === $row['status'] ) {
 				$reference = json_decode( (string) $row['response_ref_json'], true );
 				$reference = is_array( $reference ) ? $reference : array();
+				$status = absint( $row['response_status'] ) ?: 200;
+				self::release();
+				if ( ! empty( $reference['error_code'] ) ) {
+					return new WP_Error( sanitize_key( $reference['error_code'] ), __( 'The original protected action returned an error; this is its idempotent replay.', 'learn-sabri-classical-homeopathy' ), array( 'status' => $status, 'idempotent_replay' => true ) );
+				}
 				$reference['idempotent_replay'] = true;
-				$response = new WP_REST_Response( $reference, absint( $row['response_status'] ) ?: 200 );
+				$response = new WP_REST_Response( $reference, $status );
 				$response->header( 'X-Idempotent-Replay', 'true' );
 				$response->header( 'Cache-Control', 'private, no-store' );
-				self::release();
 				return $response;
 			}
 			self::release();
@@ -150,20 +178,20 @@ final class LSCH_Idempotency {
 		return null;
 	}
 
-	public static function post_dispatch( $response, $server, $request ) {
-		unset( $server );
+	public static function after_callbacks( $response, $handler, $request ) {
+		unset( $handler );
 		if ( ! self::$active || ! $request instanceof WP_REST_Request || self::$route !== (string) $request->get_route() ) {
 			return $response;
 		}
-		$response = rest_ensure_response( $response );
 		global $wpdb;
 		$t = LSCH_Database::tables();
 		$reference = self::response_reference( $response );
+		$status = self::response_status( $response );
 		$updated = $wpdb->update(
 			$t['request_keys'],
 			array(
 				'status'            => 'completed',
-				'response_status'   => $response->get_status(),
+				'response_status'   => $status,
 				'response_ref_json' => wp_json_encode( $reference ),
 				'updated_at'        => LSCH_Database::now(),
 			),
