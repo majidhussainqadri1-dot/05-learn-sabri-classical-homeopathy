@@ -87,16 +87,26 @@ Implementation: correction-event impact ledger, targeted review and `LearningRes
 
 ## Persistence and API
 
-Future-18 uses an additive, independently versioned sub-schema `lsch_future18_schema=1` with eight private File 05 tables: mastery, review queue, practice, pathways, portfolio, mentorship, CPD and change impacts. Core File 05 schema remains 18; auxiliary value-state schema remains 3.
+Future-18 uses an additive, independently versioned sub-schema `lsch_future18_schema=2`. The original eight private File 05 tables remain: mastery, review queue, practice, pathways, portfolio, mentorship, CPD and change impacts. Schema 2 adds an immutable practice `competency_key` snapshot so later blueprint changes cannot reclassify already-submitted manual-assessment evidence. Core File 05 schema remains 18; auxiliary value-state schema remains 3.
 
 REST continues under the backward-compatible `learn-sabri-classical-homeopathy/v2` namespace with `/future18/*` endpoints. Runtime is `4.0.0`; plan contract is `SSH-F05-PLAN-2026-v1.1-future18-current-central-2026-08-10`.
 
-## Review evidence
+## Review evidence — original Future-18 reviews
 
 Fresh Review Round 1 found and corrected: over-broad manual mastery authority, missing assessor-object scope, CPD verification scope, insufficient AI citation enforcement, correction-version derivation and mentorship erasure semantics.
 
 Fresh Review Round 2 found and corrected: privileged actor eligibility gaps, GET/render mutation of learning-path state, spaced-review schedule overwrite, mastery elevation from unverified self-recorded CPD, and privacy export dependence on current learning eligibility.
 
+## Review-80 corrective closure — 2026-08-10
+
+A subsequent founder-ordered 80-pass sequential review was executed under the rule: review one pass → correct any discovered defect immediately → rerun source invariants → only then proceed to the next pass. Temporary review transport/workflow files were removed before the immutable candidate closure.
+
+Product defects were found in review rounds: **1–19, 21–23, 25–29**. No product defect was found in round 20, round 24, or rounds 30–80. Temporary audit-harness assertion/wording mismatches encountered while executing the review were repaired as review infrastructure and were not counted as product defects.
+
+The later passes added/corrected, among other things: Python-cache exclusion; current-policy checks for privileged REST actions; bounded manual mastery supervision; spaced-review schedule authority; broader de-identification; fail-closed external blueprint authorization; immutable practice competency snapshots; revocable portfolio consent; mentorship termination; fail-closed CPD duration validation; approved-source Socratic tutor citations; cursor-batched retryable knowledge-change fan-out; mandatory targeted re-study proof; runtime provider-version alignment; clean-repository guards; privacy export schema parity; current-policy mentorship reads; core REST policy parity; paginated Future-18 privacy export; legal-hold-aware erasure; participant-safe mentorship de-identification; explicit outbox/job acknowledgement; dead-letter health visibility; safe-mode mutation blocking; and installed-vs-expected schema health reporting.
+
+The final Review-80 pass re-ran the full source invariant suite and deterministic package checks. The exact post-cleanup branch candidate is recorded in the pull request/CI evidence; repository completion must not be represented as staging or live acceptance.
+
 ## Truth status
 
-Repository source is a candidate until the final immutable exact HEAD passes the configured CI/reproducible-package workflow. Hostinger staging, live deployment and operational acceptance remain separate gates.
+Repository source at the exact candidate HEAD may be called repository/source-QA complete only when that immutable HEAD passes the configured Current Plans Integrity workflow. Hostinger staging, deployed plugin/package parity, installed DB/schema migration state, browser/role workflows, live deployment and operational acceptance remain separate evidence gates. No live-site state is inferred from this repository document.
