@@ -29,6 +29,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          sed -i "s/value = (root \/ '05-learn/value = (base \/ '05-learn/" scripts/review80-fix.py
           python3 scripts/review80-fix.py
       - name: Verify corrected source
         shell: bash
