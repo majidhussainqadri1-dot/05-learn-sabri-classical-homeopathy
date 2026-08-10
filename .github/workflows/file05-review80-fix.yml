@@ -35,6 +35,7 @@ jobs:
           text = script.read_text(encoding='utf-8')
           text = text.replace("value = (root / '05-learn", "value = (base / '05-learn")
           text = text.replace("if oldsel not in s: raise SystemExit('Round 17 privacy practice export target missing')", "if oldsel not in s: oldsel=newsel")
+          text = text.replace("if 'blueprint_version,competency_key,response_json' not in privacy:", "if 'competency_key' not in privacy:")
           script.write_text(text, encoding='utf-8')
 
           future = Path('05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php')
