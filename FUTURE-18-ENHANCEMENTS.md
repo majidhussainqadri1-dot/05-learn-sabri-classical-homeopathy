@@ -91,16 +91,10 @@ The complete 21–80 runner reported `REVIEW80_COMPLETE=80` and defect rounds `2
 
 ## Exact repository closure evidence
 
-Post-cleanup exact branch candidate: `33ed90b9f1667240b5f89efc5af6158df09b85ba`.
+The exact immutable candidate SHA is intentionally not embedded in this file, because modifying this file would itself create a different SHA. The authoritative candidate SHA is the current PR head after this document commit. That exact head must pass the configured **File 05 Current Plans Integrity** workflow with all required jobs green: source-integrity, PHP 7.4 syntax, PHP 8.3 syntax and reproducible-package.
 
-Exact-HEAD GitHub Actions run `31416520316` — **File 05 Current Plans Integrity** — completed successfully on that candidate with all required jobs green:
-- source-integrity — success;
-- php-syntax (PHP 7.4) — success;
-- php-syntax (PHP 8.3) — success;
-- reproducible-package — success.
-
-PR #4 remains Draft/Open/Unmerged against `main`; therefore this branch candidate is not the default-branch state and is not deployment evidence.
+PR #4 remains Draft/Open/Unmerged against `main`; therefore the reviewed branch candidate is not the default-branch state and is not deployment evidence.
 
 ## Truth status
 
-Repository/source QA for the exact branch candidate above is green. Hostinger staging, deployed plugin/package parity, installed DB/schema migration state, browser/role workflows, live deployment and operational acceptance remain separate evidence gates. No live-site state is inferred from this repository document.
+Repository/source QA may be called green only for the exact current PR head that passes the workflow above. Hostinger staging, deployed plugin/package parity, installed DB/schema migration state, browser/role workflows, live deployment and operational acceptance remain separate evidence gates. No live-site state is inferred from this repository document.
