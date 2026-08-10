@@ -110,6 +110,10 @@ for token in ['event_user_competency','targeted_review','user_status','resolve_i
 if "public function manager() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ); }" not in r:
     errors.append('Future-18 manager REST actions do not recheck current account eligibility/suspension/guardian policy.')
 
+# Manual mastery supervision must be current-policy eligible and bounded to manager, active mentor, or assigned teacher/assessor.
+if "can_supervise_user( $actor_id, $user_id, $source_type, $source_id )" not in f or "role IN ('teacher','assessor')" not in f or "! self::approved_user( $actor_id )" not in f:
+    errors.append('Manual mastery supervision scope/current-eligibility guard is incomplete.')
+
 # Read paths must not mutate personalized pathway state.
 if "'GET', 'HEAD'" not in r or "build_learning_path( get_current_user_id(), $goal ?: 'balanced_mastery', $persist )" not in r:
     errors.append('Learning-path GET/HEAD persistence guard is missing.')

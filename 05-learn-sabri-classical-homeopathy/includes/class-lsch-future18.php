@@ -264,19 +264,28 @@ final class LSCH_Future18 {
 		return $user_id && LSCH_Policy::can_use_learning_actions( $user_id );
 	}
 
-	/** Manager or the learner's active assigned mentor may supervise learning state. */
-	private static function can_supervise_user( $actor_id, $learner_id ) {
+	/** Manager, active mentor, or conflict-cleared assigned teacher/assessor may supervise bounded learning state. */
+	private static function can_supervise_user( $actor_id, $learner_id, $source_type = '', $source_id = 0 ) {
 		$actor_id = absint( $actor_id );
 		$learner_id = absint( $learner_id );
-		if ( ! $actor_id || ! $learner_id || $actor_id === $learner_id ) {
+		$source_type = sanitize_key( $source_type );
+		$source_id = absint( $source_id );
+		if ( ! $actor_id || ! $learner_id || $actor_id === $learner_id || ! self::approved_user( $actor_id ) || ! self::approved_user( $learner_id ) ) {
 			return false;
 		}
-		if ( LSCH_Policy::central_policy_ready() && user_can( $actor_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) {
+		if ( user_can( $actor_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) {
 			return true;
 		}
 		global $wpdb;
 		$t = self::tables();
-		return (bool) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['mentorship']} WHERE mentor_id=%d AND learner_id=%d AND status='active' LIMIT 1", $actor_id, $learner_id ) );
+		if ( user_can( $actor_id, LSCH_Capabilities::TEACH ) && $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['mentorship']} WHERE mentor_id=%d AND learner_id=%d AND status='active' LIMIT 1", $actor_id, $learner_id ) ) ) {
+			return true;
+		}
+		if ( ! $source_id || ! $source_type ) {
+			return false;
+		}
+		$core = LSCH_Database::tables();
+		return (bool) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$core['staff']} WHERE user_id=%d AND object_type=%s AND object_id=%d AND role IN ('teacher','assessor') AND conflict_status='clear' AND active=1 LIMIT 1", $actor_id, $source_type, $source_id ) );
 	}
 
 	/** A non-manager assessor must have an active, conflict-cleared assignment to the source object. */
@@ -284,7 +293,7 @@ final class LSCH_Future18 {
 		$assessor_id = absint( $assessor_id );
 		$source_id = absint( $source_id );
 		$source_type = sanitize_key( $source_type );
-		if ( LSCH_Policy::central_policy_ready() && user_can( $assessor_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) {
+		if ( self::approved_user( $assessor_id ) && user_can( $assessor_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) {
 			return true;
 		}
 		if ( ! $assessor_id || ! $source_id || ! user_can( $assessor_id, LSCH_Capabilities::ASSESS ) ) {
@@ -347,7 +356,7 @@ final class LSCH_Future18 {
 	public static function record_mastery_evidence_as_actor( $actor_id, $user_id, $competency, $score, $weight = 1.0, $source_type = '', $source_id = '' ) {
 		$actor_id = absint( $actor_id );
 		$user_id = absint( $user_id );
-		if ( ! self::can_supervise_user( $actor_id, $user_id ) ) {
+		if ( ! self::can_supervise_user( $actor_id, $user_id, $source_type, $source_id ) ) {
 			return new WP_Error( 'lsch_future18_mastery_supervision_forbidden', __( 'Manual mastery evidence requires an assigned mentor or curriculum manager.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
 		return self::record_mastery_evidence( $user_id, $competency, $score, $weight, $source_type, $source_id );
