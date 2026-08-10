@@ -69,7 +69,7 @@ for route in routes:
 required = [
     'File16.SocraticTutor.v1','lsch_file16_socratic_tutor','diagnosis_authority','prescription_authority',
     'educational_only','source_grounded_required','file06','file12','file15','file16','file17','file19','file26',
-    'privacy_exporters','privacy_erasers','reject_sensitive_practice_payload','patient_name','national_id',
+    'privacy_exporters','privacy_erasers','reject_sensitive_practice_payload','patientname','nationalid',
     'LearningMasteryUpdated.v1','LearningPracticeSubmitted.v1','LearningPracticeGraded.v1',
     'LearningMentorshipAssigned.v1','LearningCPDRecorded.v1','LearningCPDVerified.v1','LearningRestudyRequired.v1',
     'AssessmentSubmitted.v1','LessonCompleted.v1','CourseCompleted.v1','LearningContentCorrected.v1',
@@ -113,6 +113,12 @@ if "public function manager() { return is_user_logged_in() && LSCH_Policy::can_u
 # Manual mastery supervision must be current-policy eligible and bounded to manager, active mentor, or assigned teacher/assessor.
 if "can_supervise_user( $actor_id, $user_id, $source_type, $source_id )" not in f or "role IN ('teacher','assessor')" not in f or "! self::approved_user( $actor_id )" not in f:
     errors.append('Manual mastery supervision scope/current-eligibility guard is incomplete.')
+
+# De-identified clinical practice must reject identifier aliases and obvious embedded identifiers.
+sensitive = f.split('private static function reject_sensitive_practice_payload',1)[-1].split('private static function review_schedule',1)[0]
+for token in ['patientname','emailaddress','phonenumber','cnicnumber','dateofbirth','preg_match']:
+    if token not in sensitive:
+        errors.append(f'Missing de-identification guard token: {token}')
 
 # Read paths must not mutate personalized pathway state.
 if "'GET', 'HEAD'" not in r or "build_learning_path( get_current_user_id(), $goal ?: 'balanced_mastery', $persist )" not in r:

@@ -316,14 +316,22 @@ final class LSCH_Future18 {
 	}
 
 	private static function reject_sensitive_practice_payload( array $payload ) {
-		$forbidden = array( 'patient_name', 'full_name', 'email', 'phone', 'mobile', 'address', 'national_id', 'passport', 'cnic', 'identity_document', 'date_of_birth' );
+		$forbidden = array( 'patientname', 'fullname', 'email', 'emailaddress', 'phone', 'phonenumber', 'mobile', 'mobilenumber', 'address', 'postaladdress', 'nationalid', 'passport', 'passportnumber', 'cnic', 'cnicnumber', 'identitydocument', 'dateofbirth', 'dob' );
 		$stack = array( $payload );
 		while ( $stack ) {
 			$current = array_pop( $stack );
 			foreach ( $current as $key => $value ) {
-				$key = strtolower( sanitize_key( (string) $key ) );
-				if ( in_array( $key, $forbidden, true ) ) {
-					return new WP_Error( 'lsch_future18_sensitive_case_data', __( 'Practice laboratories accept simulated/de-identified educational data only.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
+				$normalized_key = strtolower( (string) $key );
+				$normalized_key = preg_replace( '/[^a-z0-9]+/', '', $normalized_key );
+				foreach ( $forbidden as $needle ) {
+					if ( $normalized_key === $needle || ( 5 <= strlen( $needle ) && false !== strpos( $normalized_key, $needle ) ) ) {
+						return new WP_Error( 'lsch_future18_sensitive_case_data', __( 'Practice laboratories accept simulated/de-identified educational data only.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
+					}
+				}
+				if ( is_string( $value ) ) {
+					if ( preg_match( '/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i', $value ) || preg_match( '/\b[0-9]{5}-?[0-9]{7}-?[0-9]\b/', $value ) ) {
+						return new WP_Error( 'lsch_future18_sensitive_case_data', __( 'Practice laboratories accept simulated/de-identified educational data only.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
+					}
 				}
 				if ( is_array( $value ) ) {
 					$stack[] = $value;
