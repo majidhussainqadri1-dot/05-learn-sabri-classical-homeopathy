@@ -15,7 +15,7 @@
 defined( 'ABSPATH' ) || exit;
 
 define( 'LSCH_VERSION', '3.3.0' );
-define( 'LSCH_SCHEMA_VERSION', 17 );
+define( 'LSCH_SCHEMA_VERSION', 18 );
 define( 'LSCH_PLAN_VERSION', 'SSH-F05-PLAN-2026-v1.0-current-central-2026-08-10' );
 define( 'LSCH_FILE', __FILE__ );
 define( 'LSCH_DIR', plugin_dir_path( __FILE__ ) );
@@ -33,6 +33,7 @@ $lsch_files = array(
 	'class-lsch-rest.php',
 	'class-lsch-state.php',
 	'class-lsch-value.php',
+	'class-lsch-idempotency.php',
 	'class-lsch-frontend.php',
 	'class-lsch-admin.php',
 	'class-lsch-privacy.php',
