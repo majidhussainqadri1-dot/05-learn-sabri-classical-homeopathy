@@ -819,6 +819,30 @@ final class LSCH_Future18 {
 		return true;
 	}
 
+	public static function end_mentorship( $actor_id, $mentorship_id, $expected_version ) {
+		$actor_id = absint( $actor_id );
+		$mentorship_id = absint( $mentorship_id );
+		if ( ! self::approved_user( $actor_id ) ) {
+			return new WP_Error( 'lsch_future18_mentorship_end_forbidden', __( 'Mentorship closure is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
+		}
+		global $wpdb;
+		$t = self::tables();
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['mentorship']} WHERE id=%d LIMIT 1", $mentorship_id ), ARRAY_A );
+		if ( ! $row || 'active' !== $row['status'] || absint( $row['version'] ) !== absint( $expected_version ) ) {
+			return new WP_Error( 'lsch_future18_mentorship_end_conflict', __( 'Mentorship record changed, ended, or was not found.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		$participant = $actor_id === absint( $row['mentor_id'] ) || $actor_id === absint( $row['learner_id'] );
+		if ( ! $participant && ! user_can( $actor_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) {
+			return new WP_Error( 'lsch_future18_mentorship_end_scope', __( 'Only a participant or curriculum manager may end this mentorship.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
+		}
+		$updated = $wpdb->update( $t['mentorship'], array( 'status' => 'ended', 'version' => absint( $row['version'] ) + 1, 'updated_at' => current_time( 'mysql', true ) ), array( 'id' => $mentorship_id, 'status' => 'active', 'version' => absint( $row['version'] ) ), array( '%s', '%d', '%s' ), array( '%d', '%s', '%d' ) );
+		if ( 1 !== $updated ) {
+			return new WP_Error( 'lsch_future18_mentorship_end_conflict', __( 'Mentorship changed while closing.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		LSCH_Events::publish( 'LearningMentorshipEnded.v1', 'mentorship', $mentorship_id, array( 'mentor_id' => absint( $row['mentor_id'] ), 'learner_id' => absint( $row['learner_id'] ), 'course_id' => absint( $row['course_id'] ), 'ended_by' => $actor_id ) );
+		return array( 'id' => $mentorship_id, 'status' => 'ended', 'version' => absint( $row['version'] ) + 1 );
+	}
+
 	public static function mentorships( $user_id ) {
 		$user_id = absint( $user_id );
 		if ( ! self::approved_user( $user_id ) && ! user_can( $user_id, LSCH_Capabilities::MANAGE_CURRICULUM ) ) {

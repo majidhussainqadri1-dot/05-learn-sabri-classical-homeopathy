@@ -138,6 +138,12 @@ if 'set_portfolio_visibility' not in f or 'LearningPortfolioConsentChanged.v1' n
 if '/future18/portfolio/(?P<id>\\d+)/visibility' not in r or 'portfolio_visibility' not in r:
     errors.append('Portfolio consent/revocation REST surface is missing.')
 
+# Mentorship lifecycle must support bounded, optimistic-lock termination.
+if 'end_mentorship' not in f or 'LearningMentorshipEnded.v1' not in f or "'status' => 'ended'" not in f:
+    errors.append('Mentorship end lifecycle is incomplete.')
+if '/future18/mentorship/(?P<id>\\d+)/end' not in r or 'mentorship_end' not in r:
+    errors.append('Mentorship end REST route is missing.')
+
 # Read paths must not mutate personalized pathway state.
 if "'GET', 'HEAD'" not in r or "build_learning_path( get_current_user_id(), $goal ?: 'balanced_mastery', $persist )" not in r:
     errors.append('Learning-path GET/HEAD persistence guard is missing.')
