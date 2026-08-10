@@ -1,0 +1,110 @@
+name: Apply File 05 Direct Source Closure
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-file05-direct-source-${{ github.event.pull_request.head.ref || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.head.ref == 'codex/file-05-complete-v3.0.0' && github.actor != 'github-actions[bot]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: codex/file-05-complete-v3.0.0
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Apply verified direct-source overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import base64, hashlib, io, json, shutil, tarfile, tempfile
+
+          root = Path.cwd().resolve()
+          parts_dir = root / '.file05-direct-source'
+          parts = sorted(parts_dir.glob('part-*.txt'))
+          if len(parts) != 9:
+              raise SystemExit(f'Expected 9 payload parts, found {len(parts)}')
+          encoded = ''.join(p.read_text(encoding='ascii') for p in parts)
+          if len(encoded) != 64340:
+              raise SystemExit(f'Unexpected payload length: {len(encoded)}')
+          raw = base64.b64decode(encoded.encode('ascii'), validate=True)
+          digest = hashlib.sha256(raw).hexdigest()
+          expected = '900eff84c6c92043a65a42533e5fb2195c56188bff3045d5fbfc3e08c5d5d16a'
+          if digest != expected:
+              raise SystemExit(f'Payload SHA-256 mismatch: {digest}')
+
+          with tempfile.TemporaryDirectory(prefix='file05-overlay-') as td:
+              temp = Path(td).resolve()
+              with tarfile.open(fileobj=io.BytesIO(raw), mode='r:gz') as tf:
+                  members = tf.getmembers()
+                  if not members:
+                      raise SystemExit('Overlay archive is empty')
+                  for member in members:
+                      target = (temp / member.name).resolve()
+                      if temp not in target.parents and target != temp:
+                          raise SystemExit(f'Unsafe archive member: {member.name}')
+                      if member.issym() or member.islnk():
+                          raise SystemExit(f'Links are forbidden: {member.name}')
+                  tf.extractall(temp)
+
+              manifest = json.loads((temp / 'PATCH-MANIFEST.json').read_text(encoding='utf-8'))
+              for rel in manifest['files']:
+                  src = (temp / 'overlay' / rel).resolve()
+                  dst = (root / rel).resolve()
+                  if root not in dst.parents:
+                      raise SystemExit(f'Unsafe destination: {rel}')
+                  if not src.is_file():
+                      raise SystemExit(f'Missing overlay file: {rel}')
+                  dst.parent.mkdir(parents=True, exist_ok=True)
+                  shutil.copy2(src, dst)
+
+              for rel in manifest['delete']:
+                  target = (root / rel).resolve()
+                  if root not in target.parents:
+                      raise SystemExit(f'Unsafe deletion: {rel}')
+                  if target.is_dir() and not target.is_symlink():
+                      shutil.rmtree(target)
+                  elif target.exists() or target.is_symlink():
+                      target.unlink()
+
+          # Transient transport and this one-shot workflow must not survive in
+          # the repository-source candidate.
+          shutil.rmtree(parts_dir)
+          Path('.github/workflows/apply-file05-direct-source.yml').unlink()
+          print('Applied verified File 05 3.3.0 direct-source overlay.')
+          PY
+          chmod +x tests/source-invariants.sh scripts/build-release.py
+      - name: Pre-commit source verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tests/source-invariants.sh
+          rm -rf /tmp/file05-release
+          python3 scripts/build-release.py /tmp/file05-release
+          unzip -t /tmp/file05-release/05-learn-sabri-classical-homeopathy-3.3.0.zip >/dev/null
+          git diff --check
+      - name: Commit actual File 05 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git status --short
+          git diff --cached --check
+          git commit -m "Complete File 05 current-plans source candidate 3.3.0"
+          git push origin HEAD:codex/file-05-complete-v3.0.0
