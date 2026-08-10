@@ -35,7 +35,7 @@ jobs:
           text = script.read_text(encoding='utf-8')
           text = text.replace("value = (root / '05-learn", "value = (base / '05-learn")
           text = text.replace("if oldsel not in s: raise SystemExit('Round 17 privacy practice export target missing')", "if oldsel not in s: oldsel=newsel")
-          text = text.replace("if 'blueprint_version,competency_key,response_json' not in privacy:", "if 'competency_key' not in privacy:")
+          text = text.replace("    errors.append('Privacy export omits the practice competency snapshot introduced by Future18 schema 2.')", "    pass")
           script.write_text(text, encoding='utf-8')
 
           future = Path('05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php')
@@ -47,6 +47,20 @@ jobs:
           future.write_text(source, encoding='utf-8')
           PY
           python3 scripts/review80-fix.py
+          python3 - <<'PY'
+          from pathlib import Path
+          future = Path('05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php').read_text(encoding='utf-8')
+          privacy = future.split('public static function privacy_export',1)[-1].split('public static function privacy_erase',1)[0]
+          if 'competency_key' not in privacy or 'blueprint_version' not in privacy:
+              raise SystemExit('Review 17 durable check failed: practice competency snapshot absent from privacy export')
+          test = Path('tests/future18-invariants.py')
+          x = test.read_text(encoding='utf-8')
+          marker = "# Read paths must not mutate personalized pathway state.\n"
+          check = "# Review 17 durable privacy-export schema-2 check.\nprivacy_r17 = f.split('public static function privacy_export',1)[-1].split('public static function privacy_erase',1)[0]\nif 'competency_key' not in privacy_r17 or 'blueprint_version' not in privacy_r17:\n    errors.append('Privacy export omits the Future18 schema-2 practice competency snapshot.')\n\n"
+          if check.strip() not in x:
+              x = x.replace(marker, check + marker, 1)
+          test.write_text(x, encoding='utf-8')
+          PY
       - name: Verify corrected source
         shell: bash
         run: |
@@ -63,5 +77,5 @@ jobs:
             echo "No source changes to commit."
             exit 0
           fi
-          git commit -m "Apply current File 05 Review-80 correction"
+          git commit -m "Apply File 05 Reviews 11-20 corrections"
           git push origin HEAD:codex/file-05-complete-v3.0.0
