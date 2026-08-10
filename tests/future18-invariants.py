@@ -106,6 +106,10 @@ for token in ['event_user_competency','targeted_review','user_status','resolve_i
     if token not in f:
         errors.append(f'Missing change-impact lifecycle invariant: {token}')
 
+# Privileged Future-18 REST manager actions must recheck current account policy state.
+if "public function manager() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ); }" not in r:
+    errors.append('Future-18 manager REST actions do not recheck current account eligibility/suspension/guardian policy.')
+
 # Read paths must not mutate personalized pathway state.
 if "'GET', 'HEAD'" not in r or "build_learning_path( get_current_user_id(), $goal ?: 'balanced_mastery', $persist )" not in r:
     errors.append('Learning-path GET/HEAD persistence guard is missing.')

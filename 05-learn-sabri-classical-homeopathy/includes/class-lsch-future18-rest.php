@@ -57,7 +57,7 @@ final class LSCH_Future18_REST {
 	}
 
 	public function approved() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions(); }
-	public function manager() { return is_user_logged_in() && current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ); }
+	public function manager() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ); }
 	public function teacher() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && ( current_user_can( LSCH_Capabilities::TEACH ) || current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) ); }
 	public function assessor() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && ( current_user_can( LSCH_Capabilities::ASSESS ) || current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) ); }
 	public function approved_or_teacher() { return $this->approved() || $this->teacher(); }
