@@ -15,6 +15,7 @@ required_files = [
     '05-learn-sabri-classical-homeopathy/includes/class-lsch-rest.php',
     '05-learn-sabri-classical-homeopathy/includes/class-lsch-state.php',
     '05-learn-sabri-classical-homeopathy/includes/class-lsch-value.php',
+    '05-learn-sabri-classical-homeopathy/includes/class-lsch-idempotency.php',
     '05-learn-sabri-classical-homeopathy/includes/class-lsch-privacy.php',
     '05-learn-sabri-classical-homeopathy/includes/class-lsch-operations.php',
     '05-learn-sabri-classical-homeopathy/uninstall.php',
@@ -36,7 +37,7 @@ for path in required_docs:
 
 required_tokens = [
     "LSCH_VERSION', '3.3.0'",
-    'LSCH_SCHEMA_VERSION\', 17',
+    'LSCH_SCHEMA_VERSION\', 18',
     'single-free-tier-v2',
     'SMC_Contracts',
     'assertions',
@@ -67,6 +68,13 @@ required_tokens = [
     'ris',
     'saved_searches',
     'value_events',
+    'request_keys',
+    'rest_pre_dispatch',
+    'rest_post_dispatch',
+    'GET_LOCK',
+    'RELEASE_LOCK',
+    'lsch_idempotency_payload_conflict',
+    'lsch_correction_object_busy',
     'privacy-minimized',
     'کامیاب کیس',
 ]
@@ -77,7 +85,7 @@ for token in required_tokens:
 for table in [
     'enrollments', 'progress', 'bookmarks', 'notes', 'attempts', 'submissions',
     'staff_assignments', 'completions', 'related_links', 'case_consents',
-    'reminders', 'outbox', 'inbox', 'jobs', 'audit_log',
+    'reminders', 'outbox', 'inbox', 'jobs', 'audit_log', 'request_keys',
 ]:
     if table not in joined:
         errors.append(f'Missing core state table: {table}')
@@ -151,6 +159,10 @@ if (base / 'materialize-v3').exists():
     errors.append('Corrupt historical materialization transport must not remain in the release branch.')
 if (base / '.github/workflows/materialize-file05-v3.yml').exists():
     errors.append('Obsolete materialization workflow must not remain in the release branch.')
+
+rest_source = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-rest.php', '')
+if "/lesson/(?P<id>\\d+)/correct" in rest_source or "array( $this, 'correct' )" in rest_source:
+    errors.append('Legacy direct correction bypass remains REST-accessible.')
 
 if errors:
     print('\n'.join(f'ERROR: {e}' for e in errors))

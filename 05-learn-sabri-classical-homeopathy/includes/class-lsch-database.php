@@ -23,7 +23,8 @@ final class LSCH_Database {
 			'outbox'      => $prefix . 'outbox',
 			'inbox'       => $prefix . 'inbox',
 			'jobs'        => $prefix . 'jobs',
-			'audit'       => $prefix . 'audit_log',
+			'audit'        => $prefix . 'audit_log',
+			'request_keys' => $prefix . 'request_keys',
 		);
 	}
 
@@ -265,6 +266,22 @@ final class LSCH_Database {
 			context_json longtext NOT NULL,
 			created_at datetime NOT NULL,
 			PRIMARY KEY (id), UNIQUE KEY trace_id (trace_id), KEY object_ref (object_type,object_id), KEY actor_created (actor_id,created_at)
+		) {$c};" );
+
+
+		dbDelta( "CREATE TABLE {$t['request_keys']} (
+			key_hash char(64) NOT NULL,
+			user_id bigint(20) unsigned NOT NULL,
+			route varchar(190) NOT NULL,
+			method varchar(10) NOT NULL,
+			request_hash char(64) NOT NULL,
+			status varchar(20) NOT NULL DEFAULT 'processing',
+			response_status smallint(5) unsigned NOT NULL DEFAULT 0,
+			response_ref_json text NOT NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			expires_at datetime NOT NULL,
+			PRIMARY KEY (key_hash), KEY user_created (user_id,created_at), KEY expiry (expires_at), KEY state_updated (status,updated_at)
 		) {$c};" );
 
 		self::assert_tables();

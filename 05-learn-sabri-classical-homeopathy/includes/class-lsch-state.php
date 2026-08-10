@@ -476,50 +476,68 @@ final class LSCH_State {
 		return new WP_REST_Response( null, 204 );
 	}
 
+
+	private static function correction_object_lock( $object_id ) {
+		global $wpdb;
+		$name = 'lsch:corr:' . substr( hash( 'sha256', (string) absint( $object_id ) ), 0, 48 );
+		$locked = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s,3)', $name ) );
+		return 1 === $locked ? $name : new WP_Error( 'lsch_correction_object_busy', __( 'Another correction for this learning object is being applied. Reload and try again.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+	}
+
+	private static function correction_object_unlock( $name ) {
+		if ( ! $name ) {
+			return;
+		}
+		global $wpdb;
+		$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $name ) );
+	}
+
 	private static function apply_correction( $object_id, $reason, $expected_version ) {
 		global $wpdb;
 		$object_id = absint( $object_id );
-		$type = LSCH_Content::object_type( $object_id );
-		if ( ! $type ) {
-			return new WP_Error( 'lsch_correction_object_gone', __( 'The learning object is no longer available.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 410 ) );
+		$lock = self::correction_object_lock( $object_id );
+		if ( is_wp_error( $lock ) ) {
+			return $lock;
 		}
-		$current_version = LSCH_Content::version( $object_id );
-		if ( $current_version !== absint( $expected_version ) ) {
-			return new WP_Error( 'lsch_correction_stale', __( 'The learning object changed before the correction could be applied.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
-		}
-		$new_version = $current_version + 1;
-		$wpdb->query( 'START TRANSACTION' );
 		try {
-			update_post_meta( $object_id, '_lsch_correction_note', sanitize_textarea_field( $reason ) );
-			if ( false === update_post_meta( $object_id, '_lsch_version', $new_version ) ) {
-				throw new RuntimeException( 'content_version_write_failed' );
-			}
-			if ( LSCH_Content::LESSON === $type ) {
-				$t = LSCH_Database::tables();
-				$updated = $wpdb->query(
-					$wpdb->prepare(
-						"UPDATE {$t['progress']} SET needs_review=1,version=version+1,updated_at=%s WHERE lesson_id=%d AND lesson_version<%d",
-						LSCH_Database::now(),
-						$object_id,
-						$new_version
-					)
-				);
-				if ( false === $updated ) {
-					throw new RuntimeException( 'learner_review_mark_failed' );
-				}
-			}
-			if ( false === $wpdb->query( 'COMMIT' ) ) {
-				throw new RuntimeException( 'correction_commit_failed' );
-			}
-		} catch ( Throwable $error ) {
-			$wpdb->query( 'ROLLBACK' );
 			clean_post_cache( $object_id );
-			return new WP_Error( 'lsch_correction_apply_failed', __( 'The correction could not be applied atomically. No partial correction was accepted.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500, 'reason_code' => sanitize_key( $error->getMessage() ) ) );
+			$type = LSCH_Content::object_type( $object_id );
+			if ( ! $type ) {
+				return new WP_Error( 'lsch_correction_object_gone', __( 'The learning object is no longer available.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 410 ) );
+			}
+			$current_version = LSCH_Content::version( $object_id );
+			if ( $current_version !== absint( $expected_version ) ) {
+				return new WP_Error( 'lsch_correction_stale', __( 'The learning object changed before the correction could be applied.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+			}
+			$new_version = $current_version + 1;
+			$wpdb->query( 'START TRANSACTION' );
+			try {
+				update_post_meta( $object_id, '_lsch_correction_note', sanitize_textarea_field( $reason ) );
+				if ( false === update_post_meta( $object_id, '_lsch_version', $new_version ) ) {
+					throw new RuntimeException( 'content_version_write_failed' );
+				}
+				if ( LSCH_Content::LESSON === $type ) {
+					$t = LSCH_Database::tables();
+					$updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['progress']} SET needs_review=1,version=version+1,updated_at=%s WHERE lesson_id=%d AND lesson_version<%d", LSCH_Database::now(), $object_id, $new_version ) );
+					if ( false === $updated ) {
+						throw new RuntimeException( 'learner_review_mark_failed' );
+					}
+				}
+				if ( false === $wpdb->query( 'COMMIT' ) ) {
+					throw new RuntimeException( 'correction_commit_failed' );
+				}
+			} catch ( Throwable $error ) {
+				$wpdb->query( 'ROLLBACK' );
+				clean_post_cache( $object_id );
+				return new WP_Error( 'lsch_correction_apply_failed', __( 'The correction could not be applied atomically. No partial correction was accepted.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500, 'reason_code' => sanitize_key( $error->getMessage() ) ) );
+			}
+			clean_post_cache( $object_id );
+			LSCH_Events::publish( 'LearningContentCorrected.v1', $type, $object_id, array( 'previous_version' => $current_version, 'new_version' => $new_version ) );
+			LSCH_Events::audit( 'learning_content_corrected', $type, $object_id, array( 'new_version' => $new_version ), 'editorial_governance' );
+			return $new_version;
+		} finally {
+			self::correction_object_unlock( $lock );
 		}
-		clean_post_cache( $object_id );
-		LSCH_Events::publish( 'LearningContentCorrected.v1', $type, $object_id, array( 'previous_version' => $current_version, 'new_version' => $new_version ) );
-		LSCH_Events::audit( 'learning_content_corrected', $type, $object_id, array( 'new_version' => $new_version ), 'editorial_governance' );
-		return $new_version;
 	}
 
 	/**

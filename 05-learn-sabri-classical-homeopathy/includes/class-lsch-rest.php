@@ -31,7 +31,6 @@ final class LSCH_REST {
 		register_rest_route( self::NS, '/assignment/(?P<id>\d+)/submit', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( $this, 'assignment' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( self::NS, '/submission/(?P<id>\d+)/grade', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'grade' ), 'permission_callback' => array( $this, 'assessor' ) ) );
 		register_rest_route( self::NS, '/submission/(?P<id>\d+)/appeal', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( $this, 'appeal' ), 'permission_callback' => array( $this, 'approved' ) ) );
-		register_rest_route( self::NS, '/lesson/(?P<id>\d+)/correct', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'correct' ), 'permission_callback' => array( $this, 'reviewer' ) ) );
 		register_rest_route( self::NS, '/object/(?P<type>[a-z_]+)/(?P<id>\d+)/related', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'related' ), 'permission_callback' => array( $this, 'manager' ) ) );
 		register_rest_route( self::NS, '/staff', array(
 			array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( $this, 'staff_assign' ), 'permission_callback' => array( $this, 'manager' ) ),
@@ -102,7 +101,6 @@ final class LSCH_REST {
 	public function assignment( WP_REST_Request $r ) { return LSCH_Services::submit_assignment( absint( $r['id'] ), get_current_user_id(), $r->get_param( 'body' ), (array) $r->get_param( 'attachments' ) ); }
 	public function grade( WP_REST_Request $r ) { return LSCH_Services::grade_submission( absint( $r['id'] ), get_current_user_id(), $r->get_param( 'score' ), $r->get_param( 'feedback' ), absint( $r->get_param( 'version' ) ) ); }
 	public function appeal( WP_REST_Request $r ) { return LSCH_Services::appeal_submission( absint( $r['id'] ), get_current_user_id(), $r->get_param( 'reason' ), absint( $r->get_param( 'version' ) ) ); }
-	public function correct( WP_REST_Request $r ) { return LSCH_Services::mark_content_corrected( absint( $r['id'] ), $r->get_param( 'reason' ) ); }
 	public function related( WP_REST_Request $r ) { return LSCH_Services::upsert_related_link( sanitize_key( $r['type'] ), absint( $r['id'] ), (array) $r->get_json_params() ); }
 	public function staff_assign( WP_REST_Request $r ) { return LSCH_Services::assign_staff( absint( $r->get_param( 'user_id' ) ), $r->get_param( 'object_type' ), absint( $r->get_param( 'object_id' ) ), $r->get_param( 'role' ), (array) $r->get_param( 'scope' ), $r->get_param( 'conflict_status' ) ?: 'clear' ); }
 	public function staff_remove( WP_REST_Request $r ) { return LSCH_Services::remove_staff( absint( $r->get_param( 'user_id' ) ), $r->get_param( 'object_type' ), absint( $r->get_param( 'object_id' ) ), $r->get_param( 'role' ) ); }
