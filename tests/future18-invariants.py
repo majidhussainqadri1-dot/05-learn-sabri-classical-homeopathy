@@ -125,6 +125,13 @@ blueprint = f.split('private static function blueprint',1)[-1].split('private st
 if "lsch_future18_blueprint_access" not in blueprint or "true !== $external_allowed" not in blueprint:
     errors.append('External practice-blueprint access is not fail-closed through an owner authorization contract.')
 
+# Manual practice grading must use the competency snapshot captured with the submitted blueprint version.
+if 'const SCHEMA = 2' not in f or "competency_key varchar(96) NOT NULL DEFAULT ''" not in f:
+    errors.append('Future-18 practice competency snapshot migration is missing.')
+grade = f.split('public static function grade_practice',1)[-1].split('public static function build_learning_path',1)[0]
+if "$row['competency_key']" not in grade or 'self::blueprint(' in grade:
+    errors.append('Manual practice grading can drift to a later mutable blueprint competency.')
+
 # Read paths must not mutate personalized pathway state.
 if "'GET', 'HEAD'" not in r or "build_learning_path( get_current_user_id(), $goal ?: 'balanced_mastery', $persist )" not in r:
     errors.append('Learning-path GET/HEAD persistence guard is missing.')

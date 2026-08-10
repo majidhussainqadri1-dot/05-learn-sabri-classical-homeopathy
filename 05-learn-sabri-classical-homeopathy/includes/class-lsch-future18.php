@@ -9,7 +9,7 @@
 defined( 'ABSPATH' ) || exit;
 
 final class LSCH_Future18 {
-	const SCHEMA = 1;
+	const SCHEMA = 2;
 	const OPTION = 'lsch_future18_schema';
 	const ROUTE_VERSION = '1.0';
 
@@ -149,6 +149,7 @@ final class LSCH_Future18 {
 			source_type varchar(32) NOT NULL,
 			source_id bigint(20) unsigned NOT NULL,
 			blueprint_version bigint(20) unsigned NOT NULL DEFAULT 1,
+			competency_key varchar(96) NOT NULL DEFAULT '',
 			response_json longtext NOT NULL,
 			feedback_json longtext NOT NULL,
 			score decimal(5,2) NOT NULL DEFAULT 0,
@@ -632,11 +633,11 @@ final class LSCH_Future18 {
 		global $wpdb;
 		$t = self::tables();
 		$public_id = LSCH_Database::uuid();
-		$ok = $wpdb->insert( $t['practice'], array( 'public_id' => $public_id, 'user_id' => $user_id, 'mode' => $mode, 'source_type' => sanitize_key( $source_type ), 'source_id' => absint( $source_id ), 'blueprint_version' => max( 1, absint( $blueprint['version'] ?? 1 ) ), 'response_json' => $response_json, 'feedback_json' => $feedback_json, 'score' => (float) $scored['score'], 'status' => $status, 'assessor_id' => 0, 'version' => 1, 'created_at' => $now, 'updated_at' => $now ), array( '%s', '%d', '%s', '%s', '%d', '%d', '%s', '%s', '%f', '%s', '%d', '%d', '%s', '%s' ) );
+		$competency = self::competency_key( $blueprint['competency_key'] ?? $mode );
+		$ok = $wpdb->insert( $t['practice'], array( 'public_id' => $public_id, 'user_id' => $user_id, 'mode' => $mode, 'source_type' => sanitize_key( $source_type ), 'source_id' => absint( $source_id ), 'blueprint_version' => max( 1, absint( $blueprint['version'] ?? 1 ) ), 'competency_key' => $competency, 'response_json' => $response_json, 'feedback_json' => $feedback_json, 'score' => (float) $scored['score'], 'status' => $status, 'assessor_id' => 0, 'version' => 1, 'created_at' => $now, 'updated_at' => $now ), array( '%s', '%d', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%f', '%s', '%d', '%d', '%s', '%s' ) );
 		if ( 1 !== $ok ) {
 			return new WP_Error( 'lsch_future18_practice_write_failed', __( 'Practice submission could not be recorded.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
 		}
-		$competency = self::competency_key( $blueprint['competency_key'] ?? $mode );
 		if ( 'graded' === $status ) {
 			self::record_mastery_evidence( $user_id, $competency, $scored['score'], 1.0, 'future18_practice', $public_id );
 			self::add_portfolio_item( $user_id, 'practice', 'future18_practice', $public_id, $competency, array( 'mode' => $mode, 'score' => $scored['score'] ) );
@@ -670,8 +671,8 @@ final class LSCH_Future18 {
 		if ( 1 !== $updated ) {
 			return new WP_Error( 'lsch_future18_practice_grade_conflict', __( 'Practice record changed while grading.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
-		$blueprint = self::blueprint( $row['source_type'], absint( $row['source_id'] ), $row['mode'], absint( $row['user_id'] ) );
-		$competency = is_wp_error( $blueprint ) ? self::competency_key( $row['mode'] ) : self::competency_key( $blueprint['competency_key'] ?? $row['mode'] );
+		/* Grade against the competency snapshot captured at submission, never the mutable current blueprint. */
+		$competency = self::competency_key( ! empty( $row['competency_key'] ) ? $row['competency_key'] : $row['mode'] );
 		self::record_mastery_evidence( absint( $row['user_id'] ), $competency, $score, 1.25, 'future18_practice', $row['public_id'] );
 		self::add_portfolio_item( absint( $row['user_id'] ), 'assessed_practice', 'future18_practice', $row['public_id'], $competency, array( 'mode' => $row['mode'], 'score' => $score, 'assessor_id' => $assessor_id ) );
 		if ( $score < 60 ) {
