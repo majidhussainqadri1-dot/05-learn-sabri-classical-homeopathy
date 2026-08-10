@@ -7,6 +7,7 @@ Governing method: each round was evaluated against the current File 05 plan/curr
 - Repository/source review only. This record does not prove Hostinger staging, deployed package parity, live DB/schema migration, live browser behavior, or operational acceptance.
 - Runtime candidate: `4.0.0`; core schema `18`; auxiliary schema `3`; Future-18 schema `2`.
 - Staging/Live/Operational remain separate evidence gates.
+- Repository finalization marker: this record belongs to the corrected candidate tree; exact automated-QA status is determined only by the workflows attached to the resulting exact commit.
 
 ## Round log
 
