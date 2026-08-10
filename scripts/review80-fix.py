@@ -1,52 +1,63 @@
 #!/usr/bin/env python3
 from pathlib import Path
 
-p = Path('05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php')
-s = p.read_text(encoding='utf-8')
-if "\tconst SCHEMA = 1;" not in s:
-    raise SystemExit('Round 07 Future-18 schema target not found')
-s = s.replace("\tconst SCHEMA = 1;", "\tconst SCHEMA = 2;", 1)
-old_schema = """\t\t\tblueprint_version bigint(20) unsigned NOT NULL DEFAULT 1,
-\t\t\tresponse_json longtext NOT NULL,
-"""
-new_schema = """\t\t\tblueprint_version bigint(20) unsigned NOT NULL DEFAULT 1,
-\t\t\tcompetency_key varchar(96) NOT NULL DEFAULT '',
-\t\t\tresponse_json longtext NOT NULL,
-"""
-if old_schema not in s:
-    raise SystemExit('Round 07 practice schema target not found')
-s = s.replace(old_schema, new_schema, 1)
-old_insert = """\t\t$public_id = LSCH_Database::uuid();
-\t\t$ok = $wpdb->insert( $t['practice'], array( 'public_id' => $public_id, 'user_id' => $user_id, 'mode' => $mode, 'source_type' => sanitize_key( $source_type ), 'source_id' => absint( $source_id ), 'blueprint_version' => max( 1, absint( $blueprint['version'] ?? 1 ) ), 'response_json' => $response_json, 'feedback_json' => $feedback_json, 'score' => (float) $scored['score'], 'status' => $status, 'assessor_id' => 0, 'version' => 1, 'created_at' => $now, 'updated_at' => $now ), array( '%s', '%d', '%s', '%s', '%d', '%d', '%s', '%s', '%f', '%s', '%d', '%d', '%s', '%s' ) );
-"""
-new_insert = """\t\t$public_id = LSCH_Database::uuid();
-\t\t$competency = self::competency_key( $blueprint['competency_key'] ?? $mode );
-\t\t$ok = $wpdb->insert( $t['practice'], array( 'public_id' => $public_id, 'user_id' => $user_id, 'mode' => $mode, 'source_type' => sanitize_key( $source_type ), 'source_id' => absint( $source_id ), 'blueprint_version' => max( 1, absint( $blueprint['version'] ?? 1 ) ), 'competency_key' => $competency, 'response_json' => $response_json, 'feedback_json' => $feedback_json, 'score' => (float) $scored['score'], 'status' => $status, 'assessor_id' => 0, 'version' => 1, 'created_at' => $now, 'updated_at' => $now ), array( '%s', '%d', '%s', '%s', '%d', '%d', '%s', '%s', '%s', '%f', '%s', '%d', '%d', '%s', '%s' ) );
-"""
-if old_insert not in s:
-    raise SystemExit('Round 07 practice insert target not found')
-s = s.replace(old_insert, new_insert, 1)
-old_dup = "\t\t$competency = self::competency_key( $blueprint['competency_key'] ?? $mode );\n\t\tif ( 'graded' === $status ) {"
-if old_dup not in s:
-    raise SystemExit('Round 07 duplicate competency target not found')
-s = s.replace(old_dup, "\t\tif ( 'graded' === $status ) {", 1)
-old_grade = """\t\t$blueprint = self::blueprint( $row['source_type'], absint( $row['source_id'] ), $row['mode'], absint( $row['user_id'] ) );
-\t\t$competency = is_wp_error( $blueprint ) ? self::competency_key( $row['mode'] ) : self::competency_key( $blueprint['competency_key'] ?? $row['mode'] );
-"""
-new_grade = """\t\t/* Grade against the competency snapshot captured at submission, never the mutable current blueprint. */
-\t\t$competency = self::competency_key( ! empty( $row['competency_key'] ) ? $row['competency_key'] : $row['mode'] );
-"""
-if old_grade not in s:
-    raise SystemExit('Round 07 manual-grade blueprint drift target not found')
-s = s.replace(old_grade, new_grade, 1)
-p.write_text(s, encoding='utf-8')
+fpath = Path('05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php')
+s = fpath.read_text(encoding='utf-8')
+needle = """\tpublic static function assign_mentor( $mentor_id, $learner_id, $course_id, array $goals ) {"""
+insert = r'''	public static function set_portfolio_visibility( $user_id, $id, $visibility, $expected_version ) {
+		$user_id = absint( $user_id );
+		$id = absint( $id );
+		$visibility = sanitize_key( $visibility );
+		if ( ! self::approved_user( $user_id ) || ! in_array( $visibility, array( 'private', 'shareable_by_consent' ), true ) ) {
+			return new WP_Error( 'lsch_future18_portfolio_visibility_forbidden', __( 'Portfolio sharing preference is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
+		}
+		global $wpdb;
+		$t = self::tables();
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT id,public_id,user_id,visibility,version FROM {$t['portfolio']} WHERE id=%d AND user_id=%d LIMIT 1", $id, $user_id ), ARRAY_A );
+		if ( ! $row || absint( $row['version'] ) !== absint( $expected_version ) ) {
+			return new WP_Error( 'lsch_future18_portfolio_visibility_conflict', __( 'Portfolio item changed or was not found.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		if ( $row['visibility'] === $visibility ) {
+			return array( 'id' => $id, 'public_id' => $row['public_id'], 'visibility' => $visibility, 'version' => absint( $row['version'] ) );
+		}
+		$updated = $wpdb->update( $t['portfolio'], array( 'visibility' => $visibility, 'version' => absint( $row['version'] ) + 1, 'updated_at' => current_time( 'mysql', true ) ), array( 'id' => $id, 'user_id' => $user_id, 'version' => absint( $row['version'] ) ), array( '%s', '%d', '%s' ), array( '%d', '%d', '%d' ) );
+		if ( 1 !== $updated ) {
+			return new WP_Error( 'lsch_future18_portfolio_visibility_conflict', __( 'Portfolio sharing preference changed while saving.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		LSCH_Events::publish( 'LearningPortfolioConsentChanged.v1', 'portfolio', $row['public_id'], array( 'user_id' => $user_id, 'visibility' => $visibility, 'revoked' => 'private' === $visibility ) );
+		return array( 'id' => $id, 'public_id' => $row['public_id'], 'visibility' => $visibility, 'version' => absint( $row['version'] ) + 1 );
+	}
 
-t = Path('tests/future18-invariants.py')
-x = t.read_text(encoding='utf-8')
+'''
+if needle not in s:
+    raise SystemExit('Round 08 portfolio insertion target not found')
+s = s.replace(needle, insert + needle, 1)
+fpath.write_text(s, encoding='utf-8')
+
+rpath = Path('05-learn-sabri-classical-homeopathy/includes/class-lsch-future18-rest.php')
+r = rpath.read_text(encoding='utf-8')
+route_needle = "\t\tregister_rest_route( $ns, '/future18/portfolio', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'portfolio' ), 'permission_callback' => array( $this, 'approved' ) ) );\n"
+route = route_needle + "\t\tregister_rest_route( $ns, '/future18/portfolio/(?P<id>\\d+)/visibility', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'portfolio_visibility' ), 'permission_callback' => array( $this, 'approved' ) ) );\n"
+if route_needle not in r:
+    raise SystemExit('Round 08 portfolio route target not found')
+r = r.replace(route_needle, route, 1)
+cb_needle = """\tpublic function mentorship_assign( WP_REST_Request $request ) {"""
+cb = r'''	public function portfolio_visibility( WP_REST_Request $request ) {
+		return LSCH_Future18::set_portfolio_visibility( get_current_user_id(), absint( $request['id'] ), $request->get_param( 'visibility' ), absint( $request->get_param( 'version' ) ) );
+	}
+
+'''
+if cb_needle not in r:
+    raise SystemExit('Round 08 portfolio callback target not found')
+r = r.replace(cb_needle, cb + cb_needle, 1)
+rpath.write_text(r, encoding='utf-8')
+
+tpath = Path('tests/future18-invariants.py')
+x = tpath.read_text(encoding='utf-8')
 marker = "# Read paths must not mutate personalized pathway state.\n"
-check = "# Manual practice grading must use the competency snapshot captured with the submitted blueprint version.\nif 'const SCHEMA = 2' not in f or \"competency_key varchar(96) NOT NULL DEFAULT ''\" not in f:\n    errors.append('Future-18 practice competency snapshot migration is missing.')\ngrade = f.split('public static function grade_practice',1)[-1].split('public static function build_learning_path',1)[0]\nif \"$row['competency_key']\" not in grade or 'self::blueprint(' in grade:\n    errors.append('Manual practice grading can drift to a later mutable blueprint competency.')\n\n"
+check = "# Portfolio sharing must be explicit, owner-scoped, versioned and revocable.\nif 'set_portfolio_visibility' not in f or 'LearningPortfolioConsentChanged.v1' not in f or \"'revoked' => 'private' === $visibility\" not in f:\n    errors.append('Portfolio consent/revocation lifecycle is incomplete.')\nif '/future18/portfolio/(?P<id>\\\\d+)/visibility' not in r or 'portfolio_visibility' not in r:\n    errors.append('Portfolio consent/revocation REST surface is missing.')\n\n"
 if marker not in x:
-    raise SystemExit('Round 07 invariant marker missing')
+    raise SystemExit('Round 08 invariant marker missing')
 if check.strip() not in x:
     x = x.replace(marker, check + marker, 1)
-t.write_text(x, encoding='utf-8')
+tpath.write_text(x, encoding='utf-8')
