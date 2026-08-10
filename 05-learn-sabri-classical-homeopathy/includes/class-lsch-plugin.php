@@ -5,6 +5,7 @@ defined( 'ABSPATH' ) || exit;
 final class LSCH_Plugin {
 	public function run() {
 		add_action( 'init', array( 'LSCH_Content', 'register' ), 5 );
+		LSCH_Idempotency::hooks();
 		( new LSCH_REST() )->hooks();
 		LSCH_State::hooks();
 		LSCH_Value::hooks();
