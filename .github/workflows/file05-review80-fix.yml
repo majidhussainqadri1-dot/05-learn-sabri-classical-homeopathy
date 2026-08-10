@@ -36,6 +36,11 @@ jobs:
           s=s.replace("'items_retained'=>false","'items_retained' => false").replace("'items_retained'=>true","'items_retained' => true")
           for n in ['06','12','15','16','17','19','26']:
               s=s.replace(f'\"file{n}\" in doc.lower()', f'(\"file{n}\" in doc.lower() or \"file {n}\" in doc.lower())')
+          old='(\"AUTH_KEY . SECURE_AUTH_SALT\" not in POL.read_text(encoding=\'utf-8\'),\'auth salts used\')'
+          new='(\"AUTH_KEY . SECURE_AUTH_SALT\" not in POL.read_text(encoding=\'utf-8\').split(\"public static function decrypt_note\",1)[0],\'new note writes use auth salts\')'
+          if old not in s:
+              raise SystemExit('Review 53 assertion target not found')
+          s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
           PY
           python3 scripts/review80-fix.py
