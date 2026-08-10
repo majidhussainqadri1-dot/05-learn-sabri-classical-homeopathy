@@ -384,6 +384,12 @@ final class LSCH_Future18 {
 		$review_days = $new_score >= 90 ? 60 : ( $new_score >= 80 ? 30 : ( $new_score >= 65 ? 14 : ( $new_score >= 50 ? 7 : 2 ) ) );
 		$now = current_time( 'mysql', true );
 		$next = gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS * $review_days );
+		if ( $schedule_review ) {
+			$scheduled_due = $wpdb->get_var( $wpdb->prepare( "SELECT due_at FROM {$t['review']} WHERE user_id=%d AND item_type='spaced' AND competency_key=%s LIMIT 1", $user_id, $competency ) );
+			if ( is_string( $scheduled_due ) && '' !== $scheduled_due ) {
+				$next = $scheduled_due;
+			}
+		}
 		if ( $row ) {
 			$ok = $wpdb->update(
 				$t['mastery'],
@@ -418,7 +424,7 @@ final class LSCH_Future18 {
 		$id = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['review']} WHERE user_id=%d AND item_type='spaced' AND competency_key=%s LIMIT 1", $user_id, $competency ) );
 		$now = current_time( 'mysql', true );
 		if ( $id ) {
-			$wpdb->update( $t['review'], array( 'due_at' => $due_at, 'updated_at' => $now ), array( 'id' => absint( $id ) ), array( '%s', '%s' ), array( '%d' ) );
+			/* Once a spaced-review item exists, record_review_result owns its due schedule. */
 			return;
 		}
 		$wpdb->insert(

@@ -120,10 +120,15 @@ if "'GET', 'HEAD'" not in r or "build_learning_path( get_current_user_id(), $goa
 if "build_learning_path( $user_id, 'balanced_mastery', false )" not in f:
     errors.append('Mastery-center render path still persists personalized state.')
 
-# Review scheduling must not be overwritten by mastery evidence recalculation.
+# Review scheduling must not be overwritten by later mastery evidence recalculation.
 review_result = f.split('public static function record_review_result',1)[-1].split('public static function add_mistake',1)[0]
 if "'review_item', $id, false" not in review_result:
     errors.append('Spaced review result does not preserve its own scheduling interval.')
+ensure_review = f.split('private static function ensure_competency_review_item',1)[-1].split('public static function mastery_snapshot',1)[0]
+if "$wpdb->update( $t['review'], array( 'due_at' => $due_at" in ensure_review:
+    errors.append('Mastery evidence still overwrites an established spaced-review due schedule.')
+if "SELECT due_at FROM {$t['review']}" not in f or '$next = $scheduled_due;' not in f:
+    errors.append('Mastery state does not preserve the authoritative existing spaced-review due date.')
 
 # Self-recorded CPD must not elevate mastery; verified CPD may.
 record_cpd = f.split('public static function record_cpd',1)[-1].split('public static function verify_cpd',1)[0]
