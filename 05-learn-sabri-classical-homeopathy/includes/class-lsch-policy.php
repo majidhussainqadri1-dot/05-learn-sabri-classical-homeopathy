@@ -47,6 +47,7 @@ final class LSCH_Policy {
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
 		return
 			$user_id &&
+			! LSCH_Operations::safe_mode() &&
 			self::central_policy_ready() &&
 			LSCH_Capabilities::approved_account( $user_id ) &&
 			LSCH_Capabilities::guardian_gate_passes( $user_id );

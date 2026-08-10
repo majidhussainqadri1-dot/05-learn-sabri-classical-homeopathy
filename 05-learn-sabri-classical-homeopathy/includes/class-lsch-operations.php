@@ -45,10 +45,18 @@ final class LSCH_Operations {
 			$checks[ 'Future18 table: ' . $name ] = array( 'status' => $exists ? 'pass' : 'fail', 'detail' => $exists ? $table : 'Missing File 05 Future-18 learning table.' );
 		}
 		$pages = (array) get_option( 'lsch_page_map', array() );
+		$core_schema=(int)get_option(LSCH_Database::OPTION,0); $state_schema=(int)get_option(LSCH_State::OPTION,0); $future_schema=(int)get_option(LSCH_Future18::OPTION,0);
+		$checks['Core schema version']=array('status'=>LSCH_SCHEMA_VERSION===$core_schema?'pass':'fail','detail'=>sprintf('installed=%d expected=%d',$core_schema,LSCH_SCHEMA_VERSION));
+		$checks['Aux state schema version']=array('status'=>LSCH_State::SCHEMA===$state_schema?'pass':'fail','detail'=>sprintf('installed=%d expected=%d',$state_schema,LSCH_State::SCHEMA));
+		$checks['Future18 schema version']=array('status'=>LSCH_Future18::SCHEMA===$future_schema?'pass':'fail','detail'=>sprintf('installed=%d expected=%d',$future_schema,LSCH_Future18::SCHEMA));
 		$checks['Managed pages'] = array(
 			'status' => ! empty( $pages['home'] ) && ! empty( $pages['dashboard'] ) && ! empty( $pages['mastery'] ) ? 'pass' : 'warn',
 			'detail' => wp_json_encode( $pages ),
 		);
+		$dead_outbox=(int)$wpdb->get_var("SELECT COUNT(*) FROM {$t['outbox']} WHERE status='dead'"); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$dead_jobs=(int)$wpdb->get_var("SELECT COUNT(*) FROM {$t['jobs']} WHERE status='dead'"); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$checks['Dead outbox']=array('status'=>$dead_outbox?'warn':'pass','detail'=>sprintf('%d exhausted outbox event(s).',$dead_outbox));
+		$checks['Dead jobs']=array('status'=>$dead_jobs?'warn':'pass','detail'=>sprintf('%d exhausted background job(s).',$dead_jobs));
 		$checks['Cron outbox'] = array(
 			'status' => wp_next_scheduled( 'lsch_process_outbox' ) ? 'pass' : 'warn',
 			'detail' => wp_next_scheduled( 'lsch_process_outbox' ) ? 'Scheduled' : 'Not scheduled',
@@ -220,7 +228,7 @@ final class LSCH_Operations {
 				}
 				$payload = json_decode( $row['payload_json'], true );
 				$delivered = apply_filters( 'lsch_dispatch_event', null, $row['event_name'], $payload, $row['event_id'] );
-				if ( true === $delivered || null === $delivered ) {
+				if ( true === $delivered ) {
 					$wpdb->update(
 						$t['outbox'],
 						array( 'status' => 'processed', 'processed_at' => LSCH_Database::now(), 'attempts' => absint( $row['attempts'] ) + 1 ),
@@ -234,7 +242,7 @@ final class LSCH_Operations {
 					$next = gmdate( 'Y-m-d H:i:s', time() + min( DAY_IN_SECONDS, 60 * ( 2 ** min( 10, $attempts ) ) ) );
 					$wpdb->update(
 						$t['outbox'],
-						array( 'status' => $status, 'attempts' => $attempts, 'next_attempt_at' => $next, 'last_error_code' => 'consumer_rejected' ),
+						array( 'status' => $status, 'attempts' => $attempts, 'next_attempt_at' => $next, 'last_error_code' => null === $delivered ? 'consumer_unavailable' : 'consumer_rejected' ),
 						array( 'id' => $id, 'status' => $row['status'] ),
 						array( '%s', '%d', '%s', '%s' ),
 						array( '%d', '%s' )
@@ -270,7 +278,7 @@ final class LSCH_Operations {
 			}
 			$payload = json_decode( $job['payload_json'], true );
 			$result = apply_filters( 'lsch_run_job', null, $job['job_type'], $payload, $job['job_key'] );
-			if ( true === $result || null === $result ) {
+			if ( true === $result ) {
 				$wpdb->update(
 					$t['jobs'],
 					array( 'status' => 'completed', 'locked_at' => null, 'updated_at' => LSCH_Database::now() ),
@@ -288,7 +296,7 @@ final class LSCH_Operations {
 						'attempts'        => $attempts,
 						'run_after'       => gmdate( 'Y-m-d H:i:s', time() + min( DAY_IN_SECONDS, 60 * ( 2 ** min( 10, $attempts ) ) ) ),
 						'locked_at'       => null,
-						'last_error_code' => 'handler_rejected',
+						'last_error_code' => null === $result ? 'handler_unavailable' : 'handler_rejected',
 						'updated_at'      => LSCH_Database::now(),
 					),
 					array( 'id' => $id, 'status' => 'running' ),

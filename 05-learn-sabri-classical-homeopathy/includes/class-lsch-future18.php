@@ -1158,48 +1158,31 @@ final class LSCH_Future18 {
 
 	public static function privacy_export( $email, $page = 1 ) {
 		$user = get_user_by( 'email', $email );
-		if ( ! $user || 1 !== absint( $page ) ) { return array( 'data' => array(), 'done' => true ); }
-		$user_id = absint( $user->ID );
-		global $wpdb;
-		$t = self::tables();
-		$mastery = $wpdb->get_results( $wpdb->prepare( "SELECT competency_key,mastery_score,confidence,evidence_count,last_source_type,last_source_id,last_evidence_at,next_review_at,version FROM {$t['mastery']} WHERE user_id=%d ORDER BY competency_key ASC LIMIT 1000", $user_id ), ARRAY_A );
-		$review = $wpdb->get_results( $wpdb->prepare( "SELECT item_type,source_type,source_id,competency_key,prompt,answer,metadata_json,interval_days,ease,due_at,last_result,version FROM {$t['review']} WHERE user_id=%d ORDER BY id ASC LIMIT 2000", $user_id ), ARRAY_A );
-		$practice = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,mode,source_type,source_id,blueprint_version,competency_key,response_json,feedback_json,score,status,assessor_id,version,created_at,updated_at FROM {$t['practice']} WHERE user_id=%d ORDER BY id ASC LIMIT 2000", $user_id ), ARRAY_A );
-		$portfolio = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,item_type,object_type,object_id,competency_key,data_json,visibility,version,created_at,updated_at FROM {$t['portfolio']} WHERE user_id=%d ORDER BY id ASC LIMIT 2000", $user_id ), ARRAY_A );
-		$cpd = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,activity_type,object_type,object_id,competency_key,minutes,evidence_json,status,verified_by,completed_at,version FROM {$t['cpd']} WHERE user_id=%d ORDER BY id ASC LIMIT 1000", $user_id ), ARRAY_A );
-		$impacts = $wpdb->get_results( $wpdb->prepare( "SELECT event_id,object_type,object_id,previous_version,new_version,competency_key,change_summary,required_action,status,created_at,resolved_at FROM {$t['impacts']} WHERE user_id=%d ORDER BY id ASC LIMIT 2000", $user_id ), ARRAY_A );
-		$mentorship = $wpdb->get_results( $wpdb->prepare( "SELECT id,mentor_id,learner_id,course_id,status,goals_json,feedback_json,version,created_at,updated_at FROM {$t['mentorship']} WHERE learner_id=%d OR mentor_id=%d ORDER BY id ASC LIMIT 1000", $user_id, $user_id ), ARRAY_A );
-		$data = array(
-			array(
-				'group_id' => 'lsch-future18',
-				'group_label' => __( 'Learning Mastery and Clinical Education', 'learn-sabri-classical-homeopathy' ),
-				'item_id' => 'future18-' . $user_id,
-				'data' => array(
-					array( 'name' => __( 'Mastery', 'learn-sabri-classical-homeopathy' ), 'value' => wp_json_encode( $mastery, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ),
-					array( 'name' => __( 'Review queue and flashcards', 'learn-sabri-classical-homeopathy' ), 'value' => wp_json_encode( $review, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ),
-					array( 'name' => __( 'Practice laboratories', 'learn-sabri-classical-homeopathy' ), 'value' => wp_json_encode( $practice, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ),
-					array( 'name' => __( 'Portfolio', 'learn-sabri-classical-homeopathy' ), 'value' => wp_json_encode( $portfolio, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ),
-					array( 'name' => __( 'Mentorship', 'learn-sabri-classical-homeopathy' ), 'value' => wp_json_encode( $mentorship, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ),
-					array( 'name' => __( 'Continuing professional development', 'learn-sabri-classical-homeopathy' ), 'value' => wp_json_encode( $cpd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ),
-					array( 'name' => __( 'Knowledge-change re-study', 'learn-sabri-classical-homeopathy' ), 'value' => wp_json_encode( $impacts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ),
-				),
-			),
-		);
-		return array( 'data' => $data, 'done' => true );
+		$page = max( 1, absint( $page ) );
+		if ( ! $user ) { return array( 'data' => array(), 'done' => true ); }
+		$user_id = absint( $user->ID ); $limit = 200; $offset = ( $page - 1 ) * $limit;
+		global $wpdb; $t = self::tables();
+		$mastery = $wpdb->get_results( $wpdb->prepare( "SELECT competency_key,mastery_score,confidence,evidence_count,last_source_type,last_source_id,last_evidence_at,next_review_at,version FROM {$t['mastery']} WHERE user_id=%d ORDER BY competency_key ASC LIMIT %d OFFSET %d", $user_id,$limit,$offset ), ARRAY_A );
+		$review = $wpdb->get_results( $wpdb->prepare( "SELECT item_type,source_type,source_id,competency_key,prompt,answer,metadata_json,interval_days,ease,due_at,last_result,version FROM {$t['review']} WHERE user_id=%d ORDER BY id ASC LIMIT %d OFFSET %d", $user_id,$limit,$offset ), ARRAY_A );
+		$practice = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,mode,source_type,source_id,blueprint_version,competency_key,response_json,feedback_json,score,status,assessor_id,version,created_at,updated_at FROM {$t['practice']} WHERE user_id=%d ORDER BY id ASC LIMIT %d OFFSET %d", $user_id,$limit,$offset ), ARRAY_A );
+		$portfolio = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,item_type,object_type,object_id,competency_key,data_json,visibility,version,created_at,updated_at FROM {$t['portfolio']} WHERE user_id=%d ORDER BY id ASC LIMIT %d OFFSET %d", $user_id,$limit,$offset ), ARRAY_A );
+		$cpd = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,activity_type,object_type,object_id,competency_key,minutes,evidence_json,status,verified_by,completed_at,version FROM {$t['cpd']} WHERE user_id=%d ORDER BY id ASC LIMIT %d OFFSET %d", $user_id,$limit,$offset ), ARRAY_A );
+		$impacts = $wpdb->get_results( $wpdb->prepare( "SELECT event_id,object_type,object_id,previous_version,new_version,competency_key,change_summary,required_action,status,created_at,resolved_at FROM {$t['impacts']} WHERE user_id=%d ORDER BY id ASC LIMIT %d OFFSET %d", $user_id,$limit,$offset ), ARRAY_A );
+		$mentorship = $wpdb->get_results( $wpdb->prepare( "SELECT id,mentor_id,learner_id,course_id,status,goals_json,feedback_json,version,created_at,updated_at FROM {$t['mentorship']} WHERE learner_id=%d OR mentor_id=%d ORDER BY id ASC LIMIT %d OFFSET %d", $user_id,$user_id,$limit,$offset ), ARRAY_A );
+		$done = count($mastery)<$limit && count($review)<$limit && count($practice)<$limit && count($portfolio)<$limit && count($cpd)<$limit && count($impacts)<$limit && count($mentorship)<$limit;
+		$data=array(); if ( $mastery || $review || $practice || $portfolio || $mentorship || $cpd || $impacts ) { $data[]=array('group_id'=>'lsch-future18','group_label'=>__( 'Learning Mastery and Clinical Education','learn-sabri-classical-homeopathy' ),'item_id'=>'future18-'.$user_id.'-page-'.$page,'data'=>array(array('name'=>__('Mastery','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($mastery,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Review queue and flashcards','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($review,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Practice laboratories','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($practice,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Portfolio','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($portfolio,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Mentorship','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($mentorship,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Continuing professional development','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($cpd,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Knowledge-change re-study','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($impacts,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)))); }
+		return array( 'data'=>$data,'done'=>$done );
 	}
 
 	public static function privacy_erase( $email, $page = 1 ) {
-		$user = get_user_by( 'email', $email );
-		if ( ! $user || 1 !== absint( $page ) ) { return array( 'items_removed' => false, 'items_retained' => false, 'messages' => array(), 'done' => true ); }
-		$user_id = absint( $user->ID );
-		global $wpdb;
-		$t = self::tables();
-		$removed = false;
-		foreach ( array( 'mastery', 'review', 'practice', 'pathways', 'portfolio', 'cpd', 'impacts' ) as $key ) {
-			$deleted = $wpdb->delete( $t[ $key ], array( 'user_id' => $user_id ), array( '%d' ) ); if ( false !== $deleted && $deleted > 0 ) { $removed = true; }
-		}
-		$mentorship_deleted = $wpdb->query( $wpdb->prepare( "DELETE FROM {$t['mentorship']} WHERE learner_id=%d OR mentor_id=%d", $user_id, $user_id ) );
-		if ( false !== $mentorship_deleted && $mentorship_deleted > 0 ) { $removed = true; }
-		return array( 'items_removed' => $removed, 'items_retained' => false, 'messages' => array(), 'done' => true );
+		$user=get_user_by('email',$email); if(!$user||1!==absint($page)){return array('items_removed'=>false,'items_retained' => false,'messages'=>array(),'done'=>true);} $user_id=absint($user->ID); global $wpdb; $t=self::tables(); $hold=(bool)apply_filters('lsch_user_legal_hold',false,$user_id); $removed=false; $retained=false; $messages=array(); $failures=array();
+		foreach(array('mastery','review','pathways','portfolio') as $key){$d=$wpdb->delete($t[$key],array('user_id'=>$user_id),array('%d')); if(false===$d){$failures[]=$key;} elseif($d>0){$removed=true;}}
+		if($hold){$retained=true; $messages[]=__('Practice, CPD, knowledge-change and mentorship records were retained under an active legal hold.','learn-sabri-classical-homeopathy');}
+		else { foreach(array('practice','cpd','impacts') as $key){$d=$wpdb->delete($t[$key],array('user_id'=>$user_id),array('%d')); if(false===$d){$failures[]=$key;} elseif($d>0){$removed=true;}}
+			$m=$wpdb->query($wpdb->prepare("UPDATE {$t['mentorship']} SET mentor_id=0,status='ended',goals_json='{}',feedback_json='{}',version=version+1,updated_at=UTC_TIMESTAMP() WHERE mentor_id=%d",$user_id)); if(false===$m){$failures[]='mentorship-mentor';} elseif($m>0){$removed=true;$retained=true;}
+			$l=$wpdb->query($wpdb->prepare("UPDATE {$t['mentorship']} SET learner_id=0,status='ended',goals_json='{}',feedback_json='{}',version=version+1,updated_at=UTC_TIMESTAMP() WHERE learner_id=%d",$user_id)); if(false===$l){$failures[]='mentorship-learner';} elseif($l>0){$removed=true;$retained=true;} if($retained){$messages[]=__('Counterpart mentorship records were de-identified and ended rather than deleted.','learn-sabri-classical-homeopathy');}}
+		if($failures){$messages[]=__('Some Future Learning privacy operations require operator retry.','learn-sabri-classical-homeopathy'); LSCH_Events::audit('future18_privacy_erasure_partial_failure','user',$user_id,array('failure_count'=>count($failures)),'privacy');}
+		LSCH_Events::audit('future18_privacy_erasure','user',$user_id,array('legal_hold'=>$hold,'failure_count'=>count($failures)),'privacy'); return array('items_removed'=>$removed,'items_retained'=>$retained,'messages'=>$messages,'done'=>true);
 	}
+
 }
