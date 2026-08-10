@@ -10,13 +10,14 @@ if s.count(old) != 1:
     raise SystemExit(f'Expected one Review-80 harness quoting defect, found {s.count(old)}')
 s = s.replace(old, new, 1)
 
-# Temporary audit-harness correction 2: the real privacy query contains all three schema-2
-# fields but not as one brittle contiguous substring. Require the fields independently.
+# Temporary audit-harness correction 2: the old split matched privacy_exporters/privacy_erasers
+# rather than privacy_export()/privacy_erase(). Scope the assertion to the actual exporter body
+# and require each schema-2 field independently.
 old = "new=\"if 'blueprint_version,competency_key,response_json' not in privacy:\\n    errors.append('Privacy export query does not carry the immutable Future18 practice competency snapshot in schema order.')\\n\""
-new = "new=\"if 'blueprint_version' not in privacy or 'competency_key' not in privacy or 'response_json' not in privacy:\\n    errors.append('Privacy export query does not carry the immutable Future18 practice competency snapshot.')\\n\""
+new = "new=\"privacy_export_body = f.split('public static function privacy_export(',1)[-1].split('public static function privacy_erase(',1)[0]\\nif 'blueprint_version' not in privacy_export_body or 'competency_key' not in privacy_export_body or 'response_json' not in privacy_export_body:\\n    errors.append('Privacy export query does not carry the immutable Future18 practice competency snapshot.')\\n\""
 if s.count(old) != 1:
     raise SystemExit(f'Expected one brittle privacy invariant, found {s.count(old)}')
 s = s.replace(old, new, 1)
 
 p.write_text(s, encoding='utf-8', newline='\n')
-print('Temporary Review-80 harness quoting and privacy assertions corrected.')
+print('Temporary Review-80 harness quoting and privacy exporter assertions corrected.')
