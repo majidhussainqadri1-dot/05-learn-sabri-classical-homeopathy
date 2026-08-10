@@ -94,8 +94,10 @@ jobs:
           set -euo pipefail
           bash tests/source-invariants.sh
           rm -rf /tmp/file05-release
-          python3 scripts/build-release.py /tmp/file05-release
+          mkdir -p /tmp/file05-release
+          python3 scripts/build-release.py --output /tmp/file05-release/05-learn-sabri-classical-homeopathy-3.3.0.zip
           unzip -t /tmp/file05-release/05-learn-sabri-classical-homeopathy-3.3.0.zip >/dev/null
+          test -s /tmp/file05-release/05-learn-sabri-classical-homeopathy-3.3.0.zip.sha256
           git diff --check
       - name: Commit actual File 05 source
         shell: bash
