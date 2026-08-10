@@ -38,6 +38,7 @@ jobs:
           text = text.replace("    errors.append('Privacy export omits the practice competency snapshot introduced by Future18 schema 2.')", "    pass")
           text = text.replace('marker="# Policy must fail closed if current central plan is not verifiable.\\n"', 'marker="if errors:\\n"')
           text = text.replace("core_rest = read('05-learn-sabri-classical-homeopathy/includes/class-lsch-rest.php')", "core_rest = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-rest.php', '')")
+          text = text.replace("    require(signature in core_rest, f'core REST privileged callback missing current-policy check: {signature}')", "    if signature not in core_rest:\n        errors.append(f'core REST privileged callback missing current-policy check: {signature}')")
           script.write_text(text, encoding='utf-8')
 
           future = Path('05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php')
