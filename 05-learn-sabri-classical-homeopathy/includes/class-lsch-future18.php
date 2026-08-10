@@ -858,7 +858,10 @@ final class LSCH_Future18 {
 		if ( ! self::approved_user( $user_id ) || ( ! LSCH_Capabilities::verified_doctor( $user_id ) && ! LSCH_Capabilities::is_founder( $user_id ) ) ) {
 			return new WP_Error( 'lsch_future18_cpd_forbidden', __( 'Continuing professional development is reserved for verified doctors and the Founder.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
-		$minutes = max( 1, min( 24 * 60, absint( $data['minutes'] ?? 0 ) ) );
+		$minutes = absint( $data['minutes'] ?? 0 );
+		if ( $minutes < 1 || $minutes > 24 * 60 ) {
+			return new WP_Error( 'lsch_future18_cpd_minutes_invalid', __( 'CPD duration must be between 1 and 1440 minutes for one activity.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
+		}
 		$evidence = self::encode_json( (array) ( $data['evidence'] ?? array() ), 20000 );
 		if ( is_wp_error( $evidence ) ) { return $evidence; }
 		global $wpdb;

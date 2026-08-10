@@ -144,6 +144,11 @@ if 'end_mentorship' not in f or 'LearningMentorshipEnded.v1' not in f or "'statu
 if '/future18/mentorship/(?P<id>\\d+)/end' not in r or 'mentorship_end' not in r:
     errors.append('Mentorship end REST route is missing.')
 
+# CPD must reject missing/zero/implausibly long activity duration instead of fabricating one minute.
+cpd = f.split('public static function record_cpd',1)[-1].split('public static function verify_cpd',1)[0]
+if 'lsch_future18_cpd_minutes_invalid' not in cpd or '$minutes < 1 || $minutes > 24 * 60' not in cpd:
+    errors.append('CPD duration validation is not fail-closed.')
+
 # Read paths must not mutate personalized pathway state.
 if "'GET', 'HEAD'" not in r or "build_learning_path( get_current_user_id(), $goal ?: 'balanced_mastery', $persist )" not in r:
     errors.append('Learning-path GET/HEAD persistence guard is missing.')
