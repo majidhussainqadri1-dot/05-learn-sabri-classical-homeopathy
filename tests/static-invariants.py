@@ -69,11 +69,13 @@ required_tokens = [
     'saved_searches',
     'value_events',
     'request_keys',
-    'rest_pre_dispatch',
-    'rest_post_dispatch',
+    'rest_request_before_callbacks',
+    'rest_request_after_callbacks',
     'GET_LOCK',
     'RELEASE_LOCK',
     'lsch_idempotency_payload_conflict',
+    'JSON_INVALID_UTF8_SUBSTITUTE',
+    'error_code',
     'lsch_correction_object_busy',
     'privacy-minimized',
     'کامیاب کیس',
@@ -163,6 +165,15 @@ if (base / '.github/workflows/materialize-file05-v3.yml').exists():
 rest_source = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-rest.php', '')
 if "/lesson/(?P<id>\\d+)/correct" in rest_source or "array( $this, 'correct' )" in rest_source:
     errors.append('Legacy direct correction bypass remains REST-accessible.')
+
+idempotency_source = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-idempotency.php', '')
+if 'rest_pre_dispatch' in idempotency_source or 'rest_post_dispatch' in idempotency_source:
+    errors.append('Idempotency guard still executes before REST permission callbacks.')
+if 'is_wp_error( $response )' not in idempotency_source or 'response_status( $response )' not in idempotency_source:
+    errors.append('Idempotency response finalization is not WP_Error-safe.')
+services_source = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-services.php', '')
+if 'mark_content_corrected' in services_source:
+    errors.append('Legacy direct correction service bypass remains callable.')
 
 if errors:
     print('\n'.join(f'ERROR: {e}' for e in errors))

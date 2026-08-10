@@ -300,23 +300,6 @@ final class LSCH_Services {
 		return true;
 	}
 
-	public static function mark_content_corrected( $lesson_id, $reason ) {
-		$lesson_id = absint( $lesson_id );
-		if ( ! current_user_can( LSCH_Capabilities::REVIEW_LESSONS ) || LSCH_Content::LESSON !== get_post_type( $lesson_id ) ) {
-			return new WP_Error( 'lsch_correction_forbidden', __( 'Correction action is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
-		}
-		$reason = sanitize_textarea_field( $reason );
-		if ( '' === $reason ) { return new WP_Error( 'lsch_correction_reason', __( 'A correction reason is required.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) ); }
-		$version = LSCH_Content::version( $lesson_id ) + 1;
-		update_post_meta( $lesson_id, '_lsch_version', $version );
-		update_post_meta( $lesson_id, '_lsch_correction_note', $reason );
-		global $wpdb; $t = LSCH_Database::tables();
-		$wpdb->query( $wpdb->prepare( "UPDATE {$t['progress']} SET needs_review=1,state=IF(state='completed','needs_review',state),version=version+1,updated_at=%s WHERE lesson_id=%d AND lesson_version<%d", LSCH_Database::now(), $lesson_id, $version ) );
-		LSCH_Events::publish( 'LearningContentCorrected.v1', 'lesson', $lesson_id, array( 'lesson_version' => $version, 'reason' => $reason ) );
-		LSCH_Events::audit( 'learning_content_corrected', 'lesson', $lesson_id, array( 'version' => $version ), 'editorial_integrity' );
-		return $version;
-	}
-
 	public static function assign_staff( $user_id, $object_type, $object_id, $role, array $scope, $conflict = 'clear' ) {
 		if ( ! current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) ) {
 			return new WP_Error( 'lsch_staff_forbidden', __( 'Staff assignment is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
