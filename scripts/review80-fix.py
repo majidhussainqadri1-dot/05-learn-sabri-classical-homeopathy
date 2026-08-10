@@ -54,6 +54,7 @@ p.write_text(s, encoding='utf-8')
 
 t = Path('tests/future18-invariants.py')
 x = t.read_text(encoding='utf-8')
+x = x.replace("'privacy_exporters','privacy_erasers','reject_sensitive_practice_payload','patient_name','national_id',", "'privacy_exporters','privacy_erasers','reject_sensitive_practice_payload','patientname','nationalid',", 1)
 marker = "# Read paths must not mutate personalized pathway state.\n"
 check = "# De-identified clinical practice must reject identifier aliases and obvious embedded identifiers.\nsensitive = f.split('private static function reject_sensitive_practice_payload',1)[-1].split('private static function review_schedule',1)[0]\nfor token in ['patientname','emailaddress','phonenumber','cnicnumber','dateofbirth','preg_match']:\n    if token not in sensitive:\n        errors.append(f'Missing de-identification guard token: {token}')\n\n"
 if marker not in x:
