@@ -29,8 +29,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sed -i "s/value = (root \/ '05-learn/value = (base \/ '05-learn/" scripts/review80-fix.py
-          sed -i "s/if 'blueprint_version,competency_key,response_json' not in privacy:/if 'competency_key' not in privacy:/" scripts/review80-fix.py
+          python3 - <<'PY'
+          from pathlib import Path
+          script = Path('scripts/review80-fix.py')
+          text = script.read_text(encoding='utf-8')
+          text = text.replace("value = (root / '05-learn", "value = (base / '05-learn")
+          text = text.replace("if oldsel not in s: raise SystemExit('Round 17 privacy practice export target missing')", "if oldsel not in s: oldsel=newsel")
+          script.write_text(text, encoding='utf-8')
+
+          future = Path('05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php')
+          source = future.read_text(encoding='utf-8')
+          old = 'blueprint_version,response_json,feedback_json,score,status,assessor_id,version,created_at,updated_at'
+          new = 'blueprint_version,competency_key,response_json,feedback_json,score,status,assessor_id,version,created_at,updated_at'
+          if old in source:
+              source = source.replace(old, new, 1)
+          future.write_text(source, encoding='utf-8')
+          PY
           python3 scripts/review80-fix.py
       - name: Verify corrected source
         shell: bash
