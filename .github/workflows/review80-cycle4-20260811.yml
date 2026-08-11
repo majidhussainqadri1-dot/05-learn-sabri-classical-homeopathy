@@ -31,13 +31,14 @@ jobs:
         run: python3 scripts/review80-cycle4-hotfix.py
 
       - name: Execute 80 sequential review/fix rounds
+        id: review80
         shell: bash
         run: |
           set -o pipefail
           python3 scripts/review80-cycle4-20260811.py 2>&1 | tee /tmp/review80-cycle4-diagnostic.txt
 
       - name: Persist review-runner diagnostic if correction transport fails
-        if: failure()
+        if: steps.review80.outcome == 'failure'
         shell: bash
         run: |
           cp /tmp/review80-cycle4-diagnostic.txt /tmp/review80-cycle4-preserved.txt 2>/dev/null || true
@@ -50,8 +51,10 @@ jobs:
           git add REVIEW80-CYCLE4-FAILURE-DIAGNOSTIC.txt
           git commit -m 'Record fourth Review-80 runner diagnostic' || true
           git push origin HEAD:codex/file-05-complete-v3.0.0 || true
+          exit 1
 
       - name: Remove temporary review transport before final-tree QA
+        if: steps.review80.outcome == 'success'
         run: |
           rm -f scripts/review80-cycle4-hotfix.py
           rm -f scripts/review80-cycle4-20260811.py
@@ -59,23 +62,48 @@ jobs:
           rm -f REVIEW80-CYCLE4-FAILURE-DIAGNOSTIC.txt
 
       - name: Full source/security/policy/Future18 regression gate
-        run: bash tests/source-invariants.sh
+        if: steps.review80.outcome == 'success'
+        id: sourceqa
+        shell: bash
+        run: |
+          set -o pipefail
+          bash tests/source-invariants.sh 2>&1 | tee /tmp/review80-cycle4-sourceqa.txt
+
+      - name: Persist source-QA diagnostic if final-tree gate fails
+        if: steps.sourceqa.outcome == 'failure'
+        shell: bash
+        run: |
+          cp /tmp/review80-cycle4-sourceqa.txt /tmp/review80-cycle4-sourceqa-preserved.txt 2>/dev/null || true
+          git config user.name 'majidhussainqadri1-dot'
+          git config user.email 'majidhussainqadri1@gmail.com'
+          git reset --hard HEAD
+          git clean -fd
+          printf '%s\n' 'Fourth Review-80 source corrections executed, but final full source QA rejected the ephemeral corrected tree. This diagnostic is QA evidence, not a product completion claim.' > REVIEW80-CYCLE4-SOURCE-QA-DIAGNOSTIC.txt
+          cat /tmp/review80-cycle4-sourceqa-preserved.txt >> REVIEW80-CYCLE4-SOURCE-QA-DIAGNOSTIC.txt 2>/dev/null || true
+          git add REVIEW80-CYCLE4-SOURCE-QA-DIAGNOSTIC.txt
+          git commit -m 'Record fourth Review-80 source-QA diagnostic' || true
+          git push origin HEAD:codex/file-05-complete-v3.0.0 || true
+          exit 1
 
       - name: PHP 8.3 full syntax gate
+        if: steps.sourceqa.outcome == 'success'
         run: |
           find 05-learn-sabri-classical-homeopathy tests -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l
 
       - name: Set up PHP 7.4
+        if: steps.sourceqa.outcome == 'success'
         uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
         with:
           php-version: '7.4'
           coverage: none
 
       - name: PHP 7.4 full syntax gate
+        if: steps.sourceqa.outcome == 'success'
         run: |
           find 05-learn-sabri-classical-homeopathy tests -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l
 
       - name: Deterministic package A/B closure
+        if: steps.sourceqa.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
@@ -89,6 +117,7 @@ jobs:
           (cd /tmp/file05-c4-extract/05-learn-sabri-classical-homeopathy && sha256sum -c MANIFEST.sha256)
 
       - name: Commit corrected exact working tree
+        if: steps.sourceqa.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
