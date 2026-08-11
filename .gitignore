@@ -1,0 +1,23 @@
+# Local/editor artifacts
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python bytecode/cache artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# Temporary/build artifacts
+*.log
+*.tmp
+.cache/
+build/
+dist/
+vendor/
+node_modules/
