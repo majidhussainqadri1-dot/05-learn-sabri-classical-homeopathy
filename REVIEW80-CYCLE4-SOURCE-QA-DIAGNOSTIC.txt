@@ -1,0 +1,2 @@
+Fourth Review-80 source corrections executed, but final full source QA rejected the ephemeral corrected tree. This diagnostic is QA evidence, not a product completion claim.
+ERROR: Missing bounded/complete privacy regression invariant: array( $t['request_keys'], 'user_id'
