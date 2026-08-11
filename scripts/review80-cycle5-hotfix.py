@@ -12,5 +12,10 @@ for item in remove:
     if s.count(item) != 1:
         raise SystemExit('cycle5 lens-count hotfix pattern mismatch: ' + item.strip())
     s = s.replace(item, '', 1)
+old = "require(SERVICES, \"'status' => 'enrolled'\", \"'active' !== $enrollment['status']\", 'certificate_readiness', \"'certificate_status' => 'pending_readiness'\", 'COUNT(DISTINCT user_id)', \"'minimum_cell' => 5\")"
+new = "require(SERVICES, \"'status' => 'enrolled'\", \"'active' !== $enrollment['status']\", 'certificate_readiness', \"'certificate_status' => 'pending_readiness'\", 'COUNT(DISTINCT user_id)', \"'minimum_cell' => $minimum_cell\")"
+if s.count(old) != 1:
+    raise SystemExit('cycle5 analytics assertion hotfix pattern mismatch')
+s = s.replace(old, new, 1)
 p.write_text(s, encoding='utf-8', newline='\n')
-print('Cycle5 transport corrected to exactly 72 clean lenses for rounds 9-80.')
+print('Cycle5 transport corrected: 72 clean lenses and analytics assertion shape aligned.')
