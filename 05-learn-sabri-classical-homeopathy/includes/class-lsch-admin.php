@@ -75,7 +75,7 @@ final class LSCH_Admin {
 	}
 
 	public function save_governance_meta( $post_id, $post ) {
-		if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) || ! LSCH_Content::object_type( $post_id ) || empty( $_POST['lsch_governance_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['lsch_governance_nonce'] ) ), 'lsch_save_governance_' . $post_id ) || ! current_user_can( 'edit_post', $post_id ) ) { return; }
+		if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) || ! LSCH_Content::object_type( $post_id ) || empty( $_POST['lsch_governance_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['lsch_governance_nonce'] ) ), 'lsch_save_governance_' . $post_id ) || ! LSCH_Policy::can_use_learning_actions() || ! current_user_can( 'edit_post', $post_id ) ) { return; }
 		$input = isset( $_POST['lsch_meta'] ) && is_array( $_POST['lsch_meta'] ) ? wp_unslash( $_POST['lsch_meta'] ) : array();
 		$integer_keys = array( '_lsch_program_id', '_lsch_course_id', '_lsch_book_id', '_lsch_lesson_id', '_lsch_teacher_id', '_lsch_reviewer_id', '_lsch_pass_mark', '_lsch_max_attempts', '_lsch_time_limit', '_lsch_required' );
 		$json_keys = array( '_lsch_required_components', '_lsch_questions', '_lsch_blueprint' );

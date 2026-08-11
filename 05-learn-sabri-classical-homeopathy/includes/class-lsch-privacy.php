@@ -26,97 +26,66 @@ final class LSCH_Privacy {
 
 	public function export( $email, $page = 1 ) {
 		$user = get_user_by( 'email', $email );
-		if ( ! $user ) {
-			return array( 'data' => array(), 'done' => true );
-		}
+		if ( ! $user ) { return array( 'data' => array(), 'done' => true ); }
+		$page = max( 1, absint( $page ) );
+		$limit = 100;
+		$offset = ( $page - 1 ) * $limit;
 		global $wpdb;
 		$t = LSCH_Database::tables();
 		$state = LSCH_State::tables();
 		$data = array();
+		$done = true;
 
-		if ( 1 === absint( $page ) ) {
-			$dashboard = LSCH_Services::dashboard( $user->ID );
-			foreach ( $dashboard as $group => $rows ) {
-				if ( ! is_array( $rows ) ) {
-					continue;
-				}
-				foreach ( $rows as $index => $row ) {
-					if ( ! is_array( $row ) ) {
-						continue;
-					}
-					$data[] = array(
-						'group_id'    => 'lsch-' . sanitize_key( $group ),
-						'group_label' => ucwords( str_replace( '_', ' ', $group ) ),
-						'item_id'     => $group . '-' . $index,
-						'data'        => array_map(
-							static function( $key, $value ) {
-								return array(
-									'name'  => (string) $key,
-									'value' => is_scalar( $value ) ? (string) $value : wp_json_encode( $value ),
-								);
-							},
-							array_keys( $row ),
-							array_values( $row )
-						),
-					);
-				}
-			}
-
-			$notes = $wpdb->get_results(
-				$wpdb->prepare( "SELECT * FROM {$t['notes']} WHERE user_id=%d ORDER BY id", $user->ID ),
-				ARRAY_A
-			);
-			foreach ( $notes as $row ) {
+		$specs = array(
+			array( $t['enrollments'], 'user_id', 'lsch-enrollments', __( 'Learning enrollments', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['progress'], 'user_id', 'lsch-progress', __( 'Learning progress', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['bookmarks'], 'user_id', 'lsch-bookmarks', __( 'Learning bookmarks', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['attempts'], 'user_id', 'lsch-attempts', __( 'Assessment attempts', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['submissions'], 'user_id', 'lsch-submissions', __( 'Assignment submissions', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['staff'], 'user_id', 'lsch-staff-assignments', __( 'Learning staff assignments', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['completions'], 'user_id', 'lsch-completions', __( 'Learning completions', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['reminders'], 'user_id', 'lsch-reminders', __( 'Learning reminders', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['request_keys'], 'user_id', 'lsch-request-history', __( 'Protected request history', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['audit'], 'actor_id', 'lsch-audit-history', __( 'Learning audit history', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['consents'], 'created_by', 'lsch-case-consent-actions', __( 'Learning case consent actions', 'learn-sabri-classical-homeopathy' ) ),
+			array( $state['saved_searches'], 'user_id', 'lsch-saved-learning-searches', __( 'Saved learning searches', 'learn-sabri-classical-homeopathy' ) ),
+			array( $state['value_events'], 'user_id', 'lsch-learning-value-events', __( 'Learning value events', 'learn-sabri-classical-homeopathy' ) ),
+		);
+		foreach ( $specs as $spec ) {
+			$table = $spec[0]; $column = $spec[1];
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$table} WHERE {$column}=%d ORDER BY id ASC LIMIT %d OFFSET %d", $user->ID, $limit, $offset ), ARRAY_A );
+			if ( count( $rows ) === $limit ) { $done = false; }
+			foreach ( $rows as $row ) {
+				$item_id = isset( $row['id'] ) ? absint( $row['id'] ) : substr( hash( 'sha256', wp_json_encode( $row ) ), 0, 16 );
 				$data[] = array(
-					'group_id'    => 'lsch-private-notes',
-					'group_label' => __( 'Private learning notes', 'learn-sabri-classical-homeopathy' ),
-					'item_id'     => 'note-' . $row['id'],
-					'data'        => array(
-						array( 'name' => __( 'Lesson', 'learn-sabri-classical-homeopathy' ), 'value' => get_the_title( $row['lesson_id'] ) ),
-						array( 'name' => __( 'Note', 'learn-sabri-classical-homeopathy' ), 'value' => LSCH_Policy::decrypt_note( $row, $user->ID, $row['lesson_id'] ) ),
-						array( 'name' => __( 'Updated', 'learn-sabri-classical-homeopathy' ), 'value' => $row['updated_at'] ),
-					),
-				);
-			}
-
-			$saved = $wpdb->get_results(
-				$wpdb->prepare( "SELECT id,label,query_json,created_at,updated_at FROM {$state['saved_searches']} WHERE user_id=%d ORDER BY id", $user->ID ),
-				ARRAY_A
-			);
-			foreach ( $saved as $row ) {
-				$data[] = array(
-					'group_id'    => 'lsch-saved-learning-searches',
-					'group_label' => __( 'Saved learning searches', 'learn-sabri-classical-homeopathy' ),
-					'item_id'     => 'saved-search-' . $row['id'],
-					'data'        => array(
-						array( 'name' => __( 'Label', 'learn-sabri-classical-homeopathy' ), 'value' => $row['label'] ),
-						array( 'name' => __( 'Query', 'learn-sabri-classical-homeopathy' ), 'value' => $row['query_json'] ),
-						array( 'name' => __( 'Updated', 'learn-sabri-classical-homeopathy' ), 'value' => $row['updated_at'] ),
-					),
-				);
-			}
-
-			$corrections = $wpdb->get_results(
-				$wpdb->prepare( "SELECT id,object_type,object_id,reason,source_reference,status,created_at,updated_at FROM {$state['corrections']} WHERE proposer_id=%d ORDER BY id", $user->ID ),
-				ARRAY_A
-			);
-			foreach ( $corrections as $row ) {
-				$data[] = array(
-					'group_id'    => 'lsch-correction-proposals',
-					'group_label' => __( 'Learning correction proposals', 'learn-sabri-classical-homeopathy' ),
-					'item_id'     => 'correction-' . $row['id'],
-					'data'        => array_map(
-						static function( $key, $value ) {
-							return array( 'name' => (string) $key, 'value' => (string) $value );
-						},
-						array_keys( $row ),
-						array_values( $row )
-					),
+					'group_id' => $spec[2], 'group_label' => $spec[3], 'item_id' => $spec[2] . '-' . $item_id,
+					'data' => array_map( static function( $key, $value ) { return array( 'name' => (string) $key, 'value' => is_scalar( $value ) || null === $value ? (string) $value : wp_json_encode( $value ) ); }, array_keys( $row ), array_values( $row ) ),
 				);
 			}
 		}
 
-		return array( 'data' => $data, 'done' => true );
+		$notes = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['notes']} WHERE user_id=%d ORDER BY id ASC LIMIT %d OFFSET %d", $user->ID, $limit, $offset ), ARRAY_A );
+		if ( count( $notes ) === $limit ) { $done = false; }
+		foreach ( $notes as $row ) {
+			$plain = LSCH_Policy::decrypt_note_checked( $row, $user->ID, $row['lesson_id'] );
+			$data[] = array(
+				'group_id' => 'lsch-private-notes', 'group_label' => __( 'Private learning notes', 'learn-sabri-classical-homeopathy' ), 'item_id' => 'note-' . $row['id'],
+				'data' => array(
+					array( 'name' => __( 'Lesson', 'learn-sabri-classical-homeopathy' ), 'value' => get_the_title( $row['lesson_id'] ) ),
+					array( 'name' => __( 'Note', 'learn-sabri-classical-homeopathy' ), 'value' => is_wp_error( $plain ) ? '[encrypted-note-unavailable:' . sanitize_key( $plain->get_error_code() ) . ']' : $plain ),
+					array( 'name' => __( 'Version', 'learn-sabri-classical-homeopathy' ), 'value' => (string) $row['version'] ),
+					array( 'name' => __( 'Updated', 'learn-sabri-classical-homeopathy' ), 'value' => $row['updated_at'] ),
+				),
+			);
+		}
+
+		$corrections = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$state['corrections']} WHERE proposer_id=%d OR reviewer_id=%d ORDER BY id ASC LIMIT %d OFFSET %d", $user->ID, $user->ID, $limit, $offset ), ARRAY_A );
+		if ( count( $corrections ) === $limit ) { $done = false; }
+		foreach ( $corrections as $row ) {
+			$data[] = array( 'group_id' => 'lsch-corrections', 'group_label' => __( 'Learning correction records', 'learn-sabri-classical-homeopathy' ), 'item_id' => 'correction-' . $row['id'], 'data' => array_map( static function( $key, $value ) { return array( 'name' => (string) $key, 'value' => is_scalar( $value ) || null === $value ? (string) $value : wp_json_encode( $value ) ); }, array_keys( $row ), array_values( $row ) ) );
+		}
+
+		return array( 'data' => $data, 'done' => $done );
 	}
 
 	public function erase( $email, $page = 1 ) {
@@ -134,7 +103,7 @@ final class LSCH_Privacy {
 		$messages = array();
 		$failures = array();
 
-		foreach ( array( 'progress', 'bookmarks', 'notes', 'reminders' ) as $key ) {
+		foreach ( array( 'progress', 'bookmarks', 'notes', 'reminders', 'request_keys' ) as $key ) {
 			$result = $wpdb->delete( $t[ $key ], array( 'user_id' => $user->ID ), array( '%d' ) );
 			if ( false === $result ) {
 				$failures[] = $key;

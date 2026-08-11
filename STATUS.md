@@ -6,7 +6,7 @@ This status distinguishes repository truth from staging/live truth.
 |---|---|
 | Specified | Current consolidated central plan + current File 05 plan + Founder-approved Future Superset 18 mapped |
 | Coded | Existing 18 FR + 10 NFR + central amendments + F05-FUT-01..18 materialized in the actual 4.0.0 source tree |
-| Reviewed | Existing corrective rounds retained; Future-18 fresh Review Round 1 and Round 2 both found defects, corrected them, and added regression invariants |
+| Reviewed | Existing corrective rounds retained; third independent 80-round sequential cycle completed on the current 4.0.0 candidate, with every discovered local source defect corrected before the next round; see `REVIEW-80-CYCLE-3-2026-08-11.md` |
 | Packaged | Deterministic release builder, embedded `MANIFEST.sha256`, SPDX SBOM and external ZIP checksum configured for 4.0.0; exact-head workflow is the evidence gate |
 | Automated QA | Current-plan + Future-18 invariants, policy/security tests, JS syntax, PHP 7.4/8.3 and deterministic package checks configured; final immutable exact-head result required |
 | Staging accepted | **No** — real WordPress/Hostinger and companion-runtime evidence pending |

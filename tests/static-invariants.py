@@ -193,10 +193,53 @@ for signature in [
     "public function reviewer() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions()",
     "public function manager() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions()",
     "public function teacher() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions()",
-    "public function operator() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions()",
+    "public function operator() { return is_user_logged_in() && current_user_can( LSCH_Capabilities::OPERATE )",
 ]:
     if signature not in core_rest:
         errors.append(f'core REST privileged callback missing current-policy check: {signature}')
+
+
+# Third independent Review-80 regression invariants (2026-08-11).
+operations = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-operations.php', '')
+if "$t = LSCH_Database::tables();" not in operations.split('public static function system_check',1)[-1].split('public static function repair',1)[0]:
+    errors.append('System Check core table map is not initialized before dead outbox/job queries.')
+if "{$t['outbox']}" not in operations or "{$t['jobs']}" not in operations:
+    errors.append('System Check dead-letter queries lost canonical core table references.')
+
+caps_current = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-capabilities.php', '')
+if "user_can( $user_id, 'manage_options' )" in caps_current:
+    errors.append('Raw WordPress manage_options still substitutes for File 00 membership identity in capabilities.')
+for token in ['filter_user_caps', 'filtering_user_caps', "claims['suspended']", "claims['guardian_verified']"]:
+    if token not in caps_current:
+        errors.append(f'Missing dynamic File 00 capability-currentness guard: {token}')
+
+policy_current = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-policy.php', '')
+for token in ['can_use_protected_reads', "self::can_use_learning_actions( $user_id )", 'lsch:rate:', 'SELECT GET_LOCK(%s,1)', 'SELECT RELEASE_LOCK(%s)']:
+    if token not in policy_current:
+        errors.append(f'Missing protected-read/write or serialized rate-limit invariant: {token}')
+
+content_current = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-content.php', '')
+if 'return LSCH_Policy::can_use_learning_actions( $user_id ) && user_can' not in content_current:
+    errors.append('Native governance meta writes do not recheck current learning-action policy.')
+
+admin_current = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-admin.php', '')
+if "! LSCH_Policy::can_use_learning_actions() || ! current_user_can( 'edit_post', $post_id )" not in admin_current:
+    errors.append('Admin governance-meta save path is missing current-policy/Safe-Mode revalidation.')
+
+rest_current = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-rest.php', '')
+for token in ["public function operator() { return is_user_logged_in() && current_user_can( LSCH_Capabilities::OPERATE )", '$protected_viewer = LSCH_Policy::can_use_protected_reads();', "'compare' => 'NOT EXISTS'", "$protected_viewer ? 'private, no-store' : 'public, max-age=60, stale-while-revalidate=120'"]:
+    if token not in rest_current:
+        errors.append(f'Missing safe diagnostics/catalog cache-isolation invariant: {token}')
+
+services_current = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-services.php', '')
+for token in ['decrypt_note_checked', 'lsch:assessment:', 'lsch_assessment_busy', 'SELECT GET_LOCK(%s,3)', 'SELECT RELEASE_LOCK(%s)']:
+    if token not in services_current:
+        errors.append(f'Missing note-integrity/assessment-concurrency invariant: {token}')
+
+privacy_current = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-privacy.php', '')
+for token in ['LIMIT %d OFFSET %d', "array( $t['request_keys'], 'user_id'", "proposer_id=%d OR reviewer_id=%d", 'decrypt_note_checked']:
+    if token not in privacy_current:
+        errors.append(f'Missing bounded/complete privacy regression invariant: {token}')
 
 if errors:
     print('\n'.join(f'ERROR: {e}' for e in errors))

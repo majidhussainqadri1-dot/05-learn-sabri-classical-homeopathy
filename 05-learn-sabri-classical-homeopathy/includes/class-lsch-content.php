@@ -117,7 +117,7 @@ final class LSCH_Content {
 
 	public static function can_edit_meta( $allowed, $meta_key, $post_id, $user_id ) {
 		unset( $allowed, $meta_key );
-		return LSCH_Policy::central_policy_ready() && user_can( $user_id, 'edit_post', $post_id ) && ( LSCH_Capabilities::can_author( $user_id ) || user_can( $user_id, LSCH_Capabilities::MANAGE_CURRICULUM ) );
+		return LSCH_Policy::can_use_learning_actions( $user_id ) && user_can( $user_id, 'edit_post', $post_id ) && ( LSCH_Capabilities::can_author( $user_id ) || user_can( $user_id, LSCH_Capabilities::MANAGE_CURRICULUM ) );
 	}
 
 	public static function seed_vocabularies() {

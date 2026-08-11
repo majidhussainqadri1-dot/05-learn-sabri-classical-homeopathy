@@ -188,7 +188,10 @@ final class LSCH_Services {
 		global $wpdb;
 		$t = LSCH_Database::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['notes']} WHERE user_id=%d AND lesson_id=%d", absint( $user_id ), absint( $lesson_id ) ), ARRAY_A );
-		return $row ? array( 'lesson_id' => absint( $lesson_id ), 'note' => LSCH_Policy::decrypt_note( $row, absint( $user_id ), absint( $lesson_id ) ), 'version' => absint( $row['version'] ), 'updated_at' => $row['updated_at'] ) : array( 'lesson_id' => absint( $lesson_id ), 'note' => '', 'version' => 0 );
+		if ( ! $row ) { return array( 'lesson_id' => absint( $lesson_id ), 'note' => '', 'version' => 0 ); }
+		$plain = LSCH_Policy::decrypt_note_checked( $row, absint( $user_id ), absint( $lesson_id ) );
+		if ( is_wp_error( $plain ) ) { return $plain; }
+		return array( 'lesson_id' => absint( $lesson_id ), 'note' => $plain, 'version' => absint( $row['version'] ), 'updated_at' => $row['updated_at'] );
 	}
 
 	public static function start_assessment( $assessment_id, $user_id, $idempotency ) {
@@ -198,37 +201,43 @@ final class LSCH_Services {
 		}
 		$key = LSCH_Policy::idempotency_key( $idempotency, $user_id, 'assessment-attempt' ); if ( is_wp_error( $key ) ) { return $key; }
 		global $wpdb; $t = LSCH_Database::tables();
-		$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['attempts']} WHERE idempotency_key=%s", $key ), ARRAY_A ); if ( $existing ) { return $existing; }
-		$attempt_number = 1 + (int) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(attempt_number),0) FROM {$t['attempts']} WHERE assessment_id=%d AND user_id=%d", $assessment_id, $user_id ) );
-		$max = max( 1, absint( get_post_meta( $assessment_id, '_lsch_max_attempts', true ) ) ); if ( $attempt_number > $max ) { return new WP_Error( 'lsch_attempt_limit', __( 'No further attempts are available.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
-		$now     = LSCH_Database::now();
-		$limit   = absint( get_post_meta( $assessment_id, '_lsch_time_limit', true ) );
-		$expires = $limit ? gmdate( 'Y-m-d H:i:s', time() + min( DAY_IN_SECONDS, $limit * MINUTE_IN_SECONDS ) ) : '';
-		$data    = array(
-			'public_id'       => LSCH_Database::uuid(),
-			'assessment_id'   => $assessment_id,
-			'user_id'         => $user_id,
-			'attempt_number'  => $attempt_number,
-			'item_version'    => LSCH_Content::version( $assessment_id ),
-			'answers_json'    => '{}',
-			'result_json'     => '{}',
-			'score'           => 0,
-			'status'          => 'started',
-			'integrity_status'=> 'clear',
-			'idempotency_key' => $key,
-			'version'         => 1,
-			'started_at'      => $now,
-		);
-		$formats = array( '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%f', '%s', '%s', '%s', '%d', '%s' );
-		if ( $expires ) {
-			$data['expires_at'] = $expires;
-			$formats[]          = '%s';
+		$lock_name = 'lsch:assessment:' . substr( hash( 'sha256', $assessment_id . '|' . $user_id ), 0, 48 );
+		if ( 1 !== (int) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s,3)', $lock_name ) ) ) {
+			return new WP_Error( 'lsch_assessment_busy', __( 'Another assessment attempt is being allocated. Please retry.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
-		if ( false === $wpdb->insert( $t['attempts'], $data, $formats ) ) {
-			return new WP_Error( 'lsch_assessment_start_failed', __( 'The assessment attempt could not be started.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
+		try {
+			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['attempts']} WHERE idempotency_key=%s", $key ), ARRAY_A ); if ( $existing ) { return $existing; }
+			$attempt_number = 1 + (int) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(attempt_number),0) FROM {$t['attempts']} WHERE assessment_id=%d AND user_id=%d", $assessment_id, $user_id ) );
+			$max = max( 1, absint( get_post_meta( $assessment_id, '_lsch_max_attempts', true ) ) ); if ( $attempt_number > $max ) { return new WP_Error( 'lsch_attempt_limit', __( 'No further attempts are available.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
+			$now     = LSCH_Database::now();
+			$limit   = absint( get_post_meta( $assessment_id, '_lsch_time_limit', true ) );
+			$expires = $limit ? gmdate( 'Y-m-d H:i:s', time() + min( DAY_IN_SECONDS, $limit * MINUTE_IN_SECONDS ) ) : '';
+			$data    = array(
+				'public_id'       => LSCH_Database::uuid(),
+				'assessment_id'   => $assessment_id,
+				'user_id'         => $user_id,
+				'attempt_number'  => $attempt_number,
+				'item_version'    => LSCH_Content::version( $assessment_id ),
+				'answers_json'    => '{}',
+				'result_json'     => '{}',
+				'score'           => 0,
+				'status'          => 'started',
+				'integrity_status'=> 'clear',
+				'idempotency_key' => $key,
+				'version'         => 1,
+				'started_at'      => $now,
+			);
+			$formats = array( '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%f', '%s', '%s', '%s', '%d', '%s' );
+			if ( $expires ) { $data['expires_at'] = $expires; $formats[] = '%s'; }
+			if ( false === $wpdb->insert( $t['attempts'], $data, $formats ) ) {
+				return new WP_Error( 'lsch_assessment_start_failed', __( 'The assessment attempt could not be started.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
+			}
+			$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['attempts']} WHERE idempotency_key=%s", $key ), ARRAY_A );
+			LSCH_Events::audit( 'assessment_started', 'assessment', $assessment_id, array( 'user_id' => $user_id, 'attempt' => $attempt_number ), 'assessment' );
+			return $row;
+		} finally {
+			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
 		}
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['attempts']} WHERE idempotency_key=%s", $key ), ARRAY_A );
-		LSCH_Events::audit( 'assessment_started', 'assessment', $assessment_id, array( 'user_id' => $user_id, 'attempt' => $attempt_number ), 'assessment' ); return $row;
 	}
 
 	public static function submit_assessment( $assessment_id, $user_id, array $answers, $idempotency ) {

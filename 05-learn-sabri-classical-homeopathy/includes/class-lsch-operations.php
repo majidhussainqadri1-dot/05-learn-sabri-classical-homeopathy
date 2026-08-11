@@ -22,6 +22,7 @@ final class LSCH_Operations {
 
 	public static function system_check() {
 		global $wpdb;
+		$t = LSCH_Database::tables();
 		$checks = array();
 		$missing = LSCH_Dependencies::missing();
 		$checks['Dependencies'] = array(
@@ -32,7 +33,7 @@ final class LSCH_Operations {
 			'status' => LSCH_Policy::central_policy_ready() ? 'pass' : 'fail',
 			'detail' => LSCH_Policy::central_policy_ready() ? 'Single free tier, no donor advantage, Sabri Green and File 26 ownership verified.' : 'Current central business/design/search policy is not verified.',
 		);
-		foreach ( LSCH_Database::tables() as $name => $table ) {
+		foreach ( $t as $name => $table ) {
 			$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table;
 			$checks[ 'Table: ' . $name ] = array( 'status' => $exists ? 'pass' : 'fail', 'detail' => $exists ? $table : 'Missing owner table.' );
 		}

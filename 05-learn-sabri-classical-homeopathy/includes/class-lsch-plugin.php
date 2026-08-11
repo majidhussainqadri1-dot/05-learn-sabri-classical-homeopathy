@@ -4,6 +4,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class LSCH_Plugin {
 	public function run() {
+		add_filter( 'user_has_cap', array( 'LSCH_Capabilities', 'filter_user_caps' ), 20, 4 );
 		add_action( 'init', array( 'LSCH_Content', 'register' ), 5 );
 		LSCH_Idempotency::hooks();
 		( new LSCH_REST() )->hooks();

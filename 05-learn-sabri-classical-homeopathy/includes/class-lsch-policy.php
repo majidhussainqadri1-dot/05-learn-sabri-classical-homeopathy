@@ -34,7 +34,7 @@ final class LSCH_Policy {
 		if ( 'public' === $access ) {
 			return true;
 		}
-		return $user_id && self::central_policy_ready() && LSCH_Capabilities::approved_account( $user_id ) && LSCH_Capabilities::guardian_gate_passes( $user_id );
+		return self::can_use_protected_reads( $user_id );
 	}
 
 	public static function valid_case_consent( $lesson_id ) {
@@ -43,21 +43,24 @@ final class LSCH_Policy {
 		return (bool) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['consents']} WHERE lesson_id=%d AND withdrawn_at IS NULL ORDER BY id DESC LIMIT 1", absint( $lesson_id ) ) );
 	}
 
-	public static function can_use_learning_actions( $user_id = 0 ) {
+	public static function can_use_protected_reads( $user_id = 0 ) {
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
 		return
 			$user_id &&
-			! LSCH_Operations::safe_mode() &&
 			self::central_policy_ready() &&
 			LSCH_Capabilities::approved_account( $user_id ) &&
 			LSCH_Capabilities::guardian_gate_passes( $user_id );
 	}
 
+	public static function can_use_learning_actions( $user_id = 0 ) {
+		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
+		return ! LSCH_Operations::safe_mode() && self::can_use_protected_reads( $user_id );
+	}
+
 	public static function can_manage_object( $post_id, $user_id = 0 ) {
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
 		return
-			$user_id &&
-			self::central_policy_ready() &&
+			self::can_use_learning_actions( $user_id ) &&
 			user_can( $user_id, 'edit_post', absint( $post_id ) ) &&
 			( LSCH_Capabilities::can_author( $user_id ) || user_can( $user_id, LSCH_Capabilities::MANAGE_CURRICULUM ) );
 	}
@@ -245,14 +248,23 @@ final class LSCH_Policy {
 	}
 
 	public static function rate_limit( $bucket, $subject, $limit, $window ) {
-		$key   = 'lsch_rl_' . substr( hash( 'sha256', $bucket . '|' . $subject ), 0, 40 );
-		$state = get_transient( $key );
-		$state = is_array( $state ) ? $state : array( 'count' => 0, 'start' => time() );
-		if ( time() - absint( $state['start'] ) >= $window ) {
-			$state = array( 'count' => 0, 'start' => time() );
+		$key = 'lsch_rl_' . substr( hash( 'sha256', $bucket . '|' . $subject ), 0, 40 );
+		$lock_name = 'lsch:rate:' . substr( hash( 'sha256', $key ), 0, 48 );
+		global $wpdb;
+		if ( 1 !== (int) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s,1)', $lock_name ) ) ) {
+			return false;
 		}
-		$state['count']++;
-		set_transient( $key, $state, $window );
-		return $state['count'] <= $limit;
+		try {
+			$state = get_transient( $key );
+			$state = is_array( $state ) ? $state : array( 'count' => 0, 'start' => time() );
+			if ( time() - absint( $state['start'] ) >= $window ) {
+				$state = array( 'count' => 0, 'start' => time() );
+			}
+			$state['count']++;
+			set_transient( $key, $state, $window );
+			return $state['count'] <= $limit;
+		} finally {
+			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
+		}
 	}
 }

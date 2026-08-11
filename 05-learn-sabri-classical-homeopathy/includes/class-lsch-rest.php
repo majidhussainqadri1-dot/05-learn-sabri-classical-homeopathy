@@ -44,7 +44,7 @@ final class LSCH_REST {
 	public function reviewer() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && current_user_can( LSCH_Capabilities::REVIEW_LESSONS ); }
 	public function manager() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ); }
 	public function teacher() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && ( current_user_can( LSCH_Capabilities::TEACH ) || current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) ); }
-	public function operator() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && current_user_can( LSCH_Capabilities::OPERATE ); }
+	public function operator() { return is_user_logged_in() && current_user_can( LSCH_Capabilities::OPERATE ) && ( LSCH_Policy::can_use_protected_reads() || current_user_can( 'manage_options' ) ); }
 	public function author_or_reviewer( WP_REST_Request $request ) { $id = absint( $request['id'] ); return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && ( LSCH_Policy::can_manage_object( $id ) || current_user_can( LSCH_Capabilities::REVIEW_LESSONS ) ); }
 
 	private function guard_rate( $bucket, $limit = 60, $window = 60 ) {
@@ -63,9 +63,16 @@ final class LSCH_REST {
 		$tax = array( 'relation' => 'AND' );
 		foreach ( array( 'topic' => LSCH_Content::TOPIC, 'level' => LSCH_Content::LEVEL, 'competency' => LSCH_Content::COMPETENCY ) as $param => $taxonomy ) { $value = sanitize_title( (string) $request->get_param( $param ) ); if ( $value ) { $tax[] = array( 'taxonomy' => $taxonomy, 'field' => 'slug', 'terms' => array( $value ) ); } }
 		if ( count( $tax ) > 1 ) { $args['tax_query'] = $tax; }
+		$protected_viewer = LSCH_Policy::can_use_protected_reads();
 		$meta = array( 'relation' => 'AND' );
 		foreach ( array( 'book' => '_lsch_book_id', 'course' => '_lsch_course_id' ) as $param => $key ) { $value = absint( $request->get_param( $param ) ); if ( $value ) { $meta[] = array( 'key' => $key, 'value' => $value, 'type' => 'NUMERIC' ); } }
-		foreach ( array( 'language' => '_lsch_language', 'access' => '_lsch_access', 'duration' => '_lsch_duration' ) as $param => $key ) { $value = sanitize_text_field( (string) $request->get_param( $param ) ); if ( $value ) { $meta[] = array( 'key' => $key, 'value' => $value ); } }
+		foreach ( array( 'language' => '_lsch_language', 'duration' => '_lsch_duration' ) as $param => $key ) { $value = sanitize_text_field( (string) $request->get_param( $param ) ); if ( $value ) { $meta[] = array( 'key' => $key, 'value' => $value ); } }
+		$requested_access = sanitize_key( (string) $request->get_param( 'access' ) );
+		if ( $protected_viewer && in_array( $requested_access, array( 'public', 'account', 'restricted' ), true ) ) {
+			$meta[] = array( 'key' => '_lsch_access', 'value' => $requested_access );
+		} elseif ( ! $protected_viewer ) {
+			$meta[] = array( 'relation' => 'OR', array( 'key' => '_lsch_access', 'compare' => 'NOT EXISTS' ), array( 'key' => '_lsch_access', 'value' => 'public' ) );
+		}
 		if ( count( $meta ) > 1 ) { $args['meta_query'] = $meta; }
 		$query = new WP_Query( $args ); $items = array();
 		foreach ( $query->posts as $post ) {
@@ -73,7 +80,7 @@ final class LSCH_REST {
 			$items[] = array( 'id' => $post->ID, 'type' => $post->post_type, 'title' => get_the_title( $post ), 'summary' => get_the_excerpt( $post ), 'url' => get_permalink( $post ), 'access' => LSCH_Content::access( $post->ID ), 'version' => LSCH_Content::version( $post->ID ), 'duration' => (string) get_post_meta( $post->ID, '_lsch_duration', true ), 'language' => (string) get_post_meta( $post->ID, '_lsch_language', true ), 'levels' => wp_get_object_terms( $post->ID, LSCH_Content::LEVEL, array( 'fields' => 'names' ) ), 'topics' => wp_get_object_terms( $post->ID, LSCH_Content::TOPIC, array( 'fields' => 'names' ) ) );
 		}
 		$response = rest_ensure_response( array( 'items' => $items, 'page' => $page, 'pages' => (int) $query->max_num_pages, 'total' => count( $items ), 'access_model' => LSCH_Policy::access_model() ) );
-		$response->header( 'Cache-Control', 'public, max-age=60, stale-while-revalidate=120' ); return $response;
+		$response->header( 'Cache-Control', $protected_viewer ? 'private, no-store' : 'public, max-age=60, stale-while-revalidate=120' ); return $response;
 	}
 
 	public function lesson( WP_REST_Request $request ) {

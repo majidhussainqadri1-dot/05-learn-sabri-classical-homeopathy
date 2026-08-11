@@ -3,6 +3,7 @@
 defined( 'ABSPATH' ) || exit;
 
 final class LSCH_Capabilities {
+	private static $filtering_user_caps = false;
 	const MANAGE_CURRICULUM = 'lsch_manage_curriculum';
 	const PUBLISH_LESSONS   = 'lsch_publish_lessons';
 	const REVIEW_LESSONS    = 'lsch_review_lessons';
@@ -78,7 +79,7 @@ final class LSCH_Capabilities {
 		}
 		$claims = LSCH_Dependencies::claims( $user_id );
 		if ( empty( $claims['eligible'] ) || ! empty( $claims['suspended'] ) ) {
-			return self::is_founder( $user_id ) || user_can( $user_id, 'manage_options' );
+			return self::is_founder( $user_id );
 		}
 		$publishing = (array) ( $claims['publishing'] ?? array() );
 		return
@@ -104,11 +105,38 @@ final class LSCH_Capabilities {
 		if ( ! $user_id ) {
 			return false;
 		}
-		if ( self::is_founder( $user_id ) || user_can( $user_id, 'manage_options' ) ) {
+		if ( self::is_founder( $user_id ) ) {
 			return true;
 		}
 		$claims = LSCH_Dependencies::claims( $user_id );
 		return ! empty( $claims['approved'] ) && ! empty( $claims['eligible'] ) && empty( $claims['suspended'] );
+	}
+
+
+	/** Remove File 05 domain capabilities when current File 00 assertions are not usable. */
+	public static function filter_user_caps( $allcaps, $caps, $args, $user ) {
+		unset( $caps, $args );
+		if ( self::$filtering_user_caps || ! $user instanceof WP_User || ! $user->ID ) {
+			return $allcaps;
+		}
+		$domain = self::all();
+		$has_domain = false;
+		foreach ( $domain as $capability ) {
+			if ( ! empty( $allcaps[ $capability ] ) ) { $has_domain = true; break; }
+		}
+		if ( ! $has_domain ) { return $allcaps; }
+		self::$filtering_user_caps = true;
+		$claims = LSCH_Dependencies::claims( $user->ID );
+		self::$filtering_user_caps = false;
+		$allowed = ! empty( $claims['founder'] ) || ( ! empty( $claims['approved'] ) && ! empty( $claims['eligible'] ) && empty( $claims['suspended'] ) && ! empty( $claims['guardian_verified'] ) );
+		if ( ! $allowed ) {
+			foreach ( $domain as $capability ) {
+				/* OPERATE is a system-diagnostics capability, not a membership identity grant. */
+				if ( self::OPERATE === $capability && ! empty( $allcaps['manage_options'] ) ) { continue; }
+				unset( $allcaps[ $capability ] );
+			}
+		}
+		return $allcaps;
 	}
 
 	/**
@@ -120,7 +148,7 @@ final class LSCH_Capabilities {
 		if ( ! $user_id ) {
 			return false;
 		}
-		if ( self::is_founder( $user_id ) || user_can( $user_id, 'manage_options' ) ) {
+		if ( self::is_founder( $user_id ) ) {
 			return true;
 		}
 		$claims = LSCH_Dependencies::claims( $user_id );
