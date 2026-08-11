@@ -37,22 +37,6 @@ jobs:
           set -o pipefail
           python3 scripts/review80-cycle4-20260811.py 2>&1 | tee /tmp/review80-cycle4-diagnostic.txt
 
-      - name: Persist review-runner diagnostic if correction transport fails
-        if: steps.review80.outcome == 'failure'
-        shell: bash
-        run: |
-          cp /tmp/review80-cycle4-diagnostic.txt /tmp/review80-cycle4-preserved.txt 2>/dev/null || true
-          git config user.name 'majidhussainqadri1-dot'
-          git config user.email 'majidhussainqadri1@gmail.com'
-          git reset --hard HEAD
-          git clean -fd
-          printf '%s\n' 'Fourth Review-80 runner failed before corrected-source commit. This diagnostic is transport evidence, not a product completion claim.' > REVIEW80-CYCLE4-FAILURE-DIAGNOSTIC.txt
-          cat /tmp/review80-cycle4-preserved.txt >> REVIEW80-CYCLE4-FAILURE-DIAGNOSTIC.txt 2>/dev/null || true
-          git add REVIEW80-CYCLE4-FAILURE-DIAGNOSTIC.txt
-          git commit -m 'Record fourth Review-80 runner diagnostic' || true
-          git push origin HEAD:codex/file-05-complete-v3.0.0 || true
-          exit 1
-
       - name: Remove temporary review transport before final-tree QA
         if: steps.review80.outcome == 'success'
         run: |
@@ -60,17 +44,19 @@ jobs:
           rm -f scripts/review80-cycle4-20260811.py
           rm -f .github/workflows/review80-cycle4-20260811.yml
           rm -f REVIEW80-CYCLE4-FAILURE-DIAGNOSTIC.txt
+          rm -f REVIEW80-CYCLE4-SOURCE-QA-DIAGNOSTIC.txt
 
       - name: Full source/security/policy/Future18 regression gate
         if: steps.review80.outcome == 'success'
         id: sourceqa
+        continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
           bash tests/source-invariants.sh 2>&1 | tee /tmp/review80-cycle4-sourceqa.txt
 
       - name: Persist source-QA diagnostic if final-tree gate fails
-        if: steps.sourceqa.outcome == 'failure'
+        if: always() && steps.review80.outcome == 'success' && steps.sourceqa.outcome == 'failure'
         shell: bash
         run: |
           cp /tmp/review80-cycle4-sourceqa.txt /tmp/review80-cycle4-sourceqa-preserved.txt 2>/dev/null || true
