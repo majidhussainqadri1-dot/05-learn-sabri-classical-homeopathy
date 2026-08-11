@@ -35,6 +35,11 @@ new = "caps = caps.replace(insert_anchor, helpers.replace('\\\\t', '\\t') + inse
 if s.count(old) != 1:
     raise SystemExit('cycle4 capability-helper template anchor mismatch')
 s = s.replace(old, new, 1)
+old = "events = events.replace(class_anchor, insert, 1)"
+new = "events = events.replace(class_anchor, insert.replace('\\\\t', '\\t'), 1)"
+if s.count(old) != 1:
+    raise SystemExit('cycle4 events template anchor mismatch')
+s = s.replace(old, new, 1)
 old = "privacy = privacy[:start] + new_export + privacy[end:]"
 new = "privacy = privacy[:start] + new_export.replace('\\\\t', '\\t') + privacy[end:]"
 if s.count(old) != 1:
@@ -52,4 +57,4 @@ new = '"array( $t[\'request_keys\'], \'user_id=%d\'"'
 if t.count(old) != 1:
     raise SystemExit('cycle4 prior privacy invariant token mismatch')
 static.write_text(t.replace(old, new, 1), encoding='utf-8', newline='\n')
-print('Cycle4 private-method, 68-lens, privacy-invariant, and PHP template indentation transport corrected.')
+print('Cycle4 private-method, 68-lens, privacy-invariant, and PHP raw-template indentation transport corrected.')
