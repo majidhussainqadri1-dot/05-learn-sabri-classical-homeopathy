@@ -27,6 +27,9 @@ jobs:
           php-version: '8.3'
           coverage: none
 
+      - name: Repair Review-80 closure-lens transport
+        run: python3 scripts/review80-cycle3-hotfix.py
+
       - name: Execute 80 sequential review/fix rounds
         shell: bash
         run: |
@@ -51,6 +54,7 @@ jobs:
       - name: Remove temporary review transport before final-tree QA
         run: |
           rm -f REVIEW80-CYCLE3-DIAGNOSTIC.txt
+          rm -f scripts/review80-cycle3-hotfix.py
           rm -f scripts/review80-cycle3-20260811.py
           rm -f .github/workflows/review80-cycle3-20260811.yml
           rm -f REVIEW80-CYCLE3-FAILURE-DIAGNOSTIC.txt
