@@ -37,12 +37,13 @@ jobs:
         if: failure()
         shell: bash
         run: |
+          cp REVIEW80-CYCLE3-DIAGNOSTIC.txt /tmp/review80-cycle3-diagnostic.txt 2>/dev/null || true
           git config user.name 'majidhussainqadri1-dot'
           git config user.email 'majidhussainqadri1@gmail.com'
           git reset --hard HEAD
           git clean -fd
           printf '%s\n' 'Third Review-80 runner failed before corrected-source commit. This diagnostic is transport evidence, not a product completion claim.' > REVIEW80-CYCLE3-FAILURE-DIAGNOSTIC.txt
-          cat REVIEW80-CYCLE3-DIAGNOSTIC.txt >> REVIEW80-CYCLE3-FAILURE-DIAGNOSTIC.txt 2>/dev/null || true
+          cat /tmp/review80-cycle3-diagnostic.txt >> REVIEW80-CYCLE3-FAILURE-DIAGNOSTIC.txt 2>/dev/null || true
           git add REVIEW80-CYCLE3-FAILURE-DIAGNOSTIC.txt
           git commit -m 'Record third Review-80 runner diagnostic' || true
           git push origin HEAD:codex/file-05-complete-v3.0.0 || true
