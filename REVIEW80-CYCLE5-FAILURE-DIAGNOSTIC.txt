@@ -1,2 +1,2 @@
 Fifth Review-80 runner failed before corrected-source commit. Diagnostic only; not product completion evidence.
-Expected 72 clean lenses for rounds 9-80, got 76
+Missing expected invariant in class-lsch-services.php: 'minimum_cell' => 5
