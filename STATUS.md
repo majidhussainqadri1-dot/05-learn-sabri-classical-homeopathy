@@ -6,9 +6,9 @@ This status distinguishes repository truth from staging/live truth.
 |---|---|
 | Specified | Current consolidated central plan + current File 05 plan + Founder-approved Future Superset 18 mapped |
 | Coded | Existing 18 FR + 10 NFR + central amendments + F05-FUT-01..18 materialized in the actual 4.0.0 source tree |
-| Reviewed | Existing corrective rounds retained; fourth independent 80-round sequential cycle completed on the current 4.0.0 candidate. Rounds 1–12 found repository product/source defects and each was corrected before advancing; rounds 13–80 were clean after sequential correction. See `REVIEW-80-CYCLE-4-2026-08-11.md`. |
-| Packaged | Cycle-4 corrected product tree commit `2469872a535c83688e46664ff5a9c3c74561fade` passed deterministic package A/B verification in Review-80 runner Run `31452751576`; embedded `MANIFEST.sha256`, SPDX SBOM and external ZIP checksum remain configured for 4.0.0. |
-| Automated QA | Cycle-4 runner Run `31452751576` passed the full source/security/policy/Future18 regression gate, PHP 8.3 syntax, PHP 7.4 syntax and deterministic package A/B verification before committing the corrected tree. A normal workflow on the final user-authored exact HEAD is the final immutable Automated-QA evidence gate. |
+| Reviewed | Existing corrective evidence retained; **fifth independent 80-round sequential review/fix cycle completed** on the current 4.0.0 candidate. Every Cycle-5 defect was fixed and asserted before advancing; see `REVIEW-80-CYCLE-5-2026-08-11.md`. |
+| Packaged | Deterministic release builder, embedded `MANIFEST.sha256`, SPDX SBOM and external ZIP checksum configured for 4.0.0; the Cycle-5 runner must pass deterministic A/B package verification before committing this corrected tree. |
+| Automated QA | Cycle-5 source corrections are complete; full source/security/policy/Future18 regression, PHP 8.3, PHP 7.4 and deterministic package A/B are executed by the corrective runner before commit. A normal workflow on the resulting exact HEAD remains the immutable final Automated-QA evidence gate. |
 | Staging accepted | **No** — real WordPress/Hostinger and companion-runtime evidence pending |
 | Live deployed | **No claim / not changed by this source work** |
 | Operationally accepted | **No** |

@@ -28,6 +28,7 @@ final class LSCH_REST {
 		register_rest_route( self::NS, '/course/(?P<id>\d+)/state', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'enrollment_state' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( self::NS, '/course/(?P<id>\d+)/reminder', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'reminder' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( self::NS, '/course/(?P<id>\d+)/analytics', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'analytics' ), 'permission_callback' => array( $this, 'teacher' ) ) );
+		register_rest_route( self::NS, '/course/(?P<id>\d+)/certificate-readiness', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'certificate_readiness' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( self::NS, '/lesson/(?P<id>\d+)/progress', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'progress' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( self::NS, '/lesson/(?P<id>\d+)/progress/reset', array( 'methods' => WP_REST_Server::DELETABLE, 'callback' => array( $this, 'progress_reset' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( self::NS, '/object/(?P<type>[a-z_]+)/(?P<id>\d+)/bookmark', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'bookmark' ), 'permission_callback' => array( $this, 'approved' ) ) );
@@ -109,6 +110,7 @@ final class LSCH_REST {
 	public function enrollment_state( WP_REST_Request $r ) { return LSCH_Services::change_enrollment_state( absint( $r['id'] ), get_current_user_id(), $r->get_param( 'state' ), absint( $r->get_param( 'version' ) ) ); }
 	public function reminder( WP_REST_Request $r ) { return LSCH_Services::set_reminder( absint( $r['id'] ), get_current_user_id(), (bool) $r->get_param( 'enabled' ), $r->get_param( 'cadence' ), (array) $r->get_param( 'quiet_hours' ) ); }
 	public function analytics( WP_REST_Request $r ) { return LSCH_Services::course_analytics( absint( $r['id'] ) ); }
+	public function certificate_readiness( WP_REST_Request $r ) { $result = LSCH_Services::certificate_readiness( absint( $r['id'] ), get_current_user_id() ); if ( is_wp_error( $result ) ) { return $result; } $response = rest_ensure_response( $result ); $response->header( 'Cache-Control', 'private, no-store' ); return $response; }
 	public function progress( WP_REST_Request $r ) { return LSCH_Services::progress( absint( $r['id'] ), get_current_user_id(), (array) $r->get_json_params() ); }
 	public function progress_reset( WP_REST_Request $r ) { return LSCH_Services::reset_progress( absint( $r['id'] ), get_current_user_id() ); }
 	public function bookmark( WP_REST_Request $r ) { return LSCH_Services::toggle_bookmark( sanitize_key( $r['type'] ), absint( $r['id'] ), get_current_user_id() ); }

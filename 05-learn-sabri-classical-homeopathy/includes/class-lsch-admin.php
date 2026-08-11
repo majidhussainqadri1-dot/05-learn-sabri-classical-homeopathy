@@ -5,7 +5,6 @@ defined( 'ABSPATH' ) || exit;
 final class LSCH_Admin {
 	public function hooks() {
 		add_action( 'admin_menu', array( $this, 'menu' ) );
-		add_action( 'admin_post_lsch_correct_lesson', array( $this, 'correct_lesson' ) );
 		add_action( 'admin_post_lsch_run_repair', array( $this, 'run_repair' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'assets' ) );
 		add_action( 'add_meta_boxes', array( $this, 'meta_boxes' ) );
@@ -62,6 +61,9 @@ final class LSCH_Admin {
 			'_lsch_max_attempts' => array( 'label' => __( 'Maximum attempts', 'learn-sabri-classical-homeopathy' ), 'type' => 'number' ),
 			'_lsch_time_limit' => array( 'label' => __( 'Time limit (minutes)', 'learn-sabri-classical-homeopathy' ), 'type' => 'number' ),
 			'_lsch_required' => array( 'label' => __( 'Required record (1/0)', 'learn-sabri-classical-homeopathy' ), 'type' => 'number' ),
+			'_lsch_certificate_jurisdiction' => array( 'label' => __( 'Certificate jurisdiction', 'learn-sabri-classical-homeopathy' ), 'type' => 'text' ),
+			'_lsch_certificate_wording' => array( 'label' => __( 'Certificate jurisdiction wording', 'learn-sabri-classical-homeopathy' ), 'type' => 'textarea' ),
+			'_lsch_certificate_wording_approved' => array( 'label' => __( 'Certificate wording approved (1/0)', 'learn-sabri-classical-homeopathy' ), 'type' => 'number' ),
 		);
 		echo '<div class="lsch-governance-fields">';
 		foreach ( $fields as $key => $field ) {
@@ -77,7 +79,7 @@ final class LSCH_Admin {
 	public function save_governance_meta( $post_id, $post ) {
 		if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) || ! LSCH_Content::object_type( $post_id ) || empty( $_POST['lsch_governance_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['lsch_governance_nonce'] ) ), 'lsch_save_governance_' . $post_id ) || ! LSCH_Policy::can_use_learning_actions() || ! current_user_can( 'edit_post', $post_id ) ) { return; }
 		$input = isset( $_POST['lsch_meta'] ) && is_array( $_POST['lsch_meta'] ) ? wp_unslash( $_POST['lsch_meta'] ) : array();
-		$integer_keys = array( '_lsch_program_id', '_lsch_course_id', '_lsch_book_id', '_lsch_lesson_id', '_lsch_teacher_id', '_lsch_reviewer_id', '_lsch_pass_mark', '_lsch_max_attempts', '_lsch_time_limit', '_lsch_required' );
+		$integer_keys = array( '_lsch_program_id', '_lsch_course_id', '_lsch_book_id', '_lsch_lesson_id', '_lsch_teacher_id', '_lsch_reviewer_id', '_lsch_pass_mark', '_lsch_max_attempts', '_lsch_time_limit', '_lsch_required', '_lsch_certificate_wording_approved' );
 		$json_keys = array( '_lsch_required_components', '_lsch_questions', '_lsch_blueprint' );
 		foreach ( $input as $key => $value ) {
 			$key = sanitize_key( $key ); if ( 0 !== strpos( $key, '_lsch_' ) ) { continue; }
@@ -107,32 +109,36 @@ final class LSCH_Admin {
 		<div class="wrap lsch-admin"><h1><?php esc_html_e( 'Learn Sabri Classical Homeopathy', 'learn-sabri-classical-homeopathy' ); ?></h1><p><?php esc_html_e( 'Canonical learning governance for curriculum, courses, lessons, assessments, assignments, progress, and completion records.', 'learn-sabri-classical-homeopathy' ); ?></p><div class="lsch-admin-grid"><?php foreach ( $counts as $type => $count ) : ?><section><h2><?php echo esc_html( get_post_type_object( $type )->labels->name ); ?></h2><p><strong><?php echo absint( $count['publish'] ); ?></strong> <?php esc_html_e( 'published', 'learn-sabri-classical-homeopathy' ); ?> · <strong><?php echo absint( $count['draft'] ); ?></strong> <?php esc_html_e( 'draft', 'learn-sabri-classical-homeopathy' ); ?> · <strong><?php echo absint( $count['pending'] ); ?></strong> <?php esc_html_e( 'pending', 'learn-sabri-classical-homeopathy' ); ?></p></section><?php endforeach; ?></div><section class="lsch-admin-panel"><h2><?php esc_html_e( 'Current release truth', 'learn-sabri-classical-homeopathy' ); ?></h2><ul><li><?php printf( esc_html__( 'Runtime version: %s', 'learn-sabri-classical-homeopathy' ), esc_html( LSCH_VERSION ) ); ?></li><li><?php printf( esc_html__( 'Schema version: %s', 'learn-sabri-classical-homeopathy' ), absint( LSCH_SCHEMA_VERSION ) ); ?></li><li><?php printf( esc_html__( 'Access model: %s', 'learn-sabri-classical-homeopathy' ), esc_html( LSCH_Policy::access_model() ) ); ?></li><li><?php printf( esc_html__( 'System health: %s', 'learn-sabri-classical-homeopathy' ), esc_html( $health['status'] ) ); ?></li></ul><p><a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=lsch-system-check' ) ); ?>"><?php esc_html_e( 'Open System Check', 'learn-sabri-classical-homeopathy' ); ?></a></p></section></div>
 		<?php
 	}
-
 	public function system_check() {
-		if ( ! current_user_can( LSCH_Capabilities::OPERATE ) ) { wp_die( esc_html__( 'Access denied.', 'learn-sabri-classical-homeopathy' ) ); }
+		$can_repair = LSCH_Policy::can_use_learning_actions() && current_user_can( LSCH_Capabilities::OPERATE );
+		$read_only_break_glass = current_user_can( 'manage_options' );
+		if ( ! $can_repair && ! $read_only_break_glass ) { wp_die( esc_html__( 'Access denied.', 'learn-sabri-classical-homeopathy' ) ); }
 		$report = LSCH_Operations::system_check();
 		?>
-		<div class="wrap lsch-admin"><h1><?php esc_html_e( 'File 05 System Check', 'learn-sabri-classical-homeopathy' ); ?></h1><p><?php esc_html_e( 'Read-first diagnostics. No companion module is modified.', 'learn-sabri-classical-homeopathy' ); ?></p><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Check', 'learn-sabri-classical-homeopathy' ); ?></th><th><?php esc_html_e( 'Status', 'learn-sabri-classical-homeopathy' ); ?></th><th><?php esc_html_e( 'Detail', 'learn-sabri-classical-homeopathy' ); ?></th></tr></thead><tbody><?php foreach ( $report['checks'] as $name => $check ) : ?><tr><td><?php echo esc_html( $name ); ?></td><td><strong><?php echo esc_html( $check['status'] ); ?></strong></td><td><?php echo esc_html( $check['detail'] ); ?></td></tr><?php endforeach; ?></tbody></table><h2><?php esc_html_e( 'Safe repair', 'learn-sabri-classical-homeopathy' ); ?></h2><form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post"><?php wp_nonce_field( 'lsch_run_repair' ); ?><input type="hidden" name="action" value="lsch_run_repair"><label><input type="checkbox" name="dry_run" value="1" checked> <?php esc_html_e( 'Dry run only', 'learn-sabri-classical-homeopathy' ); ?></label> <button class="button"><?php esc_html_e( 'Run owner-scoped reconciliation', 'learn-sabri-classical-homeopathy' ); ?></button></form></div>
+		<div class="wrap lsch-admin"><h1><?php esc_html_e( 'File 05 System Check', 'learn-sabri-classical-homeopathy' ); ?></h1><p><?php esc_html_e( 'Read-first diagnostics. No companion module is modified.', 'learn-sabri-classical-homeopathy' ); ?></p><table class="widefat striped"><thead><tr><th><?php esc_html_e( 'Check', 'learn-sabri-classical-homeopathy' ); ?></th><th><?php esc_html_e( 'Status', 'learn-sabri-classical-homeopathy' ); ?></th><th><?php esc_html_e( 'Detail', 'learn-sabri-classical-homeopathy' ); ?></th></tr></thead><tbody><?php foreach ( $report['checks'] as $name => $check ) : ?><tr><td><?php echo esc_html( $name ); ?></td><td><strong><?php echo esc_html( $check['status'] ); ?></strong></td><td><?php echo esc_html( $check['detail'] ); ?></td></tr><?php endforeach; ?></tbody></table>
+		<?php if ( $can_repair ) : ?>
+		<h2><?php esc_html_e( 'Safe repair', 'learn-sabri-classical-homeopathy' ); ?></h2><form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post"><?php wp_nonce_field( 'lsch_run_repair' ); ?><input type="hidden" name="action" value="lsch_run_repair"><p><label><?php esc_html_e( 'Reason / incident reference', 'learn-sabri-classical-homeopathy' ); ?><br><textarea name="reason" rows="3" class="large-text" required></textarea></label></p><p><label><input type="checkbox" name="dry_run" value="1" checked> <?php esc_html_e( 'Dry run only', 'learn-sabri-classical-homeopathy' ); ?></label></p><p><label><input type="checkbox" name="confirm" value="1"> <?php esc_html_e( 'I explicitly confirm a non-dry owner-scoped repair after verified step-up and reversible backup.', 'learn-sabri-classical-homeopathy' ); ?></label></p><button class="button"><?php esc_html_e( 'Run owner-scoped reconciliation', 'learn-sabri-classical-homeopathy' ); ?></button></form>
+		<?php else : ?><p><strong><?php esc_html_e( 'Read-only break-glass view: repair actions are unavailable until current File 00 eligibility and a named File 05 operator grant are both valid.', 'learn-sabri-classical-homeopathy' ); ?></strong></p><?php endif; ?></div>
 		<?php
 	}
-
 	public function run_repair() {
-		if ( ! current_user_can( LSCH_Capabilities::OPERATE ) ) { wp_die( esc_html__( 'Access denied.', 'learn-sabri-classical-homeopathy' ) ); }
+		if ( ! LSCH_Policy::can_use_learning_actions() || ! current_user_can( LSCH_Capabilities::OPERATE ) ) { wp_die( esc_html__( 'Access denied.', 'learn-sabri-classical-homeopathy' ) ); }
 		check_admin_referer( 'lsch_run_repair' );
+		$reason = isset( $_POST['reason'] ) ? sanitize_textarea_field( wp_unslash( $_POST['reason'] ) ) : '';
+		if ( strlen( trim( $reason ) ) < 12 ) { wp_die( esc_html__( 'A substantive repair reason or incident reference is required.', 'learn-sabri-classical-homeopathy' ), '', array( 'response' => 400 ) ); }
 		$dry = ! empty( $_POST['dry_run'] );
+		$confirmed = ! empty( $_POST['confirm'] );
+		$actor_id = get_current_user_id();
+		$step_up = $dry ? true : ( true === apply_filters( 'lsch_repair_step_up_verified', false, $actor_id, $reason ) );
+		$backup = $dry ? true : ( true === apply_filters( 'lsch_repair_backup_verified', false, $actor_id, $reason ) );
+		if ( ! $dry && ( ! $confirmed || ! $step_up || ! $backup ) ) { wp_die( esc_html__( 'Non-dry repair requires explicit confirmation, verified step-up authorization and a verified reversible backup.', 'learn-sabri-classical-homeopathy' ), '', array( 'response' => 403 ) ); }
 		$result = LSCH_Operations::repair( $dry );
-		LSCH_Events::audit( 'system_repair', 'system', 'file05', array( 'dry_run' => $dry, 'result' => $result ), 'operations' );
+		LSCH_Events::audit( 'system_repair', 'system', 'file05', array( 'dry_run' => $dry, 'confirmed' => $confirmed, 'step_up_verified' => $step_up, 'backup_verified' => $backup, 'reason' => $reason, 'result' => $result ), 'operations' );
 		wp_safe_redirect( add_query_arg( 'repair', $dry ? 'dry-run-complete' : 'complete', admin_url( 'admin.php?page=lsch-system-check' ) ) ); exit;
 	}
 
-	public function correct_lesson() {
-		if ( ! current_user_can( LSCH_Capabilities::REVIEW_LESSONS ) ) { wp_die( esc_html__( 'Access denied.', 'learn-sabri-classical-homeopathy' ) ); }
-		$id = isset( $_POST['lesson_id'] ) ? absint( $_POST['lesson_id'] ) : 0;
-		check_admin_referer( 'lsch_correct_' . $id );
-		$result = LSCH_Services::mark_content_corrected( $id, isset( $_POST['reason'] ) ? wp_unslash( $_POST['reason'] ) : '' );
-		if ( is_wp_error( $result ) ) { wp_die( esc_html( $result->get_error_message() ), '', array( 'response' => 400 ) ); }
-		wp_safe_redirect( get_edit_post_link( $id, 'url' ) ); exit;
-	}
+
+
 
 	public function lesson_columns( $columns ) { $columns['lsch_version'] = __( 'Learning version', 'learn-sabri-classical-homeopathy' ); $columns['lsch_access'] = __( 'Access', 'learn-sabri-classical-homeopathy' ); $columns['lsch_governance'] = __( 'Governance', 'learn-sabri-classical-homeopathy' ); return $columns; }
 	public function lesson_column( $column, $post_id ) { if ( 'lsch_version' === $column ) { echo absint( LSCH_Content::version( $post_id ) ); } elseif ( 'lsch_access' === $column ) { echo esc_html( LSCH_Content::access( $post_id ) ); } elseif ( 'lsch_governance' === $column ) { echo esc_html( get_post_meta( $post_id, '_lsch_reviewer', true ) ? __( 'Reviewer recorded', 'learn-sabri-classical-homeopathy' ) : __( 'Reviewer missing', 'learn-sabri-classical-homeopathy' ) ); } }

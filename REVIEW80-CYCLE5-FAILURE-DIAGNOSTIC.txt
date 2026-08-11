@@ -1,2 +1,0 @@
-Fifth Review-80 runner failed before corrected-source commit. Diagnostic only; not product completion evidence.
-Missing expected invariant in class-lsch-services.php: 'minimum_cell' => 5

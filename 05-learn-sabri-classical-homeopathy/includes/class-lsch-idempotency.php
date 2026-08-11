@@ -183,6 +183,7 @@ final class LSCH_Idempotency {
 			return new WP_Error( 'lsch_transaction_unavailable', __( 'The protected learning transaction could not start safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503, 'trace_id' => LSCH_Policy::request_id() ) );
 		}
 		self::$transaction_open = true;
+		LSCH_Events::begin_transaction_buffer();
 		self::$active = true;
 		self::$key_hash = $key_hash;
 		self::$request_hash = $request_hash;
@@ -216,12 +217,14 @@ final class LSCH_Idempotency {
 			return $response;
 		}
 		self::$transaction_open = false;
+		LSCH_Events::flush_transaction_buffer();
 		self::release();
 		return $response;
 	}
 
 	public static function release() {
 		if ( self::$transaction_open ) { global $wpdb; $wpdb->query( 'ROLLBACK' ); self::$transaction_open = false; }
+		LSCH_Events::discard_transaction_buffer();
 		if ( self::$lock_name ) {
 			global $wpdb;
 			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', self::$lock_name ) );

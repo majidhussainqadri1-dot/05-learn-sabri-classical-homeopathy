@@ -284,3 +284,40 @@ if errors:
     sys.exit(1)
 
 print(f'PASS: {len(files)} plugin files; current-plan ownership/security/value invariants and 48 requirement traces present.')
+
+# Fifth independent Review-80 regression invariants (2026-08-11).
+admin_cycle5 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-admin.php', '')
+if 'admin_post_lsch_correct_lesson' in joined or 'mark_content_corrected' in joined:
+    errors.append('A stale direct correction bypass remains outside the canonical correction state machine.')
+for token in ['lsch_repair_step_up_verified', 'lsch_repair_backup_verified', "LSCH_Policy::can_use_learning_actions() || ! current_user_can( LSCH_Capabilities::OPERATE )", "strlen( trim( $reason ) ) < 12"]:
+    if token not in admin_cycle5:
+        errors.append(f'Missing governed repair control: {token}')
+
+caps_cycle5 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-capabilities.php', '')
+if "if ( self::OPERATE === $capability && ! empty( $allcaps['manage_options'] ) )" in caps_cycle5:
+    errors.append('Raw WordPress admin status still preserves File05 OPERATE across a failed File00 current-state gate.')
+if "array_diff( $domain, array( self::OPERATE, self::ASSESS ) )" not in caps_cycle5:
+    errors.append('Curriculum Lead is not explicitly separated from operations and assessor authority.')
+
+services_cycle5 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-services.php', '')
+for token in ["if ( 'active' !== $enrollment['status'] )", 'public static function certificate_readiness', 'lsch_completion_revoked', "'certificate_status' => 'pending_readiness'", "'credential_claim' => false", 'COUNT(DISTINCT user_id)', "'minimum_cell' => $minimum_cell"]:
+    if token not in services_cycle5:
+        errors.append(f'Missing cycle5 completion/certificate/privacy invariant: {token}')
+for bad in ["'certificate_status' => 'eligible'", "revoked_at=NULL,revoked_reason=''", "array( 'enrolled', 'active', 'paused', 'withdrawn' )"]:
+    if bad in services_cycle5:
+        errors.append(f'Unsafe cycle5 completion/certificate pattern remains: {bad}')
+
+rest_cycle5 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-rest.php', '')
+for token in ['/certificate-readiness', 'certificate_readiness']:
+    if token not in rest_cycle5:
+        errors.append(f'Missing certificate-readiness REST invariant: {token}')
+
+events_cycle5 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-events.php', '')
+idem_cycle5 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-idempotency.php', '')
+for token in ['begin_transaction_buffer', 'flush_transaction_buffer', 'discard_transaction_buffer', '$transaction_buffering', '$deferred_events', '$deferred_audits']:
+    if token not in events_cycle5:
+        errors.append(f'Missing post-commit side-effect buffer invariant: {token}')
+for token in ['LSCH_Events::begin_transaction_buffer()', 'LSCH_Events::flush_transaction_buffer()', 'LSCH_Events::discard_transaction_buffer()']:
+    if token not in idem_cycle5:
+        errors.append(f'Idempotency transaction is not coupled to the post-commit side-effect buffer: {token}')
+

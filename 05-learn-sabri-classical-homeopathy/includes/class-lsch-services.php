@@ -421,14 +421,21 @@ final class LSCH_Services {
 		LSCH_Events::audit( 'related_knowledge_updated', $source_type, $source_id, array( 'target_file' => $target_file ), 'knowledge_integration' );
 		return LSCH_Operations::related_links( $source_type, $source_id );
 	}
-
 	public static function course_analytics( $course_id ) {
 		if ( ! LSCH_Policy::can_use_learning_actions() || ( ! current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) && ! self::staff_scope_allows( get_current_user_id(), 'course', $course_id, 'teacher' ) ) ) { return new WP_Error( 'lsch_analytics_forbidden', __( 'Course analytics are unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) ); }
 		global $wpdb; $t = LSCH_Database::tables();
+		$minimum_cell = 5;
 		$learners = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['enrollments']} WHERE course_id=%d", absint( $course_id ) ) );
-		if ( $learners < 5 ) { return array( 'suppressed' => true, 'threshold' => 5 ); }
-		return array( 'suppressed' => false, 'enrollments' => $learners, 'completed' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['enrollments']} WHERE course_id=%d AND status='completed'", absint( $course_id ) ) ), 'active' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['enrollments']} WHERE course_id=%d AND status='active'", absint( $course_id ) ) ), 'average_progress' => round( (float) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(AVG(percent),0) FROM {$t['progress']} WHERE course_id=%d", absint( $course_id ) ) ), 2 ) );
+		if ( $learners < $minimum_cell ) { return array( 'suppressed' => true, 'threshold' => $minimum_cell ); }
+		$completed = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['enrollments']} WHERE course_id=%d AND status='completed'", absint( $course_id ) ) );
+		$active = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['enrollments']} WHERE course_id=%d AND status='active'", absint( $course_id ) ) );
+		$contributors = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(DISTINCT user_id) FROM {$t['progress']} WHERE course_id=%d", absint( $course_id ) ) );
+		$average = null;
+		if ( $contributors >= $minimum_cell ) { $average = round( (float) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(AVG(percent),0) FROM {$t['progress']} WHERE course_id=%d", absint( $course_id ) ) ), 2 ); }
+		$small_cell = static function( $value ) use ( $minimum_cell ) { return $value > 0 && $value < $minimum_cell ? null : $value; };
+		return array( 'suppressed' => false, 'enrollments' => $learners, 'completed' => $small_cell( $completed ), 'active' => $small_cell( $active ), 'average_progress' => $average, 'privacy' => array( 'minimum_cell' => $minimum_cell, 'progress_contributors' => $contributors >= $minimum_cell ? $contributors : null ) );
 	}
+
 
 	public static function staff_scope_allows( $user_id, $object_type, $object_id, $role ) {
 		global $wpdb; $t = LSCH_Database::tables();
@@ -462,18 +469,72 @@ final class LSCH_Services {
 		$enrollment = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $course_id ), ARRAY_A );
 		if ( ! $enrollment ) { return true; }
 		if ( 'completed' === $enrollment['status'] ) { return true; }
-		if ( ! in_array( $enrollment['status'], array( 'enrolled', 'active', 'paused', 'withdrawn' ), true ) ) { return new WP_Error( 'lsch_completion_enrollment_state', __( 'Enrollment state cannot be completed safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
+		if ( 'active' !== $enrollment['status'] ) { return new WP_Error( 'lsch_completion_enrollment_state', __( 'Only an active enrollment may transition to course completion.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
 		$competencies = wp_get_object_terms( $course_id, LSCH_Content::COMPETENCY, array( 'fields' => 'slugs' ) );
 		$snapshot = wp_json_encode( array( 'competencies' => is_wp_error( $competencies ) ? array() : $competencies, 'course_version' => LSCH_Content::version( $course_id ), 'required_lessons' => array_map( 'absint', $required ), 'completed_at' => gmdate( 'c' ) ) );
 		$now = LSCH_Database::now();
-		$sql = $wpdb->prepare( "INSERT INTO {$t['completions']} (public_id,user_id,course_id,course_version,competency_snapshot_json,status,identity_assurance,integrity_status,version,earned_at,revoked_reason) VALUES (%s,%d,%d,%d,%s,'earned','verified','clear',1,%s,'') ON DUPLICATE KEY UPDATE competency_snapshot_json=VALUES(competency_snapshot_json),status='earned',version=version+1,revoked_at=NULL,revoked_reason='',earned_at=VALUES(earned_at)", LSCH_Database::uuid(), $user_id, $course_id, LSCH_Content::version( $course_id ), $snapshot, $now );
+		$existing_completion = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['completions']} WHERE user_id=%d AND course_id=%d AND course_version=%d LIMIT 1", $user_id, $course_id, LSCH_Content::version( $course_id ) ), ARRAY_A );
+		if ( $existing_completion && 'revoked' === $existing_completion['status'] ) { return new WP_Error( 'lsch_completion_revoked', __( 'A revoked completion record cannot be silently re-earned for the same course version.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
+		$sql = $wpdb->prepare( "INSERT INTO {$t['completions']} (public_id,user_id,course_id,course_version,competency_snapshot_json,status,identity_assurance,integrity_status,version,earned_at,revoked_reason) VALUES (%s,%d,%d,%d,%s,'earned','verified','clear',1,%s,'') ON DUPLICATE KEY UPDATE competency_snapshot_json=VALUES(competency_snapshot_json),version=version+1", LSCH_Database::uuid(), $user_id, $course_id, LSCH_Content::version( $course_id ), $snapshot, $now );
 		if ( false === $wpdb->query( $sql ) ) { return new WP_Error( 'lsch_completion_write_failed', __( 'Completion evidence could not be persisted.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) ); }
 		$updated = $wpdb->update( $t['enrollments'], array( 'status' => 'completed', 'completed_at' => $now, 'version' => absint( $enrollment['version'] ) + 1, 'updated_at' => $now ), array( 'id' => absint( $enrollment['id'] ), 'version' => absint( $enrollment['version'] ), 'status' => $enrollment['status'] ), array( '%s', '%s', '%d', '%s' ), array( '%d', '%d', '%s' ) );
 		if ( 1 !== $updated ) { return new WP_Error( 'lsch_completion_conflict', __( 'Enrollment changed while completion was being recorded.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
-		LSCH_Events::publish( 'CourseCompleted.v1', 'course', $course_id, array( 'user_id' => $user_id, 'course_version' => LSCH_Content::version( $course_id ), 'certificate_status' => 'eligible' ) );
+		LSCH_Events::publish( 'CourseCompleted.v1', 'course', $course_id, array( 'user_id' => $user_id, 'course_version' => LSCH_Content::version( $course_id ), 'certificate_status' => 'pending_readiness' ) );
 		return true;
 	}
 
+
+	public static function certificate_readiness( $course_id, $user_id ) {
+		$course_id = absint( $course_id );
+		$user_id = absint( $user_id );
+		$blockers = array();
+		if ( ! LSCH_Policy::can_use_learning_actions( $user_id ) || LSCH_Content::COURSE !== get_post_type( $course_id ) || ! LSCH_Policy::can_read_post( $course_id, $user_id ) ) {
+			return new WP_Error( 'lsch_certificate_forbidden', __( 'Certificate readiness is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
+		}
+		$claims = LSCH_Dependencies::claims( $user_id );
+		if ( empty( $claims['identity_verified'] ) ) { $blockers[] = 'identity_assurance'; }
+		global $wpdb;
+		$t = LSCH_Database::tables();
+		$course_version = LSCH_Content::version( $course_id );
+		$completion = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['completions']} WHERE user_id=%d AND course_id=%d AND course_version=%d LIMIT 1", $user_id, $course_id, $course_version ), ARRAY_A );
+		if ( ! $completion || 'earned' !== $completion['status'] ) { $blockers[] = $completion && 'revoked' === $completion['status'] ? 'completion_revoked' : 'completion_not_earned'; }
+		if ( $completion && ( 'verified' !== $completion['identity_assurance'] || 'clear' !== $completion['integrity_status'] ) ) { $blockers[] = 'completion_integrity'; }
+		$enrollment = $wpdb->get_row( $wpdb->prepare( "SELECT status FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $course_id ), ARRAY_A );
+		if ( ! $enrollment || 'completed' !== $enrollment['status'] ) { $blockers[] = 'enrollment_not_completed'; }
+
+		$lesson_ids = get_posts( array( 'post_type' => LSCH_Content::LESSON, 'post_status' => 'publish', 'posts_per_page' => 501, 'fields' => 'ids', 'meta_key' => '_lsch_course_id', 'meta_value' => $course_id, 'no_found_rows' => true ) );
+		if ( count( $lesson_ids ) > 500 ) { $blockers[] = 'lesson_scope_exceeded'; $lesson_ids = array_slice( $lesson_ids, 0, 500 ); }
+		$assessment_ids = array();
+		if ( $lesson_ids ) {
+			$assessment_ids = get_posts( array( 'post_type' => LSCH_Content::ASSESSMENT, 'post_status' => 'publish', 'posts_per_page' => 501, 'fields' => 'ids', 'meta_query' => array( array( 'key' => '_lsch_lesson_id', 'value' => array_map( 'absint', $lesson_ids ), 'compare' => 'IN', 'type' => 'NUMERIC' ) ), 'no_found_rows' => true ) );
+		}
+		if ( count( $assessment_ids ) > 500 ) { $blockers[] = 'assessment_scope_exceeded'; $assessment_ids = array_slice( $assessment_ids, 0, 500 ); }
+		$required_assessments = array();
+		$competence_floor = null;
+		foreach ( $assessment_ids as $assessment_id ) {
+			if ( '0' === (string) get_post_meta( $assessment_id, '_lsch_required', true ) ) { continue; }
+			$required_assessments[] = absint( $assessment_id );
+			$pass = max( 1, min( 100, absint( get_post_meta( $assessment_id, '_lsch_pass_mark', true ) ?: 50 ) ) );
+			$best = (float) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(score),-1) FROM {$t['attempts']} WHERE user_id=%d AND assessment_id=%d AND status='graded' AND integrity_status='clear'", $user_id, absint( $assessment_id ) ) );
+			$competence_floor = null === $competence_floor ? $best : min( $competence_floor, $best );
+			if ( $best < $pass ) { $blockers[] = 'assessment_' . absint( $assessment_id ) . '_not_passed'; }
+		}
+		if ( ! $required_assessments ) { $blockers[] = 'minimum_competence_evidence_missing'; }
+		$jurisdiction = sanitize_text_field( (string) get_post_meta( $course_id, '_lsch_certificate_jurisdiction', true ) );
+		$wording = sanitize_textarea_field( (string) get_post_meta( $course_id, '_lsch_certificate_wording', true ) );
+		$wording_approved = 1 === absint( get_post_meta( $course_id, '_lsch_certificate_wording_approved', true ) );
+		if ( '' === $jurisdiction ) { $blockers[] = 'jurisdiction_missing'; }
+		if ( '' === trim( $wording ) || ! $wording_approved ) { $blockers[] = 'jurisdiction_wording_unapproved'; }
+		$blockers = array_values( array_unique( $blockers ) );
+		return array(
+			'ready' => empty( $blockers ),
+			'status' => empty( $blockers ) ? 'ready' : 'blocked',
+			'blockers' => $blockers,
+			'evidence' => array( 'course_version' => $course_version, 'identity_assurance' => ! empty( $claims['identity_verified'] ), 'required_assessment_count' => count( $required_assessments ), 'competence_floor' => $competence_floor, 'jurisdiction' => $jurisdiction, 'wording_approved' => $wording_approved ),
+			'credential_claim' => false,
+			'trace_id' => LSCH_Policy::request_id(),
+		);
+	}
 	public static function dashboard( $user_id ) {
 		global $wpdb; $t = LSCH_Database::tables();
 		$enrollments = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE user_id=%d ORDER BY updated_at DESC LIMIT 100", absint( $user_id ) ), ARRAY_A );

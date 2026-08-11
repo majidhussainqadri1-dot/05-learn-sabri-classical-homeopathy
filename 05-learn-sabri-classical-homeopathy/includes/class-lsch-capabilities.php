@@ -142,7 +142,6 @@ final class LSCH_Capabilities {
 		$allowed = $founder || ( ! empty( $claims['approved'] ) && ! empty( $claims['eligible'] ) && empty( $claims['suspended'] ) && ! empty( $claims['guardian_verified'] ) );
 		if ( ! $allowed ) {
 			foreach ( $domain as $capability ) {
-				if ( self::OPERATE === $capability && ! empty( $allcaps['manage_options'] ) ) { continue; }
 				unset( $allcaps[ $capability ] );
 			}
 			return $allcaps;
@@ -155,7 +154,7 @@ final class LSCH_Capabilities {
 				case 'assessor': $allcaps = self::grant( $allcaps, array( self::ASSESS ) ); break;
 				case 'reviewer': $allcaps = self::grant( $allcaps, array( self::REVIEW_LESSONS ) ); break;
 				case 'curriculum_lead':
-					if ( 'platform' === sanitize_key( $row['object_type'] ) && 0 === absint( $row['object_id'] ) ) { $allcaps = self::grant( $allcaps, $domain ); }
+					if ( 'platform' === sanitize_key( $row['object_type'] ) && 0 === absint( $row['object_id'] ) ) { $allcaps = self::grant( $allcaps, array_values( array_diff( $domain, array( self::OPERATE, self::ASSESS ) ) ) ); }
 					break;
 			}
 		}

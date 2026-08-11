@@ -4,6 +4,17 @@ defined( 'ABSPATH' ) || exit;
 
 final class LSCH_Events {
 	private static $request_failures = array();
+	private static $transaction_buffering = false;
+	private static $deferred_events = array();
+	private static $deferred_audits = array();
+
+	public static function begin_transaction_buffer() { self::$transaction_buffering = true; self::$deferred_events = array(); self::$deferred_audits = array(); }
+	public static function discard_transaction_buffer() { self::$transaction_buffering = false; self::$deferred_events = array(); self::$deferred_audits = array(); }
+	public static function flush_transaction_buffer() {
+		$events = self::$deferred_events; $audits = self::$deferred_audits; self::discard_transaction_buffer();
+		foreach ( $events as $item ) { try { do_action( 'lsch_event_published', $item['id'], $item['name'], $item['aggregate_type'], $item['aggregate_id'], $item['payload'] ); } catch ( Throwable $e ) { error_log( 'File05 post-commit event projection failed.' ); } }
+		foreach ( $audits as $item ) { try { LSCH_Dependencies::audit( $item['action'], $item['context'] ); } catch ( Throwable $e ) { error_log( 'File05 post-commit audit forwarding failed.' ); } }
+	}
 
 	public static function reset_request_integrity() { self::$request_failures = array(); }
 	public static function request_integrity_error() { return self::$request_failures ? self::$request_failures[0] : ''; }
@@ -30,11 +41,8 @@ final class LSCH_Events {
 		);
 		if ( ! $ok ) { self::mark_request_failure( 'outbox_persist_failed' ); }
 		if ( $ok ) {
-			/**
-			 * Local, post-persistence projection hook. Consumers MUST remain
-			 * idempotent and may not treat this hook as canonical event storage.
-			 */
-			do_action( 'lsch_event_published', $id, sanitize_text_field( $name ), sanitize_key( $aggregate_type ), sanitize_text_field( (string) $aggregate_id ), $payload );
+			$item = array( 'id' => $id, 'name' => sanitize_text_field( $name ), 'aggregate_type' => sanitize_key( $aggregate_type ), 'aggregate_id' => sanitize_text_field( (string) $aggregate_id ), 'payload' => $payload );
+			if ( self::$transaction_buffering ) { self::$deferred_events[] = $item; } else { do_action( 'lsch_event_published', $item['id'], $item['name'], $item['aggregate_type'], $item['aggregate_id'], $item['payload'] ); }
 		}
 		return $ok ? $id : false;
 	}
@@ -102,7 +110,7 @@ final class LSCH_Events {
 			array( '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s' )
 		);
 		if ( ! $audit_ok ) { self::mark_request_failure( 'audit_persist_failed' ); }
-		LSCH_Dependencies::audit( $action, array_merge( $context, array( 'object_id' => $object_id, 'trace_id' => $context['request_trace_id'], 'audit_event_id' => $trace ) ) );
+		if ( $audit_ok ) { $forward = array( 'action' => $action, 'context' => array_merge( $context, array( 'object_id' => $object_id, 'trace_id' => $context['request_trace_id'], 'audit_event_id' => $trace ) ) ); if ( self::$transaction_buffering ) { self::$deferred_audits[] = $forward; } else { LSCH_Dependencies::audit( $forward['action'], $forward['context'] ); } }
 		return $audit_ok ? $trace : false;
 	}
 }
