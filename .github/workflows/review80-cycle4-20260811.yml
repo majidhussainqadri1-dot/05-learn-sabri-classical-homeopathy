@@ -27,6 +27,9 @@ jobs:
           php-version: '8.3'
           coverage: none
 
+      - name: Repair cycle4 review transport
+        run: python3 scripts/review80-cycle4-hotfix.py
+
       - name: Execute 80 sequential review/fix rounds
         shell: bash
         run: |
@@ -50,6 +53,7 @@ jobs:
 
       - name: Remove temporary review transport before final-tree QA
         run: |
+          rm -f scripts/review80-cycle4-hotfix.py
           rm -f scripts/review80-cycle4-20260811.py
           rm -f .github/workflows/review80-cycle4-20260811.yml
           rm -f REVIEW80-CYCLE4-FAILURE-DIAGNOSTIC.txt
