@@ -34,7 +34,27 @@ final class LSCH_Policy {
 		if ( 'public' === $access ) {
 			return true;
 		}
-		return self::can_use_protected_reads( $user_id );
+		if ( 'account' === $access ) {
+			return self::can_use_protected_reads( $user_id );
+		}
+		if ( 'restricted' !== $access || ! self::can_use_protected_reads( $user_id ) ) {
+			return false;
+		}
+		if ( user_can( $user_id, LSCH_Capabilities::MANAGE_CURRICULUM ) || user_can( $user_id, 'edit_post', $post_id ) ) {
+			return true;
+		}
+		if ( class_exists( 'LSCH_Services' ) ) {
+			$type = get_post_type( $post_id );
+			$scopes = array();
+			if ( LSCH_Content::COURSE === $type ) { $scopes = array( array( 'course', 'teacher' ) ); }
+			elseif ( LSCH_Content::LESSON === $type ) { $scopes = array( array( 'lesson', 'teacher' ), array( 'lesson', 'reviewer' ) ); }
+			elseif ( LSCH_Content::ASSESSMENT === $type ) { $scopes = array( array( 'assessment', 'assessor' ) ); }
+			elseif ( LSCH_Content::ASSIGNMENT === $type ) { $scopes = array( array( 'assignment', 'assessor' ) ); }
+			foreach ( $scopes as $scope ) {
+				if ( LSCH_Services::staff_scope_allows( $user_id, $scope[0], $post_id, $scope[1] ) ) { return true; }
+			}
+		}
+		return true === apply_filters( 'lsch_restricted_learning_access', false, $post_id, $user_id );
 	}
 
 	public static function valid_case_consent( $lesson_id ) {

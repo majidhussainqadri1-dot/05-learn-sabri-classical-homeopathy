@@ -3,6 +3,28 @@
 defined( 'ABSPATH' ) || exit;
 
 final class LSCH_Services {
+	private static function active_course_enrollment( $course_id, $user_id ) {
+		$course_id = absint( $course_id ); $user_id = absint( $user_id );
+		if ( ! $course_id || ! $user_id || LSCH_Content::COURSE !== get_post_type( $course_id ) ) {
+			return new WP_Error( 'lsch_active_enrollment_required', __( 'An active course enrollment is required for this learning action.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		global $wpdb; $t = LSCH_Database::tables();
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT id,status,version FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $course_id ), ARRAY_A );
+		if ( ! $row || 'active' !== $row['status'] ) {
+			return new WP_Error( 'lsch_active_enrollment_required', __( 'Activate this course enrollment before recording assessed learning activity.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		return $row;
+	}
+
+	private static function active_child_enrollment( $object_id, $user_id ) {
+		$object_id = absint( $object_id );
+		$lesson_id = LSCH_Content::LESSON === get_post_type( $object_id ) ? $object_id : absint( get_post_meta( $object_id, '_lsch_lesson_id', true ) );
+		if ( ! $lesson_id || LSCH_Content::LESSON !== get_post_type( $lesson_id ) ) {
+			return new WP_Error( 'lsch_learning_parent_invalid', __( 'This learning object is not attached to a valid lesson.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		$course_id = absint( get_post_meta( $lesson_id, '_lsch_course_id', true ) );
+		return self::active_course_enrollment( $course_id, $user_id );
+	}
 	public static function enroll( $course_id, $user_id, $idempotency ) {
 		$course_id = absint( $course_id );
 		$user_id   = absint( $user_id );
@@ -79,6 +101,8 @@ final class LSCH_Services {
 		global $wpdb;
 		$t          = LSCH_Database::tables();
 		$course_id  = absint( get_post_meta( $lesson_id, '_lsch_course_id', true ) );
+		$enrollment_gate = self::active_course_enrollment( $course_id, $user_id );
+		if ( is_wp_error( $enrollment_gate ) ) { return $enrollment_gate; }
 		$current    = self::progress_row( $lesson_id, $user_id );
 		$expected   = isset( $input['version'] ) ? absint( $input['version'] ) : 0;
 		if ( $current && $expected && absint( $current['version'] ) !== $expected ) {
@@ -205,6 +229,7 @@ final class LSCH_Services {
 		if ( ! LSCH_Policy::can_use_learning_actions( $user_id ) || LSCH_Content::ASSESSMENT !== get_post_type( $assessment_id ) || ! LSCH_Policy::can_read_post( $assessment_id, $user_id ) ) {
 			return new WP_Error( 'lsch_assessment_forbidden', __( 'Assessment is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
+		$enrollment_gate = self::active_child_enrollment( $assessment_id, $user_id ); if ( is_wp_error( $enrollment_gate ) ) { return $enrollment_gate; }
 		$key = LSCH_Policy::idempotency_key( $idempotency, $user_id, 'assessment-attempt' ); if ( is_wp_error( $key ) ) { return $key; }
 		global $wpdb; $t = LSCH_Database::tables();
 		$lock_name = 'lsch:assessment:' . substr( hash( 'sha256', $assessment_id . '|' . $user_id ), 0, 48 );
@@ -273,6 +298,7 @@ final class LSCH_Services {
 		if ( ! LSCH_Policy::can_use_learning_actions( $user_id ) || LSCH_Content::ASSIGNMENT !== get_post_type( $assignment_id ) || ! LSCH_Policy::can_read_post( $assignment_id, $user_id ) ) {
 			return new WP_Error( 'lsch_assignment_forbidden', __( 'Assignment is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
+		$enrollment_gate = self::active_child_enrollment( $assignment_id, $user_id ); if ( is_wp_error( $enrollment_gate ) ) { return $enrollment_gate; }
 		$body = wp_kses_post( $body );
 		if ( '' === trim( wp_strip_all_tags( $body ) ) || strlen( $body ) > 100000 ) {
 			return new WP_Error( 'lsch_assignment_invalid', __( 'Assignment response is required and must remain within the size limit.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
@@ -399,7 +425,9 @@ final class LSCH_Services {
 	}
 
 	public static function set_reminder( $course_id, $user_id, $enabled, $cadence, array $quiet_hours = array() ) {
-		if ( ! LSCH_Policy::can_use_learning_actions( $user_id ) || LSCH_Content::COURSE !== get_post_type( $course_id ) ) { return new WP_Error( 'lsch_reminder_forbidden', __( 'Course reminder is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) ); }
+		$course_id = absint( $course_id ); $user_id = absint( $user_id );
+		if ( ! LSCH_Policy::can_use_learning_actions( $user_id ) || LSCH_Content::COURSE !== get_post_type( $course_id ) || ! LSCH_Policy::can_read_post( $course_id, $user_id ) ) { return new WP_Error( 'lsch_reminder_forbidden', __( 'Course reminder is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) ); }
+		if ( $enabled ) { global $wpdb; $t = LSCH_Database::tables(); $status = (string) $wpdb->get_var( $wpdb->prepare( "SELECT status FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $course_id ) ); if ( ! in_array( $status, array( 'enrolled', 'active', 'paused' ), true ) ) { return new WP_Error( 'lsch_reminder_enrollment_required', __( 'Enroll in this course before enabling learning reminders.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); } }
 		$cadence = sanitize_key( $cadence ); if ( ! in_array( $cadence, array( 'daily', 'weekly', 'monthly' ), true ) ) { $cadence = 'weekly'; }
 		$quiet = LSCH_Policy::sanitize_json( $quiet_hours, 2000 ); if ( is_wp_error( $quiet ) ) { return $quiet; }
 		global $wpdb; $t = LSCH_Database::tables(); $now = LSCH_Database::now();

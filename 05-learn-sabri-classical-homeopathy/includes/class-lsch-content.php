@@ -13,6 +13,7 @@ final class LSCH_Content {
 	const TOPIC      = 'lsch_topic';
 	const LEVEL      = 'lsch_level';
 	const COMPETENCY = 'lsch_competency';
+	private static $version_bumped = array();
 
 	public static function levels() {
 		return array(
@@ -59,6 +60,7 @@ final class LSCH_Content {
 		register_taxonomy_for_object_type( 'post_tag', self::LESSON );
 
 		self::register_meta();
+		add_action( 'post_updated', array( __CLASS__, 'bump_version_on_post_update' ), 20, 3 );
 	}
 
 	private static function register_post_type( $type, $plural, $singular, $slug, array $supports, $public = true ) {
@@ -105,12 +107,12 @@ final class LSCH_Content {
 				'_lsch_blueprint', '_lsch_questions', '_lsch_correction_note', '_lsch_required_components',
 				'_lsch_accessibility', '_lsch_format', '_lsch_certificate_wording_gate', '_lsch_randomize',
 				'_lsch_consent_withdrawal_reason', '_lsch_chapter_map', '_lsch_source_edition',
-				'_lsch_citation_style', '_lsch_low_bandwidth', '_lsch_lifelong_learning',
+				'_lsch_citation_style', '_lsch_low_bandwidth', '_lsch_lifelong_learning', '_lsch_certificate_jurisdiction', '_lsch_certificate_wording',
 			) as $key
 		) {
 			register_meta( 'post', $key, $text );
 		}
-		foreach ( array( '_lsch_program_id', '_lsch_course_id', '_lsch_book_id', '_lsch_teacher_id', '_lsch_pass_mark', '_lsch_max_attempts', '_lsch_time_limit', '_lsch_required', '_lsch_lesson_id', '_lsch_reviewer_id', '_lsch_cohort_id' ) as $key ) {
+		foreach ( array( '_lsch_program_id', '_lsch_course_id', '_lsch_book_id', '_lsch_teacher_id', '_lsch_pass_mark', '_lsch_max_attempts', '_lsch_time_limit', '_lsch_required', '_lsch_lesson_id', '_lsch_reviewer_id', '_lsch_cohort_id', '_lsch_certificate_wording_approved' ) as $key ) {
 			register_meta( 'post', $key, $int );
 		}
 	}
@@ -153,6 +155,7 @@ final class LSCH_Content {
 			$used[] = absint( get_post_meta( $id, '_lsch_founder_seed_slot', true ) );
 		}
 		$founder = self::founder_id();
+		if ( ! $founder ) { return; }
 		for ( $slot = 1; $slot <= 8; $slot++ ) {
 			if ( in_array( $slot, $used, true ) ) {
 				continue;
@@ -187,6 +190,25 @@ final class LSCH_Content {
 			return $user_id;
 		}
 		return 0;
+	}
+
+	public static function bump_version( $post_id, $reason = 'content_update' ) {
+		$post_id = absint( $post_id );
+		if ( ! $post_id || ! self::object_type( $post_id ) ) { return 0; }
+		if ( isset( self::$version_bumped[ $post_id ] ) ) { return self::$version_bumped[ $post_id ]; }
+		$raw = get_post_meta( $post_id, '_lsch_version', true );
+		$next = '' === (string) $raw ? 1 : max( 1, absint( $raw ) ) + 1;
+		update_post_meta( $post_id, '_lsch_version', $next );
+		self::$version_bumped[ $post_id ] = $next;
+		do_action( 'lsch_content_version_bumped', $post_id, $next, sanitize_key( $reason ) );
+		return $next;
+	}
+
+	public static function bump_version_on_post_update( $post_id, $post_after, $post_before ) {
+		if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) || ! self::object_type( $post_id ) ) { return; }
+		foreach ( array( 'post_title', 'post_content', 'post_excerpt', 'post_status', 'post_parent', 'menu_order' ) as $field ) {
+			if ( (string) $post_after->$field !== (string) $post_before->$field ) { self::bump_version( $post_id, 'post_update' ); break; }
+		}
 	}
 
 	public static function object_type( $post_id ) {

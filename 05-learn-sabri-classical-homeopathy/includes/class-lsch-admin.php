@@ -81,15 +81,21 @@ final class LSCH_Admin {
 		$input = isset( $_POST['lsch_meta'] ) && is_array( $_POST['lsch_meta'] ) ? wp_unslash( $_POST['lsch_meta'] ) : array();
 		$integer_keys = array( '_lsch_program_id', '_lsch_course_id', '_lsch_book_id', '_lsch_lesson_id', '_lsch_teacher_id', '_lsch_reviewer_id', '_lsch_pass_mark', '_lsch_max_attempts', '_lsch_time_limit', '_lsch_required', '_lsch_certificate_wording_approved' );
 		$json_keys = array( '_lsch_required_components', '_lsch_questions', '_lsch_blueprint' );
+		$allowed_keys = array( '_lsch_access', '_lsch_language', '_lsch_format', '_lsch_duration', '_lsch_program_id', '_lsch_course_id', '_lsch_book_id', '_lsch_lesson_id', '_lsch_teacher_id', '_lsch_reviewer_id', '_lsch_objectives', '_lsch_prerequisites', '_lsch_equivalence', '_lsch_key_terms', '_lsch_examples', '_lsch_sources', '_lsch_accessibility', '_lsch_safety', '_lsch_required_components', '_lsch_questions', '_lsch_blueprint', '_lsch_rubric', '_lsch_pass_mark', '_lsch_max_attempts', '_lsch_time_limit', '_lsch_required', '_lsch_certificate_jurisdiction', '_lsch_certificate_wording', '_lsch_certificate_wording_approved' );
+		$changed = false;
 		foreach ( $input as $key => $value ) {
-			$key = sanitize_key( $key ); if ( 0 !== strpos( $key, '_lsch_' ) ) { continue; }
+			$key = sanitize_key( $key ); if ( 0 !== strpos( $key, '_lsch_' ) || ! in_array( $key, $allowed_keys, true ) ) { continue; }
 			if ( '_lsch_access' === $key ) { $value = sanitize_key( $value ); $value = in_array( $value, array( 'public', 'account', 'restricted' ), true ) ? $value : 'public'; }
 			elseif ( in_array( $key, $integer_keys, true ) ) { $value = absint( $value ); }
 			elseif ( in_array( $key, $json_keys, true ) ) { $decoded = json_decode( (string) $value, true ); if ( ! is_array( $decoded ) ) { continue; } $value = wp_json_encode( $decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ); }
 			else { $value = sanitize_textarea_field( $value ); }
+			$current_value = get_post_meta( $post_id, $key, true );
+			if ( (string) $current_value === (string) $value ) { continue; }
 			update_post_meta( $post_id, $key, $value );
+			$changed = true;
 		}
-		if ( ! get_post_meta( $post_id, '_lsch_version', true ) ) { update_post_meta( $post_id, '_lsch_version', 1 ); }
+		if ( $changed ) { LSCH_Content::bump_version( $post_id, 'governance_meta' ); }
+		elseif ( ! get_post_meta( $post_id, '_lsch_version', true ) ) { update_post_meta( $post_id, '_lsch_version', 1 ); }
 	}
 
 	public function assets( $hook ) {

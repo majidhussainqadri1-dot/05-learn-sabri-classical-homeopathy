@@ -279,6 +279,35 @@ for token in ['assessor_id=%d', 'assigned_by=%d', 'withdrawn_by=%d', 'reviewer_i
     if token not in privacy_cycle4:
         errors.append(f'Missing privacy role/failure/retention invariant: {token}')
 
+
+# Sixth independent ten-round review regression invariants (2026-08-11).
+policy_cycle6 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-policy.php', '')
+for token in ["'account' === $access", "'restricted' !== $access", 'lsch_restricted_learning_access']:
+    if token not in policy_cycle6:
+        errors.append(f'Missing Cycle6 restricted-access invariant: {token}')
+
+services_cycle6 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-services.php', '')
+for token in ['active_course_enrollment', 'active_child_enrollment', '$enrollment_gate = self::active_course_enrollment( $course_id, $user_id );', '$enrollment_gate = self::active_child_enrollment( $assessment_id, $user_id );', '$enrollment_gate = self::active_child_enrollment( $assignment_id, $user_id );', 'lsch_reminder_enrollment_required']:
+    if token not in services_cycle6:
+        errors.append(f'Missing Cycle6 enrollment-bound learning invariant: {token}')
+
+admin_cycle6 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-admin.php', '')
+for token in ['$allowed_keys = array(', '! in_array( $key, $allowed_keys, true )', "LSCH_Content::bump_version( $post_id, 'governance_meta' )"]:
+    if token not in admin_cycle6:
+        errors.append(f'Missing Cycle6 governance-meta invariant: {token}')
+
+content_cycle6 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-content.php', '')
+for token in ['if ( ! $founder ) { return; }', "'_lsch_certificate_jurisdiction'", "'_lsch_certificate_wording_approved'", 'private static $version_bumped', 'bump_version_on_post_update']:
+    if token not in content_cycle6:
+        errors.append(f'Missing Cycle6 provenance/version invariant: {token}')
+
+future_cycle6 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php', '')
+for token in ['$object_match', '$url_match', '$owner_match']:
+    if token not in future_cycle6:
+        errors.append(f'Missing Cycle6 Socratic citation invariant: {token}')
+if "0 === strcasecmp( trim( $source_title ), trim( $item['title'] ) )" in future_cycle6:
+    errors.append('Cycle6 regression: Socratic tutor trusts citation title without canonical ID/URL match.')
+
 if errors:
     print('\n'.join(f'ERROR: {e}' for e in errors))
     sys.exit(1)

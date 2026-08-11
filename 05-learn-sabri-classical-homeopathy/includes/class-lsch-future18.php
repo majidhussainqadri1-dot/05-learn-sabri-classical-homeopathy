@@ -963,9 +963,12 @@ final class LSCH_Future18 {
 			foreach ( $approved_sources as $source ) {
 				if ( ! is_array( $source ) ) { continue; }
 				$source_url = esc_url_raw( (string) ( $source['url'] ?? '' ) );
-				$source_title = sanitize_text_field( (string) ( $source['title'] ?? '' ) );
-				if ( $item['url'] && $source_url && hash_equals( $source_url, $item['url'] ) ) { $approved = true; break; }
-				if ( $item['title'] && $source_title && 0 === strcasecmp( trim( $source_title ), trim( $item['title'] ) ) ) { $approved = true; break; }
+				$source_id = sanitize_text_field( (string) ( $source['object_id'] ?? '' ) );
+				$source_owner = sanitize_text_field( (string) ( $source['owner_file'] ?? '' ) );
+				$owner_match = '' === $item['owner_file'] || ( '' !== $source_owner && 0 === strcasecmp( trim( $source_owner ), trim( $item['owner_file'] ) ) );
+				$object_match = '' !== $item['object_id'] && '' !== $source_id && hash_equals( $source_id, $item['object_id'] );
+				$url_match = '' !== $item['url'] && '' !== $source_url && hash_equals( $source_url, $item['url'] );
+				if ( $owner_match && ( $object_match || $url_match ) ) { $approved = true; break; }
 			}
 			$approved = (bool) apply_filters( 'lsch_future18_tutor_citation_approved', $approved, $item, $approved_sources, $lesson_id, $user_id );
 			if ( $approved && ( $item['object_id'] || $item['url'] ) ) { $citations[] = $item; }
