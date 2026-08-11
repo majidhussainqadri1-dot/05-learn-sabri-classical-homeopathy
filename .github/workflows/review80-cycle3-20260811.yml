@@ -1,0 +1,81 @@
+name: File 05 Third Independent Review-80 Corrective Runner
+
+on:
+  push:
+    branches: [ codex/file-05-complete-v3.0.0 ]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: file05-review80-cycle3
+  cancel-in-progress: false
+
+jobs:
+  review80-cycle3:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: codex/file-05-complete-v3.0.0
+          fetch-depth: 0
+
+      - name: Set up PHP 8.3
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Execute 80 sequential review/fix rounds
+        run: python3 scripts/review80-cycle3-20260811.py
+
+      - name: Remove temporary review transport before final-tree QA
+        run: |
+          rm -f scripts/review80-cycle3-20260811.py
+          rm -f .github/workflows/review80-cycle3-20260811.yml
+
+      - name: Full source/security/policy/Future18 regression gate
+        run: bash tests/source-invariants.sh
+
+      - name: PHP 8.3 full syntax gate
+        run: |
+          find 05-learn-sabri-classical-homeopathy tests -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l
+
+      - name: Set up PHP 7.4
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # 2.37.1
+        with:
+          php-version: '7.4'
+          coverage: none
+
+      - name: PHP 7.4 full syntax gate
+        run: |
+          find 05-learn-sabri-classical-homeopathy tests -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l
+
+      - name: Deterministic package A/B closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/file05-a /tmp/file05-b
+          python3 scripts/build-release.py --root . --output /tmp/file05-a/05-learn-sabri-classical-homeopathy-4.0.0.zip
+          python3 scripts/build-release.py --root . --output /tmp/file05-b/05-learn-sabri-classical-homeopathy-4.0.0.zip
+          cmp /tmp/file05-a/05-learn-sabri-classical-homeopathy-4.0.0.zip /tmp/file05-b/05-learn-sabri-classical-homeopathy-4.0.0.zip
+          unzip -t /tmp/file05-a/05-learn-sabri-classical-homeopathy-4.0.0.zip
+          mkdir -p /tmp/file05-extract
+          unzip -q /tmp/file05-a/05-learn-sabri-classical-homeopathy-4.0.0.zip -d /tmp/file05-extract
+          (cd /tmp/file05-extract/05-learn-sabri-classical-homeopathy && sha256sum -c MANIFEST.sha256)
+
+      - name: Commit corrected exact working tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'majidhussainqadri1-dot'
+          git config user.email 'majidhussainqadri1@gmail.com'
+          git status --short
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No corrective changes to commit.'
+            exit 0
+          fi
+          git commit -m 'Complete third independent File 05 Review-80 corrective closure'
+          git push origin HEAD:codex/file-05-complete-v3.0.0
