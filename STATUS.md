@@ -6,9 +6,9 @@ This status distinguishes repository truth from staging/live truth.
 |---|---|
 | Specified | Current consolidated central plan + current File 05 plan + Founder-approved Future Superset 18 mapped |
 | Coded | Existing 18 FR + 10 NFR + central amendments + F05-FUT-01..18 materialized in the actual 4.0.0 source tree |
-| Reviewed | Existing corrective evidence retained; **sixth independent 10-round sequential review/fix cycle completed** after the fifth 80-round cycle. All ten Cycle-6 rounds detected a distinct repository defect; each defect was fixed and asserted before the next round. See `REVIEW-10-CYCLE-6-2026-08-11.md`. |
-| Packaged | Cycle-6 corrective runner passed deterministic A/B package generation, archive verification and embedded manifest verification before committing the corrected tree. The normal exact-head workflow remains the immutable package-evidence gate. |
-| Automated QA | Cycle-6 corrective runner passed full current-plan regression plus PHP 8.3 and PHP 7.4 syntax before committing the corrected tree. A normal workflow on this resulting user-authored exact HEAD remains the immutable final Automated-QA evidence gate. |
+| Reviewed | Existing corrective evidence retained; **seventh independent 10-round sequential review/fix cycle completed** after the sixth ten-round cycle. All ten Cycle-7 rounds detected a distinct repository defect; each defect was fixed and syntax/assertion checked before advancing. See `REVIEW-10-CYCLE-7-2026-08-11.md`. |
+| Packaged | Cycle-7 corrective runner passed deterministic A/B package generation, archive verification and embedded manifest verification before committing the corrected tree. The normal exact-head workflow remains the immutable package-evidence gate. |
+| Automated QA | Cycle-7 corrective runner passed full current-plan regression plus PHP 8.3 and PHP 7.4 syntax before committing the corrected tree. A normal workflow on this resulting user-authored exact HEAD remains the immutable final Automated-QA evidence gate. |
 | Staging accepted | **No** — real WordPress/Hostinger and companion-runtime evidence pending |
 | Founder accepted | **No new claim** — repository review does not substitute for Founder acceptance |
 | Live deployed | **No claim / not changed by this source work** |
@@ -29,9 +29,9 @@ This status distinguishes repository truth from staging/live truth.
 - Global Search/Discovery/Ranking owner: `File 26`
 - Sabri Green fallback: `#087A4E`; File25 retains design-token ownership
 
-## Sixth ten-round corrective review closure
+## Seventh ten-round corrective review closure
 
-Cycle 6 began from product-source HEAD `dc774b09776c0dc45819843c5fe692c69976a58a`. It corrected: restricted-content authorization collapse; progress, assessment and assignment activity detached from active enrollment; arbitrary-course reminder enablement; governance-meta mass assignment; Founder placeholder provenance when Founder identity is unavailable; incomplete certificate-meta registration; stale object versioning after normal content/governance edits; and title-only Socratic-AI citation trust. Permanent regression invariants were added for these demonstrated defect classes. Temporary Cycle-6 runner transport was removed before the corrected source commit.
+Cycle 7 began from product-source HEAD `c61c648a0a46e191e6003be6e51e019b39cd2279`. It corrected: enrollment activation/resume without current access/prerequisite re-authorization; assessed actions using stale active-enrollment course/access versions; versionless progress overwrites; versionless encrypted-note overwrites; unbounded/nested assessment answer payloads; weak patient-case consent subject/evidence/policy validation; publication authorization based on consent-row existence rather than full current validity; unverified/empty cross-file related targets; invalid/self prerequisite graph references; and semantically invalid or unbounded governance numeric/JSON fields. Permanent regression invariants were added for all demonstrated defect classes. Temporary Cycle-7 runner transport was removed before the corrected source commit.
 
 ## Future-18 implementation boundary
 
