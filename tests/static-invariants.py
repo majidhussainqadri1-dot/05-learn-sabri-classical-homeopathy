@@ -308,6 +308,45 @@ for token in ['$object_match', '$url_match', '$owner_match']:
 if "0 === strcasecmp( trim( $source_title ), trim( $item['title'] ) )" in future_cycle6:
     errors.append('Cycle6 regression: Socratic tutor trusts citation title without canonical ID/URL match.')
 
+
+# Seventh independent ten-round review regression invariants (2026-08-11).
+services_cycle7 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-services.php', '')
+for token in [
+    "! LSCH_Policy::can_read_post( $course_id, $user_id )",
+    "lsch_active_enrollment_stale",
+    "lsch_progress_version_required",
+    "refresh_progress_from_evidence",
+    "lsch_note_version_required",
+    "lsch_assessment_answers_limit",
+    "lsch_assessment_answer_invalid",
+    "lsch_assessment_answers_payload",
+    "lsch_validate_related_learning_reference",
+    "lsch_related_target_unverified",
+]:
+    if token not in services_cycle7:
+        errors.append(f'Missing Cycle7 service-integrity invariant: {token}')
+
+policy_cycle7 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-policy.php', '')
+for token in [
+    "lsch_case_consent_policy_version",
+    "evidence_reference",
+    "lsch_prerequisite_configuration_invalid",
+    "array_unique",
+]:
+    if token not in policy_cycle7:
+        errors.append(f'Missing Cycle7 policy invariant: {token}')
+
+admin_cycle7 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-admin.php', '')
+for token in [
+    "'_lsch_pass_mark' === $key",
+    "'_lsch_max_attempts' === $key",
+    "'_lsch_time_limit' === $key",
+    "array_diff( $normalized, array( 'content', 'assessment', 'assignment' ) )",
+    "count( $decoded ) > 200",
+]:
+    if token not in admin_cycle7:
+        errors.append(f'Missing Cycle7 governance-bound invariant: {token}')
+
 if errors:
     print('\n'.join(f'ERROR: {e}' for e in errors))
     sys.exit(1)

@@ -86,8 +86,19 @@ final class LSCH_Admin {
 		foreach ( $input as $key => $value ) {
 			$key = sanitize_key( $key ); if ( 0 !== strpos( $key, '_lsch_' ) || ! in_array( $key, $allowed_keys, true ) ) { continue; }
 			if ( '_lsch_access' === $key ) { $value = sanitize_key( $value ); $value = in_array( $value, array( 'public', 'account', 'restricted' ), true ) ? $value : 'public'; }
-			elseif ( in_array( $key, $integer_keys, true ) ) { $value = absint( $value ); }
-			elseif ( in_array( $key, $json_keys, true ) ) { $decoded = json_decode( (string) $value, true ); if ( ! is_array( $decoded ) ) { continue; } $value = wp_json_encode( $decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ); }
+			elseif ( in_array( $key, $integer_keys, true ) ) {
+				$value = absint( $value );
+				if ( '_lsch_pass_mark' === $key && ( $value < 1 || $value > 100 ) ) { continue; }
+				if ( '_lsch_max_attempts' === $key && ( $value < 1 || $value > 50 ) ) { continue; }
+				if ( '_lsch_time_limit' === $key && $value > 1440 ) { continue; }
+				if ( in_array( $key, array( '_lsch_required', '_lsch_certificate_wording_approved' ), true ) && $value > 1 ) { continue; }
+			}
+			elseif ( in_array( $key, $json_keys, true ) ) {
+				$decoded = json_decode( (string) $value, true ); if ( ! is_array( $decoded ) ) { continue; }
+				if ( '_lsch_required_components' === $key ) { $normalized = array_values( array_unique( array_map( 'sanitize_key', $decoded ) ) ); if ( ! $normalized || array_diff( $normalized, array( 'content', 'assessment', 'assignment' ) ) ) { continue; } $decoded = $normalized; }
+				if ( '_lsch_questions' === $key && count( $decoded ) > 200 ) { continue; }
+				$value = wp_json_encode( $decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ); if ( false === $value || strlen( $value ) > 1048576 ) { continue; }
+			}
 			else { $value = sanitize_textarea_field( $value ); }
 			$current_value = get_post_meta( $post_id, $key, true );
 			if ( (string) $current_value === (string) $value ) { continue; }

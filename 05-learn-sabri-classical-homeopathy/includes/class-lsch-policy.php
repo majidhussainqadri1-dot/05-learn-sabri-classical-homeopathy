@@ -60,7 +60,16 @@ final class LSCH_Policy {
 	public static function valid_case_consent( $lesson_id ) {
 		global $wpdb;
 		$t = LSCH_Database::tables();
-		return (bool) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['consents']} WHERE lesson_id=%d AND withdrawn_at IS NULL ORDER BY id DESC LIMIT 1", absint( $lesson_id ) ) );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT policy_version,subject_type,consent_source,scope,evidence_reference,confirmed_at,withdrawn_at FROM {$t['consents']} WHERE lesson_id=%d ORDER BY id DESC LIMIT 1", absint( $lesson_id ) ), ARRAY_A );
+		if ( ! $row || ! empty( $row['withdrawn_at'] ) ) { return false; }
+		$expected_policy = sanitize_text_field( (string) apply_filters( 'lsch_case_consent_policy_version', 'case-consent-v1' ) );
+		return
+			$expected_policy === (string) $row['policy_version'] &&
+			in_array( sanitize_key( $row['consent_source'] ), array( 'patient', 'guardian', 'institution' ), true ) &&
+			in_array( sanitize_key( $row['subject_type'] ), array( 'patient', 'minor_patient', 'guardian', 'institution' ), true ) &&
+			'' !== trim( (string) $row['scope'] ) &&
+			'' !== trim( (string) $row['evidence_reference'] ) &&
+			'' !== trim( (string) $row['confirmed_at'] );
 	}
 
 	public static function can_use_protected_reads( $user_id = 0 ) {
@@ -90,13 +99,16 @@ final class LSCH_Policy {
 		if ( '' === trim( $raw ) ) {
 			return true;
 		}
-		$ids = array_filter( array_map( 'absint', preg_split( '/[\s,]+/', $raw ) ) );
+		$ids = array_values( array_unique( array_filter( array_map( 'absint', preg_split( '/[\s,]+/', $raw ) ) ) ) );
 		if ( ! $ids ) {
 			return true;
 		}
 		global $wpdb;
 		$t = LSCH_Database::tables();
 		foreach ( $ids as $required_course ) {
+			if ( absint( $required_course ) === absint( $course_id ) || LSCH_Content::COURSE !== get_post_type( $required_course ) ) {
+				return new WP_Error( 'lsch_prerequisite_configuration_invalid', __( 'A prerequisite must reference a different valid learning course.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+			}
 			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['completions']} WHERE user_id=%d AND course_id=%d AND status='earned' LIMIT 1", $user_id, $required_course ) );
 			if ( ! $exists ) {
 				return new WP_Error( 'lsch_prerequisite_missing', __( 'A required course has not yet been completed.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
