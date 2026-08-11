@@ -18,4 +18,15 @@ if s.count(old) != 1:
     raise SystemExit('cycle4 privacy closure-lens pair mismatch')
 s = s.replace(old, new, 1)
 p.write_text(s, encoding='utf-8', newline='\n')
-print('Cycle4 private-method and 68-lens review transport corrected.')
+
+# Round-12 test-shape compatibility: the privacy exporter changes from
+# tuple(table,column,...) to tuple(table,predicate,args,...). Keep the prior
+# completeness invariant, but assert the new exact predicate shape.
+static = Path(__file__).resolve().parents[1] / 'tests' / 'static-invariants.py'
+t = static.read_text(encoding='utf-8')
+old = '"array( $t[\'request_keys\'], \'user_id\'"'
+new = '"array( $t[\'request_keys\'], \'user_id=%d\'"'
+if t.count(old) != 1:
+    raise SystemExit('cycle4 prior privacy invariant token mismatch')
+static.write_text(t.replace(old, new, 1), encoding='utf-8', newline='\n')
+print('Cycle4 private-method, 68-lens, and prior privacy-invariant transport corrected.')
