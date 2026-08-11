@@ -235,8 +235,11 @@ final class LSCH_Policy {
 	}
 
 	public static function request_id() {
+		static $request_id = '';
+		if ( $request_id ) { return $request_id; }
 		$header = isset( $_SERVER['HTTP_X_REQUEST_ID'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_REQUEST_ID'] ) ) : '';
-		return preg_match( '/^[A-Za-z0-9._-]{8,64}$/', $header ) ? $header : LSCH_Database::uuid();
+		$request_id = preg_match( '/^[A-Za-z0-9._-]{8,64}$/', $header ) ? $header : LSCH_Database::uuid();
+		return $request_id;
 	}
 
 	public static function idempotency_key( $provided, $user_id, $action ) {

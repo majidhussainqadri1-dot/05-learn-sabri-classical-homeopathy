@@ -1,2 +1,0 @@
-Fourth Review-80 runner failed before corrected-source commit. This diagnostic is transport evidence, not a product completion claim.
-Expected 68 closure topics for rounds 13-80, got 70

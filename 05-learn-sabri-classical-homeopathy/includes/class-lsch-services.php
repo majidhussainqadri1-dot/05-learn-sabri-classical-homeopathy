@@ -10,59 +10,64 @@ final class LSCH_Services {
 			return new WP_Error( 'lsch_forbidden', __( 'Enrollment is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
 		$prerequisites = LSCH_Policy::validate_prerequisites( $course_id, $user_id );
-		if ( is_wp_error( $prerequisites ) ) {
-			return $prerequisites;
-		}
+		if ( is_wp_error( $prerequisites ) ) { return $prerequisites; }
 		$key = LSCH_Policy::idempotency_key( $idempotency, $user_id, 'enroll' );
-		if ( is_wp_error( $key ) ) {
-			return $key;
-		}
+		if ( is_wp_error( $key ) ) { return $key; }
 		global $wpdb;
 		$t = LSCH_Database::tables();
+		$current = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $course_id ), ARRAY_A );
+		if ( $current && 'withdrawn' !== $current['status'] ) {
+			return $current;
+		}
 		$now = LSCH_Database::now();
-		$public_id = LSCH_Database::uuid();
-		$sql = $wpdb->prepare(
-			"INSERT INTO {$t['enrollments']} (public_id,user_id,course_id,status,terms_version,course_version,version,started_at,created_at,updated_at) VALUES (%s,%d,%d,'active',%s,%d,1,%s,%s,%s)
-			ON DUPLICATE KEY UPDATE status=IF(status IN ('withdrawn','paused'),'active',status),version=version+1,updated_at=VALUES(updated_at)",
-			$public_id,
-			$user_id,
-			$course_id,
-			LSCH_Policy::access_model(),
-			LSCH_Content::version( $course_id ),
-			$now,
-			$now,
-			$now
-		);
-		if ( false === $wpdb->query( $sql ) ) {
-			return new WP_Error( 'lsch_enrollment_failed', __( 'Enrollment could not be saved.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
+		if ( $current ) {
+			$updated = $wpdb->update(
+				$t['enrollments'],
+				array( 'status' => 'enrolled', 'terms_version' => LSCH_Policy::access_model(), 'course_version' => LSCH_Content::version( $course_id ), 'version' => absint( $current['version'] ) + 1, 'withdrawn_at' => null, 'paused_at' => null, 'updated_at' => $now ),
+				array( 'id' => absint( $current['id'] ), 'version' => absint( $current['version'] ), 'status' => 'withdrawn' ),
+				array( '%s', '%s', '%d', '%d', '%s', '%s', '%s' ), array( '%d', '%d', '%s' )
+			);
+			if ( 1 !== $updated ) { return new WP_Error( 'lsch_enrollment_conflict', __( 'Enrollment changed while being restored. Reload and try again.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
+		} else {
+			$inserted = $wpdb->insert(
+				$t['enrollments'],
+				array( 'public_id' => LSCH_Database::uuid(), 'user_id' => $user_id, 'course_id' => $course_id, 'status' => 'enrolled', 'terms_version' => LSCH_Policy::access_model(), 'course_version' => LSCH_Content::version( $course_id ), 'version' => 1, 'started_at' => $now, 'created_at' => $now, 'updated_at' => $now ),
+				array( '%s', '%d', '%d', '%s', '%s', '%d', '%d', '%s', '%s', '%s' )
+			);
+			if ( 1 !== $inserted ) { return new WP_Error( 'lsch_enrollment_failed', __( 'Enrollment could not be saved.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) ); }
 		}
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d", $user_id, $course_id ), ARRAY_A );
-		LSCH_Events::publish( 'LearningEnrollmentCreated.v1', 'course', $course_id, array( 'user_id' => $user_id, 'course_id' => $course_id, 'status' => $row['status'], 'terms_version' => $row['terms_version'] ) );
-		LSCH_Events::audit( 'enroll_course', 'course', $course_id, array( 'user_id' => $user_id, 'idempotency_hash' => $key ), 'learning' );
+		LSCH_Events::publish( 'LearningEnrollmentCreated.v1', 'course', $course_id, array( 'user_id' => $user_id, 'course_id' => $course_id, 'status' => 'enrolled', 'terms_version' => $row['terms_version'] ) );
+		LSCH_Events::audit( 'enroll_course', 'course', $course_id, array( 'user_id' => $user_id, 'idempotency_hash' => $key, 'state' => 'enrolled' ), 'learning' );
 		return $row;
 	}
 
 	public static function change_enrollment_state( $course_id, $user_id, $state, $expected_version ) {
-		$allowed = array( 'active', 'paused', 'withdrawn' );
-		$state   = sanitize_key( $state );
-		if ( ! in_array( $state, $allowed, true ) || ! LSCH_Policy::can_use_learning_actions( $user_id ) ) {
+		$course_id = absint( $course_id ); $user_id = absint( $user_id ); $state = sanitize_key( $state );
+		if ( ! LSCH_Policy::can_use_learning_actions( $user_id ) || LSCH_Content::COURSE !== get_post_type( $course_id ) ) {
 			return new WP_Error( 'lsch_invalid_transition', __( 'The enrollment transition is not allowed.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
-		global $wpdb;
-		$t = LSCH_Database::tables();
-		$column = 'paused' === $state ? 'paused_at' : ( 'withdrawn' === $state ? 'withdrawn_at' : '' );
-		$set = "status=%s,version=version+1,updated_at=%s" . ( $column ? ",{$column}=%s" : '' );
-		$args = array( $state, LSCH_Database::now() );
-		if ( $column ) { $args[] = LSCH_Database::now(); }
-		$args[] = absint( $user_id );
-		$args[] = absint( $course_id );
-		$args[] = absint( $expected_version );
-		$sql = $wpdb->prepare( "UPDATE {$t['enrollments']} SET {$set} WHERE user_id=%d AND course_id=%d AND version=%d", $args );
-		if ( 1 !== $wpdb->query( $sql ) ) {
+		global $wpdb; $t = LSCH_Database::tables();
+		$current = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $course_id ), ARRAY_A );
+		if ( ! $current || absint( $current['version'] ) !== absint( $expected_version ) ) {
 			return new WP_Error( 'lsch_stale_enrollment', __( 'Enrollment changed. Reload and try again.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
-		LSCH_Events::audit( 'enrollment_' . $state, 'course', $course_id, array( 'user_id' => $user_id ), 'learning' );
-		return true;
+		$transitions = array( 'enrolled' => array( 'active', 'withdrawn' ), 'active' => array( 'paused', 'withdrawn' ), 'paused' => array( 'active', 'withdrawn' ) );
+		if ( empty( $transitions[ $current['status'] ] ) || ! in_array( $state, $transitions[ $current['status'] ], true ) ) {
+			return new WP_Error( 'lsch_invalid_transition', __( 'The enrollment transition is not allowed from its current state.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		$now = LSCH_Database::now();
+		$data = array( 'status' => $state, 'version' => absint( $current['version'] ) + 1, 'updated_at' => $now );
+		$formats = array( '%s', '%d', '%s' );
+		if ( 'active' === $state ) { $data['paused_at'] = null; $formats[] = '%s'; }
+		if ( 'paused' === $state ) { $data['paused_at'] = $now; $formats[] = '%s'; }
+		if ( 'withdrawn' === $state ) { $data['withdrawn_at'] = $now; $formats[] = '%s'; }
+		$updated = $wpdb->update( $t['enrollments'], $data, array( 'id' => absint( $current['id'] ), 'version' => absint( $current['version'] ), 'status' => $current['status'] ), $formats, array( '%d', '%d', '%s' ) );
+		if ( 1 !== $updated ) { return new WP_Error( 'lsch_stale_enrollment', __( 'Enrollment changed while saving. Reload and try again.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
+		$event = 'active' === $state ? 'LearningEnrollmentActivated.v1' : 'LearningEnrollmentStateChanged.v1';
+		LSCH_Events::publish( $event, 'course', $course_id, array( 'user_id' => $user_id, 'from' => $current['status'], 'to' => $state, 'version' => absint( $current['version'] ) + 1 ) );
+		LSCH_Events::audit( 'enrollment_' . $state, 'course', $course_id, array( 'user_id' => $user_id, 'from' => $current['status'], 'to' => $state ), 'learning' );
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE id=%d", absint( $current['id'] ) ), ARRAY_A );
 	}
 
 	public static function progress( $lesson_id, $user_id, array $input ) {
@@ -120,7 +125,8 @@ final class LSCH_Services {
 		}
 		if ( 'completed' === $state && ( ! $current || 'completed' !== $current['state'] ) ) {
 			LSCH_Events::publish( 'LessonCompleted.v1', 'lesson', $lesson_id, array( 'user_id' => $user_id, 'course_id' => $course_id, 'lesson_version' => LSCH_Content::version( $lesson_id ), 'components' => $required ) );
-			self::recalculate_completion( $course_id, $user_id );
+			$completion = self::recalculate_completion( $course_id, $user_id );
+			if ( is_wp_error( $completion ) ) { return $completion; }
 		}
 		LSCH_Events::audit( 'record_progress', 'lesson', $lesson_id, array( 'user_id' => $user_id, 'state' => $state, 'percent' => $percent, 'components' => $components ), 'learning' );
 		return self::progress_row( $lesson_id, $user_id );
@@ -328,15 +334,30 @@ final class LSCH_Services {
 		if ( ! LSCH_Policy::can_use_learning_actions() || ! current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) ) {
 			return new WP_Error( 'lsch_staff_forbidden', __( 'Staff assignment is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
-		$role = sanitize_key( $role );
-		if ( ! in_array( $role, array( 'teacher', 'assessor', 'reviewer', 'curriculum_lead' ), true ) || ! get_userdata( absint( $user_id ) ) ) {
-			return new WP_Error( 'lsch_staff_invalid', __( 'Staff assignment is invalid.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
+		$user_id = absint( $user_id ); $object_type = sanitize_key( $object_type ); $object_id = absint( $object_id ); $role = sanitize_key( $role ); $conflict = sanitize_key( $conflict );
+		if ( ! get_userdata( $user_id ) || ! LSCH_Capabilities::approved_account( $user_id ) || ! LSCH_Capabilities::guardian_gate_passes( $user_id ) ) {
+			return new WP_Error( 'lsch_staff_target_ineligible', __( 'Only a currently eligible approved account may receive a learning staff assignment.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		$allowed_conflicts = array( 'clear', 'declared', 'blocked' );
+		if ( ! in_array( $conflict, $allowed_conflicts, true ) ) { return new WP_Error( 'lsch_staff_conflict_state', __( 'Staff conflict state is invalid.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) ); }
+		$role_scopes = array(
+			'teacher' => array( 'course' => LSCH_Content::COURSE, 'lesson' => LSCH_Content::LESSON, 'cohort' => LSCH_Content::COHORT ),
+			'assessor' => array( 'assessment' => LSCH_Content::ASSESSMENT, 'assignment' => LSCH_Content::ASSIGNMENT ),
+			'reviewer' => array( 'lesson' => LSCH_Content::LESSON ),
+			'curriculum_lead' => array( 'platform' => '' ),
+		);
+		if ( ! isset( $role_scopes[ $role ][ $object_type ] ) ) { return new WP_Error( 'lsch_staff_scope_invalid', __( 'The requested learning staff role is not valid for this object type.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) ); }
+		$expected_type = $role_scopes[ $role ][ $object_type ];
+		if ( 'platform' === $object_type ) {
+			if ( 0 !== $object_id ) { return new WP_Error( 'lsch_staff_scope_invalid', __( 'Platform curriculum-lead assignments must use the platform scope.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) ); }
+		} elseif ( ! $object_id || $expected_type !== get_post_type( $object_id ) ) {
+			return new WP_Error( 'lsch_staff_scope_invalid', __( 'The learning staff assignment object does not match its declared scope.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
 		}
 		$scope_json = LSCH_Policy::sanitize_json( $scope, 10000 ); if ( is_wp_error( $scope_json ) ) { return $scope_json; }
 		global $wpdb; $t = LSCH_Database::tables(); $now = LSCH_Database::now();
-		$sql = $wpdb->prepare( "INSERT INTO {$t['staff']} (user_id,object_type,object_id,role,scope_json,conflict_status,active,version,assigned_by,created_at,updated_at) VALUES (%d,%s,%d,%s,%s,%s,%d,1,%d,%s,%s) ON DUPLICATE KEY UPDATE scope_json=VALUES(scope_json),conflict_status=VALUES(conflict_status),active=VALUES(active),version=version+1,assigned_by=VALUES(assigned_by),updated_at=VALUES(updated_at)", absint( $user_id ), sanitize_key( $object_type ), absint( $object_id ), $role, $scope_json, sanitize_key( $conflict ), 'clear' === sanitize_key( $conflict ) ? 1 : 0, get_current_user_id(), $now, $now );
+		$sql = $wpdb->prepare( "INSERT INTO {$t['staff']} (user_id,object_type,object_id,role,scope_json,conflict_status,active,version,assigned_by,created_at,updated_at) VALUES (%d,%s,%d,%s,%s,%s,%d,1,%d,%s,%s) ON DUPLICATE KEY UPDATE scope_json=VALUES(scope_json),conflict_status=VALUES(conflict_status),active=VALUES(active),version=version+1,assigned_by=VALUES(assigned_by),updated_at=VALUES(updated_at)", $user_id, $object_type, $object_id, $role, $scope_json, $conflict, 'clear' === $conflict ? 1 : 0, get_current_user_id(), $now, $now );
 		if ( false === $wpdb->query( $sql ) ) { return new WP_Error( 'lsch_staff_write_failed', __( 'Staff assignment could not be saved.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) ); }
-		LSCH_Events::audit( 'staff_assigned', $object_type, $object_id, array( 'user_id' => absint( $user_id ), 'role' => $role, 'conflict' => $conflict ), 'governance' );
+		LSCH_Events::audit( 'staff_assigned', $object_type, $object_id, array( 'user_id' => $user_id, 'role' => $role, 'conflict' => $conflict ), 'governance' );
 		return true;
 	}
 
@@ -351,7 +372,7 @@ final class LSCH_Services {
 
 	public static function store_case_consent( $lesson_id, $actor_id, array $data ) {
 		$lesson_id = absint( $lesson_id ); $actor_id = absint( $actor_id );
-		if ( ! LSCH_Policy::can_use_learning_actions( $actor_id ) || LSCH_Content::LESSON !== get_post_type( $lesson_id ) || ( ! LSCH_Policy::can_manage_object( $lesson_id, $actor_id ) && ! user_can( $actor_id, LSCH_Capabilities::REVIEW_LESSONS ) ) ) { return new WP_Error( 'lsch_consent_forbidden', __( 'Case consent cannot be recorded.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) ); }
+		if ( ! LSCH_Policy::can_use_learning_actions( $actor_id ) || LSCH_Content::LESSON !== get_post_type( $lesson_id ) || ( ! LSCH_Policy::can_manage_object( $lesson_id, $actor_id ) && ! ( user_can( $actor_id, LSCH_Capabilities::REVIEW_LESSONS ) && self::staff_scope_allows( $actor_id, 'lesson', $lesson_id, 'reviewer' ) ) ) ) { return new WP_Error( 'lsch_consent_forbidden', __( 'Case consent cannot be recorded.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) ); }
 		$source = sanitize_key( isset( $data['consent_source'] ) ? $data['consent_source'] : '' );
 		$scope = sanitize_textarea_field( isset( $data['scope'] ) ? $data['scope'] : '' );
 		$policy = sanitize_text_field( isset( $data['policy_version'] ) ? $data['policy_version'] : 'case-consent-v1' );
@@ -364,7 +385,7 @@ final class LSCH_Services {
 	}
 
 	public static function withdraw_case_consent( $lesson_id, $actor_id, $reason ) {
-		if ( ! LSCH_Policy::can_use_learning_actions( $actor_id ) || ( ! LSCH_Policy::can_manage_object( $lesson_id, $actor_id ) && ! user_can( $actor_id, LSCH_Capabilities::REVIEW_LESSONS ) ) ) { return new WP_Error( 'lsch_consent_forbidden', __( 'Case consent cannot be withdrawn.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) ); }
+		if ( ! LSCH_Policy::can_use_learning_actions( $actor_id ) || ( ! LSCH_Policy::can_manage_object( $lesson_id, $actor_id ) && ! ( user_can( $actor_id, LSCH_Capabilities::REVIEW_LESSONS ) && self::staff_scope_allows( $actor_id, 'lesson', $lesson_id, 'reviewer' ) ) ) ) { return new WP_Error( 'lsch_consent_forbidden', __( 'Case consent cannot be withdrawn.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) ); }
 		$reason = sanitize_textarea_field( $reason ); if ( '' === $reason ) { return new WP_Error( 'lsch_consent_reason', __( 'A withdrawal reason is required.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) ); }
 		global $wpdb; $t = LSCH_Database::tables();
 		$withdrawn = $wpdb->query( $wpdb->prepare( "UPDATE {$t['consents']} SET withdrawn_at=COALESCE(withdrawn_at,%s),withdrawn_by=%d,version=version+1 WHERE lesson_id=%d AND withdrawn_at IS NULL", LSCH_Database::now(), absint( $actor_id ), absint( $lesson_id ) ) );
@@ -409,7 +430,7 @@ final class LSCH_Services {
 		return array( 'suppressed' => false, 'enrollments' => $learners, 'completed' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['enrollments']} WHERE course_id=%d AND status='completed'", absint( $course_id ) ) ), 'active' => (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['enrollments']} WHERE course_id=%d AND status='active'", absint( $course_id ) ) ), 'average_progress' => round( (float) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(AVG(percent),0) FROM {$t['progress']} WHERE course_id=%d", absint( $course_id ) ) ), 2 ) );
 	}
 
-	private static function staff_scope_allows( $user_id, $object_type, $object_id, $role ) {
+	public static function staff_scope_allows( $user_id, $object_type, $object_id, $role ) {
 		global $wpdb; $t = LSCH_Database::tables();
 		return (bool) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['staff']} WHERE user_id=%d AND object_type=%s AND object_id=%d AND role=%s AND active=1 AND conflict_status='clear' LIMIT 1", absint( $user_id ), sanitize_key( $object_type ), absint( $object_id ), sanitize_key( $role ) ) );
 	}
@@ -424,24 +445,31 @@ final class LSCH_Services {
 	}
 
 	private static function recalculate_completion( $course_id, $user_id ) {
-		$course_id = absint( $course_id );
-		if ( ! $course_id || LSCH_Content::COURSE !== get_post_type( $course_id ) ) { return false; }
+		$course_id = absint( $course_id ); $user_id = absint( $user_id );
+		if ( ! $course_id ) { return true; }
+		if ( LSCH_Content::COURSE !== get_post_type( $course_id ) ) { return new WP_Error( 'lsch_completion_course_invalid', __( 'Course completion could not be reconciled safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
 		$lessons = get_posts( array( 'post_type' => LSCH_Content::LESSON, 'post_status' => 'publish', 'posts_per_page' => 501, 'fields' => 'ids', 'meta_key' => '_lsch_course_id', 'meta_value' => $course_id, 'no_found_rows' => true ) );
-		if ( count( $lessons ) > 500 ) { LSCH_Events::audit( 'course_completion_scope_exceeded', 'course', $course_id, array( 'user_id' => $user_id, 'limit' => 500 ), 'reliability' ); return false; }
+		if ( count( $lessons ) > 500 ) { LSCH_Events::audit( 'course_completion_scope_exceeded', 'course', $course_id, array( 'user_id' => $user_id, 'limit' => 500 ), 'reliability' ); return new WP_Error( 'lsch_completion_scope_exceeded', __( 'Course completion requires operator reconciliation because its required-lesson scope is too large.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
 		$required = array_filter( $lessons, static function( $id ) { return 1 === absint( get_post_meta( $id, '_lsch_required', true ) ?: 1 ); } );
-		if ( ! $required ) { return false; }
+		if ( ! $required ) { return true; }
 		global $wpdb; $t = LSCH_Database::tables();
-		$completed = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['progress']} WHERE user_id=%d AND lesson_id IN (" . implode( ',', array_map( 'absint', $required ) ) . ") AND state='completed'", $user_id ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		if ( $completed !== count( $required ) ) { return false; }
+		$placeholders = implode( ',', array_fill( 0, count( $required ), '%d' ) );
+		$args = array_merge( array( $user_id ), array_map( 'absint', $required ) );
+		$completed = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['progress']} WHERE user_id=%d AND lesson_id IN ({$placeholders}) AND state='completed'", $args ) );
+		if ( $completed < count( $required ) ) { return true; }
 		$claims = LSCH_Dependencies::claims( $user_id );
-		if ( empty( $claims['identity_verified'] ) ) { return false; }
+		if ( empty( $claims['identity_verified'] ) ) { return true; }
+		$enrollment = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $course_id ), ARRAY_A );
+		if ( ! $enrollment ) { return true; }
+		if ( 'completed' === $enrollment['status'] ) { return true; }
+		if ( ! in_array( $enrollment['status'], array( 'enrolled', 'active', 'paused', 'withdrawn' ), true ) ) { return new WP_Error( 'lsch_completion_enrollment_state', __( 'Enrollment state cannot be completed safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
 		$competencies = wp_get_object_terms( $course_id, LSCH_Content::COMPETENCY, array( 'fields' => 'slugs' ) );
 		$snapshot = wp_json_encode( array( 'competencies' => is_wp_error( $competencies ) ? array() : $competencies, 'course_version' => LSCH_Content::version( $course_id ), 'required_lessons' => array_map( 'absint', $required ), 'completed_at' => gmdate( 'c' ) ) );
-		$now = LSCH_Database::now(); $public_id = LSCH_Database::uuid();
-		$sql = $wpdb->prepare( "INSERT INTO {$t['completions']} (public_id,user_id,course_id,course_version,competency_snapshot_json,status,identity_assurance,integrity_status,version,earned_at,revoked_reason) VALUES (%s,%d,%d,%d,%s,'earned','verified','clear',1,%s,'') ON DUPLICATE KEY UPDATE competency_snapshot_json=VALUES(competency_snapshot_json),status='earned',version=version+1,revoked_at=NULL,revoked_reason='',earned_at=VALUES(earned_at)", $public_id, $user_id, $course_id, LSCH_Content::version( $course_id ), $snapshot, $now );
-		if ( false === $wpdb->query( $sql ) ) { return false; }
-		$enrollment_updated = $wpdb->query( $wpdb->prepare( "UPDATE {$t['enrollments']} SET status='completed',completed_at=%s,version=version+1,updated_at=%s WHERE user_id=%d AND course_id=%d", $now, $now, $user_id, $course_id ) );
-		if ( false === $enrollment_updated || 0 === $enrollment_updated ) { return false; }
+		$now = LSCH_Database::now();
+		$sql = $wpdb->prepare( "INSERT INTO {$t['completions']} (public_id,user_id,course_id,course_version,competency_snapshot_json,status,identity_assurance,integrity_status,version,earned_at,revoked_reason) VALUES (%s,%d,%d,%d,%s,'earned','verified','clear',1,%s,'') ON DUPLICATE KEY UPDATE competency_snapshot_json=VALUES(competency_snapshot_json),status='earned',version=version+1,revoked_at=NULL,revoked_reason='',earned_at=VALUES(earned_at)", LSCH_Database::uuid(), $user_id, $course_id, LSCH_Content::version( $course_id ), $snapshot, $now );
+		if ( false === $wpdb->query( $sql ) ) { return new WP_Error( 'lsch_completion_write_failed', __( 'Completion evidence could not be persisted.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) ); }
+		$updated = $wpdb->update( $t['enrollments'], array( 'status' => 'completed', 'completed_at' => $now, 'version' => absint( $enrollment['version'] ) + 1, 'updated_at' => $now ), array( 'id' => absint( $enrollment['id'] ), 'version' => absint( $enrollment['version'] ), 'status' => $enrollment['status'] ), array( '%s', '%s', '%d', '%s' ), array( '%d', '%d', '%s' ) );
+		if ( 1 !== $updated ) { return new WP_Error( 'lsch_completion_conflict', __( 'Enrollment changed while completion was being recorded.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
 		LSCH_Events::publish( 'CourseCompleted.v1', 'course', $course_id, array( 'user_id' => $user_id, 'course_version' => LSCH_Content::version( $course_id ), 'certificate_status' => 'eligible' ) );
 		return true;
 	}

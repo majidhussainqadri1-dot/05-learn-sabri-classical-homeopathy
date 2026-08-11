@@ -113,36 +113,67 @@ final class LSCH_Capabilities {
 	}
 
 
+
+	private static function active_staff_rows( $user_id ) {
+		global $wpdb; $t = LSCH_Database::tables();
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT object_type,object_id,role FROM {$t['staff']} WHERE user_id=%d AND active=1 AND conflict_status='clear' ORDER BY id ASC LIMIT 250", absint( $user_id ) ), ARRAY_A );
+		return is_array( $rows ) ? $rows : array();
+	}
+
+	private static function grant( array $allcaps, array $capabilities ) {
+		foreach ( $capabilities as $capability ) { $allcaps[ $capability ] = true; }
+		return $allcaps;
+	}
+
+	private static function row_matches( array $row, $role, $type = '', $id = null ) {
+		if ( sanitize_key( $row['role'] ) !== sanitize_key( $role ) ) { return false; }
+		if ( '' !== $type && sanitize_key( $row['object_type'] ) !== sanitize_key( $type ) ) { return false; }
+		return null === $id || absint( $row['object_id'] ) === absint( $id );
+	}
+
 	/** Remove File 05 domain capabilities when current File 00 assertions are not usable. */
 	public static function filter_user_caps( $allcaps, $caps, $args, $user ) {
-		unset( $caps, $args );
-		if ( self::$filtering_user_caps || ! $user instanceof WP_User || ! $user->ID ) {
-			return $allcaps;
-		}
-		$domain = self::all();
-		$has_domain = false;
-		foreach ( $domain as $capability ) {
-			if ( ! empty( $allcaps[ $capability ] ) ) { $has_domain = true; break; }
-		}
-		if ( ! $has_domain ) { return $allcaps; }
+		if ( self::$filtering_user_caps || ! $user instanceof WP_User || ! $user->ID ) { return $allcaps; }
 		self::$filtering_user_caps = true;
 		$claims = LSCH_Dependencies::claims( $user->ID );
 		self::$filtering_user_caps = false;
-		$allowed = ! empty( $claims['founder'] ) || ( ! empty( $claims['approved'] ) && ! empty( $claims['eligible'] ) && empty( $claims['suspended'] ) && ! empty( $claims['guardian_verified'] ) );
+		$domain = self::all();
+		$founder = ! empty( $claims['founder'] );
+		$allowed = $founder || ( ! empty( $claims['approved'] ) && ! empty( $claims['eligible'] ) && empty( $claims['suspended'] ) && ! empty( $claims['guardian_verified'] ) );
 		if ( ! $allowed ) {
 			foreach ( $domain as $capability ) {
-				/* OPERATE is a system-diagnostics capability, not a membership identity grant. */
 				if ( self::OPERATE === $capability && ! empty( $allcaps['manage_options'] ) ) { continue; }
 				unset( $allcaps[ $capability ] );
+			}
+			return $allcaps;
+		}
+		if ( $founder ) { return self::grant( $allcaps, $domain ); }
+		$rows = self::active_staff_rows( $user->ID );
+		foreach ( $rows as $row ) {
+			switch ( sanitize_key( $row['role'] ) ) {
+				case 'teacher': $allcaps = self::grant( $allcaps, array( self::TEACH, self::VIEW_ANALYTICS ) ); break;
+				case 'assessor': $allcaps = self::grant( $allcaps, array( self::ASSESS ) ); break;
+				case 'reviewer': $allcaps = self::grant( $allcaps, array( self::REVIEW_LESSONS ) ); break;
+				case 'curriculum_lead':
+					if ( 'platform' === sanitize_key( $row['object_type'] ) && 0 === absint( $row['object_id'] ) ) { $allcaps = self::grant( $allcaps, $domain ); }
+					break;
+			}
+		}
+		$requested = isset( $args[0] ) ? (string) $args[0] : '';
+		$object_id = isset( $args[2] ) ? absint( $args[2] ) : 0;
+		if ( $object_id && in_array( $requested, array( 'read_post', 'edit_post' ), true ) ) {
+			$type = get_post_type( $object_id );
+			foreach ( $rows as $row ) {
+				$semantic = LSCH_Content::LESSON === $type ? 'lesson' : ( LSCH_Content::ASSIGNMENT === $type ? 'assignment' : ( LSCH_Content::ASSESSMENT === $type ? 'assessment' : '' ) );
+				$scoped = ( 'lesson' === $semantic && self::row_matches( $row, 'teacher', 'lesson', $object_id ) ) ||
+					( 'read_post' === $requested && 'lesson' === $semantic && self::row_matches( $row, 'reviewer', 'lesson', $object_id ) ) ||
+					( 'read_post' === $requested && in_array( $semantic, array( 'assignment', 'assessment' ), true ) && self::row_matches( $row, 'assessor', $semantic, $object_id ) );
+				if ( $scoped ) { foreach ( (array) $caps as $primitive ) { $allcaps[ $primitive ] = true; } break; }
 			}
 		}
 		return $allcaps;
 	}
 
-	/**
-	 * File 00 owns age/jurisdiction/guardian truth. File 05 consumes the
-	 * resulting guardian assertion instead of re-deriving private age fields.
-	 */
 	public static function guardian_gate_passes( $user_id = 0 ) {
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
 		if ( ! $user_id ) {

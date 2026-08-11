@@ -8,6 +8,7 @@ final class LSCH_Idempotency {
 	private static $request_hash = '';
 	private static $lock_name = '';
 	private static $route = '';
+	private static $transaction_open = false;
 
 	public static function hooks() {
 		/* These hooks execute after route permission callbacks, preventing denied callers from filling the replay ledger. */
@@ -103,6 +104,10 @@ final class LSCH_Idempotency {
 
 		$route = (string) $request->get_route();
 		$method = strtoupper( (string) $request->get_method() );
+		$rate_bucket = 'rest_mutation_' . substr( hash( 'sha256', $method . '|' . $route ), 0, 24 );
+		if ( ! LSCH_Policy::rate_limit( $rate_bucket, (string) $user_id, 60, 60 ) ) {
+			return new WP_Error( 'lsch_rate_limited', __( 'Please wait before trying this protected learning action again.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 429, 'trace_id' => LSCH_Policy::request_id() ) );
+		}
 		$action = 'rest_' . substr( hash( 'sha256', $method . '|' . $route ), 0, 32 );
 		$key_hash = LSCH_Policy::idempotency_key( $request->get_header( 'Idempotency-Key' ), $user_id, $action );
 		if ( is_wp_error( $key_hash ) ) {
@@ -171,6 +176,13 @@ final class LSCH_Idempotency {
 			return new WP_Error( 'lsch_idempotency_record_failed', __( 'The protected action could not establish its replay guard.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
 
+		LSCH_Events::reset_request_integrity();
+		if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
+			$wpdb->update( $t['request_keys'], array( 'status' => 'completed', 'response_status' => 503, 'response_ref_json' => wp_json_encode( array( 'error_code' => 'lsch_transaction_unavailable' ) ), 'updated_at' => LSCH_Database::now() ), array( 'key_hash' => $key_hash ), array( '%s', '%d', '%s', '%s' ), array( '%s' ) );
+			self::release();
+			return new WP_Error( 'lsch_transaction_unavailable', __( 'The protected learning transaction could not start safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503, 'trace_id' => LSCH_Policy::request_id() ) );
+		}
+		self::$transaction_open = true;
 		self::$active = true;
 		self::$key_hash = $key_hash;
 		self::$request_hash = $request_hash;
@@ -180,33 +192,36 @@ final class LSCH_Idempotency {
 
 	public static function after_callbacks( $response, $handler, $request ) {
 		unset( $handler );
-		if ( ! self::$active || ! $request instanceof WP_REST_Request || self::$route !== (string) $request->get_route() ) {
+		if ( ! self::$active || ! $request instanceof WP_REST_Request || self::$route !== (string) $request->get_route() ) { return $response; }
+		global $wpdb; $t = LSCH_Database::tables();
+		$status = self::response_status( $response );
+		$integrity_error = LSCH_Events::request_integrity_error();
+		$failed = is_wp_error( $response ) || $status >= 400 || '' !== $integrity_error;
+		if ( $failed ) {
+			if ( self::$transaction_open ) { $wpdb->query( 'ROLLBACK' ); self::$transaction_open = false; }
+			if ( '' !== $integrity_error && $status < 400 ) { $response = new WP_Error( 'lsch_transaction_integrity_failed', __( 'The protected action was rolled back because its required audit/event evidence could not be persisted.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503, 'trace_id' => LSCH_Policy::request_id(), 'reason' => $integrity_error ) ); $status = 503; }
+			$reference = self::response_reference( $response );
+			$wpdb->update( $t['request_keys'], array( 'status' => 'completed', 'response_status' => $status, 'response_ref_json' => wp_json_encode( $reference ), 'updated_at' => LSCH_Database::now() ), array( 'key_hash' => self::$key_hash, 'request_hash' => self::$request_hash ), array( '%s', '%d', '%s', '%s' ), array( '%s', '%s' ) );
+			self::release();
 			return $response;
 		}
-		global $wpdb;
-		$t = LSCH_Database::tables();
 		$reference = self::response_reference( $response );
-		$status = self::response_status( $response );
-		$updated = $wpdb->update(
-			$t['request_keys'],
-			array(
-				'status'            => 'completed',
-				'response_status'   => $status,
-				'response_ref_json' => wp_json_encode( $reference ),
-				'updated_at'        => LSCH_Database::now(),
-			),
-			array( 'key_hash' => self::$key_hash, 'request_hash' => self::$request_hash, 'status' => 'processing' ),
-			array( '%s', '%d', '%s', '%s' ),
-			array( '%s', '%s', '%s' )
-		);
-		if ( 1 !== $updated ) {
-			LSCH_Events::audit( 'rest_idempotency_finalize_failed', 'rest_request', 0, array( 'route_hash' => substr( hash( 'sha256', self::$route ), 0, 16 ) ), 'reliability' );
+		$updated = $wpdb->update( $t['request_keys'], array( 'status' => 'completed', 'response_status' => $status, 'response_ref_json' => wp_json_encode( $reference ), 'updated_at' => LSCH_Database::now() ), array( 'key_hash' => self::$key_hash, 'request_hash' => self::$request_hash, 'status' => 'processing' ), array( '%s', '%d', '%s', '%s' ), array( '%s', '%s', '%s' ) );
+		if ( 1 !== $updated || false === $wpdb->query( 'COMMIT' ) ) {
+			if ( self::$transaction_open ) { $wpdb->query( 'ROLLBACK' ); }
+			self::$transaction_open = false;
+			$response = new WP_Error( 'lsch_transaction_commit_failed', __( 'The protected learning action could not be committed safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503, 'trace_id' => LSCH_Policy::request_id() ) );
+			$wpdb->update( $t['request_keys'], array( 'status' => 'completed', 'response_status' => 503, 'response_ref_json' => wp_json_encode( array( 'error_code' => 'lsch_transaction_commit_failed' ) ), 'updated_at' => LSCH_Database::now() ), array( 'key_hash' => self::$key_hash ), array( '%s', '%d', '%s', '%s' ), array( '%s' ) );
+			self::release();
+			return $response;
 		}
+		self::$transaction_open = false;
 		self::release();
 		return $response;
 	}
 
 	public static function release() {
+		if ( self::$transaction_open ) { global $wpdb; $wpdb->query( 'ROLLBACK' ); self::$transaction_open = false; }
 		if ( self::$lock_name ) {
 			global $wpdb;
 			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', self::$lock_name ) );

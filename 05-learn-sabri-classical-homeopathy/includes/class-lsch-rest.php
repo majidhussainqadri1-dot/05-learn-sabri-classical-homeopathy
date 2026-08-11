@@ -5,7 +5,20 @@ defined( 'ABSPATH' ) || exit;
 final class LSCH_REST {
 	const NS = 'learn-sabri-classical-homeopathy/v2';
 
-	public function hooks() { add_action( 'rest_api_init', array( $this, 'register' ) ); }
+	public function hooks() { add_action( 'rest_api_init', array( $this, 'register' ) ); add_filter( 'rest_post_dispatch', array( $this, 'trace_response' ), 20, 3 ); }
+
+	public function trace_response( $response, $server, $request ) {
+		unset( $server );
+		if ( ! $request instanceof WP_REST_Request || 0 !== strpos( (string) $request->get_route(), '/' . self::NS . '/' ) ) { return $response; }
+		$trace = LSCH_Policy::request_id();
+		if ( is_wp_error( $response ) ) { $code = $response->get_error_code(); $data = $response->get_error_data( $code ); $data = is_array( $data ) ? $data : array(); $data['trace_id'] = $trace; $response->add_data( $data, $code ); return $response; }
+		$response = rest_ensure_response( $response );
+		if ( $response instanceof WP_REST_Response ) {
+			$response->header( 'X-Request-ID', $trace );
+			if ( $response->get_status() >= 400 ) { $data = $response->get_data(); if ( is_array( $data ) ) { if ( isset( $data['data'] ) && is_array( $data['data'] ) ) { $data['data']['trace_id'] = $trace; } else { $data['trace_id'] = $trace; } $response->set_data( $data ); } }
+		}
+		return $response;
+	}
 
 	public function register() {
 		register_rest_route( self::NS, '/catalog', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'catalog' ), 'permission_callback' => '__return_true' ) );
@@ -45,7 +58,7 @@ final class LSCH_REST {
 	public function manager() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ); }
 	public function teacher() { return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && ( current_user_can( LSCH_Capabilities::TEACH ) || current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) ); }
 	public function operator() { return is_user_logged_in() && current_user_can( LSCH_Capabilities::OPERATE ) && ( LSCH_Policy::can_use_protected_reads() || current_user_can( 'manage_options' ) ); }
-	public function author_or_reviewer( WP_REST_Request $request ) { $id = absint( $request['id'] ); return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && ( LSCH_Policy::can_manage_object( $id ) || current_user_can( LSCH_Capabilities::REVIEW_LESSONS ) ); }
+	public function author_or_reviewer( WP_REST_Request $request ) { $id = absint( $request['id'] ); $user_id = get_current_user_id(); return is_user_logged_in() && LSCH_Policy::can_use_learning_actions() && ( LSCH_Policy::can_manage_object( $id, $user_id ) || ( current_user_can( LSCH_Capabilities::REVIEW_LESSONS ) && LSCH_Services::staff_scope_allows( $user_id, 'lesson', $id, 'reviewer' ) ) ); }
 
 	private function guard_rate( $bucket, $limit = 60, $window = 60 ) {
 		$subject = get_current_user_id() ?: ( isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : 'guest' );

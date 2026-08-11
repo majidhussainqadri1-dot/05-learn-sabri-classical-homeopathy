@@ -237,9 +237,47 @@ for token in ['decrypt_note_checked', 'lsch:assessment:', 'lsch_assessment_busy'
         errors.append(f'Missing note-integrity/assessment-concurrency invariant: {token}')
 
 privacy_current = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-privacy.php', '')
-for token in ['LIMIT %d OFFSET %d', "array( $t['request_keys'], 'user_id'", "proposer_id=%d OR reviewer_id=%d", 'decrypt_note_checked']:
+for token in ['LIMIT %d OFFSET %d', "array( $t['request_keys'], 'user_id=%d'", "proposer_id=%d OR reviewer_id=%d", 'decrypt_note_checked']:
     if token not in privacy_current:
         errors.append(f'Missing bounded/complete privacy regression invariant: {token}')
+
+
+# Fourth independent Review-80 regression invariants (2026-08-11).
+services_cycle4 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-services.php', '')
+for token in ["'status' => 'enrolled'", "'enrolled' => array( 'active', 'withdrawn' )", 'LearningEnrollmentActivated.v1', 'lsch_staff_target_ineligible', "'curriculum_lead' => array( 'platform' => '' )", "staff_scope_allows( $actor_id, 'lesson', $lesson_id, 'reviewer' )", 'lsch_completion_conflict']:
+    if token not in services_cycle4:
+        errors.append(f'Missing Review-80 cycle4 enrollment/staff/completion invariant: {token}')
+if "VALUES (%s,%d,%d,'active'" in services_cycle4:
+    errors.append('Enrollment creation regressed to direct active state.')
+
+caps_cycle4 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-capabilities.php', '')
+for token in ['active_staff_rows', "case 'teacher'", "case 'assessor'", "case 'reviewer'", "case 'curriculum_lead'", "'platform' === sanitize_key( $row['object_type'] )"]:
+    if token not in caps_cycle4:
+        errors.append(f'Missing dynamic staff capability invariant: {token}')
+
+policy_cycle4 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-policy.php', '')
+if "static $request_id = '';" not in policy_cycle4:
+    errors.append('Request trace ID is not stable within one request.')
+
+rest_cycle4 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-rest.php', '')
+for token in ['rest_post_dispatch', 'trace_response', "header( 'X-Request-ID'", "LSCH_Services::staff_scope_allows( $user_id, 'lesson', $id, 'reviewer' )"]:
+    if token not in rest_cycle4:
+        errors.append(f'Missing REST trace/scope invariant: {token}')
+
+idem_cycle4 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-idempotency.php', '')
+for token in ['rest_mutation_', "START TRANSACTION", "ROLLBACK", "COMMIT", 'request_integrity_error', 'lsch_transaction_integrity_failed', 'transaction_open']:
+    if token not in idem_cycle4:
+        errors.append(f'Missing mutation reliability invariant: {token}')
+
+events_cycle4 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-events.php', '')
+for token in ['request_failures', 'outbox_persist_failed', 'audit_persist_failed', 'lsch:inbox:', "status='processing'", 'inbox_payload_conflict', "context['request_trace_id']"]:
+    if token not in events_cycle4:
+        errors.append(f'Missing event/audit durability invariant: {token}')
+
+privacy_cycle4 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-privacy.php', '')
+for token in ['assessor_id=%d', 'assigned_by=%d', 'withdrawn_by=%d', 'reviewer_id=%d', 'lsch_privacy_export_query_failed', "SELECT (SELECT COUNT(*) FROM {$t['enrollments']}"]:
+    if token not in privacy_cycle4:
+        errors.append(f'Missing privacy role/failure/retention invariant: {token}')
 
 if errors:
     print('\n'.join(f'ERROR: {e}' for e in errors))
