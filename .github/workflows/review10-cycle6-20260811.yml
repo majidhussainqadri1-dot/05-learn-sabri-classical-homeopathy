@@ -1,0 +1,79 @@
+name: File 05 Sixth Independent Ten-Round Corrective Review
+
+on:
+  push:
+    branches: [ codex/file-05-complete-v3.0.0 ]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: file05-review10-cycle6
+  cancel-in-progress: false
+
+jobs:
+  review10-cycle6:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: codex/file-05-complete-v3.0.0
+          fetch-depth: 0
+
+      - name: Set up PHP 8.3
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Execute ten sequential review-fix rounds
+        run: python3 scripts/review10-cycle6-20260811.py
+
+      - name: Remove temporary review transport
+        run: |
+          rm -f scripts/review10-cycle6-20260811.py
+          rm -f .github/workflows/review10-cycle6-20260811.yml
+
+      - name: Full current-plan regression gate
+        run: bash tests/source-invariants.sh
+
+      - name: PHP 8.3 full syntax gate
+        run: find 05-learn-sabri-classical-homeopathy tests -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l
+
+      - name: Set up PHP 7.4
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc
+        with:
+          php-version: '7.4'
+          coverage: none
+
+      - name: PHP 7.4 full syntax gate
+        run: find 05-learn-sabri-classical-homeopathy tests -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l
+
+      - name: Deterministic package A B verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/file05-c6-a /tmp/file05-c6-b /tmp/file05-c6-extract
+          mkdir -p /tmp/file05-c6-a /tmp/file05-c6-b /tmp/file05-c6-extract
+          python3 scripts/build-release.py --root . --output /tmp/file05-c6-a/05-learn-sabri-classical-homeopathy-4.0.0.zip
+          python3 scripts/build-release.py --root . --output /tmp/file05-c6-b/05-learn-sabri-classical-homeopathy-4.0.0.zip
+          cmp /tmp/file05-c6-a/05-learn-sabri-classical-homeopathy-4.0.0.zip /tmp/file05-c6-b/05-learn-sabri-classical-homeopathy-4.0.0.zip
+          unzip -t /tmp/file05-c6-a/05-learn-sabri-classical-homeopathy-4.0.0.zip
+          unzip -q /tmp/file05-c6-a/05-learn-sabri-classical-homeopathy-4.0.0.zip -d /tmp/file05-c6-extract
+          (cd /tmp/file05-c6-extract/05-learn-sabri-classical-homeopathy && sha256sum -c MANIFEST.sha256)
+
+      - name: Commit cumulatively corrected source and review ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'majidhussainqadri1-dot'
+          git config user.email 'majidhussainqadri1@gmail.com'
+          git status --short
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No corrective changes to commit.'
+            exit 0
+          fi
+          git commit -m 'Complete sixth independent File 05 ten-round corrective review'
+          git push origin HEAD:codex/file-05-complete-v3.0.0
