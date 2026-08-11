@@ -17,6 +17,29 @@ new = "'core privacy bounded pagination and explicit DB failure handling'"
 if s.count(old) != 1:
     raise SystemExit('cycle4 privacy closure-lens pair mismatch')
 s = s.replace(old, new, 1)
+
+# Raw-string PHP templates use literal backslash-t for readability in this
+# temporary transport. Normalize them to actual indentation before materializing.
+old = "def replace_method(path, name, new_method, round_no, finding, visibility='public static'):\n    text = read(path)"
+new = "def replace_method(path, name, new_method, round_no, finding, visibility='public static'):\n    new_method = new_method.replace('\\\\t', '\\t')\n    text = read(path)"
+if s.count(old) != 1:
+    raise SystemExit('cycle4 replace_method indentation-normalizer anchor mismatch')
+s = s.replace(old, new, 1)
+old = "write(SERVICES, text[:start] + new_change + '\\n' + text[end:])"
+new = "write(SERVICES, text[:start] + new_change.replace('\\\\t', '\\t') + '\\n' + text[end:])"
+if s.count(old) != 1:
+    raise SystemExit('cycle4 direct enrollment-state template anchor mismatch')
+s = s.replace(old, new, 1)
+old = "caps = caps.replace(insert_anchor, helpers + insert_anchor, 1)"
+new = "caps = caps.replace(insert_anchor, helpers.replace('\\\\t', '\\t') + insert_anchor, 1)"
+if s.count(old) != 1:
+    raise SystemExit('cycle4 capability-helper template anchor mismatch')
+s = s.replace(old, new, 1)
+old = "privacy = privacy[:start] + new_export + privacy[end:]"
+new = "privacy = privacy[:start] + new_export.replace('\\\\t', '\\t') + privacy[end:]"
+if s.count(old) != 1:
+    raise SystemExit('cycle4 privacy-export template anchor mismatch')
+s = s.replace(old, new, 1)
 p.write_text(s, encoding='utf-8', newline='\n')
 
 # Round-12 test-shape compatibility: the privacy exporter changes from
@@ -29,4 +52,4 @@ new = '"array( $t[\'request_keys\'], \'user_id=%d\'"'
 if t.count(old) != 1:
     raise SystemExit('cycle4 prior privacy invariant token mismatch')
 static.write_text(t.replace(old, new, 1), encoding='utf-8', newline='\n')
-print('Cycle4 private-method, 68-lens, and prior privacy-invariant transport corrected.')
+print('Cycle4 private-method, 68-lens, privacy-invariant, and PHP template indentation transport corrected.')
