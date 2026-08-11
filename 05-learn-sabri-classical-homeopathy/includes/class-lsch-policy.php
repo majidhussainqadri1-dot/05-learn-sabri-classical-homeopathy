@@ -109,9 +109,11 @@ final class LSCH_Policy {
 			if ( absint( $required_course ) === absint( $course_id ) || LSCH_Content::COURSE !== get_post_type( $required_course ) ) {
 				return new WP_Error( 'lsch_prerequisite_configuration_invalid', __( 'A prerequisite must reference a different valid learning course.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 			}
-			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['completions']} WHERE user_id=%d AND course_id=%d AND status='earned' LIMIT 1", $user_id, $required_course ) );
-			if ( ! $exists ) {
-				return new WP_Error( 'lsch_prerequisite_missing', __( 'A required course has not yet been completed.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+			$required_version = LSCH_Content::version( $required_course );
+			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['completions']} WHERE user_id=%d AND course_id=%d AND course_version=%d AND status='earned' AND integrity_status='clear' LIMIT 1", $user_id, $required_course, $required_version ) );
+			$grandfathered = ! $exists && true === apply_filters( 'lsch_prerequisite_completion_grandfathered', false, $required_course, $required_version, $user_id );
+			if ( ! $exists && ! $grandfathered ) {
+				return new WP_Error( 'lsch_prerequisite_missing', __( 'The current governed version of a required course has not yet been completed.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 			}
 		}
 		return true;

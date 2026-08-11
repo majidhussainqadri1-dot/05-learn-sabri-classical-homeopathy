@@ -517,8 +517,8 @@ final class LSCH_Future18 {
 		global $wpdb;
 		$t = self::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['review']} WHERE id=%d AND user_id=%d LIMIT 1", $id, $user_id ), ARRAY_A );
-		if ( ! $row || ( $expected_version && absint( $row['version'] ) !== absint( $expected_version ) ) ) {
-			return new WP_Error( 'lsch_future18_review_conflict', __( 'Review item changed or was not found.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		if ( ! $row || ! $expected_version || absint( $row['version'] ) !== absint( $expected_version ) ) {
+			return new WP_Error( 'lsch_future18_review_conflict', __( 'The current review-item version is required and must match before saving a result.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
 		list( $interval, $ease ) = self::review_schedule( $quality, absint( $row['interval_days'] ), (float) $row['ease'] );
 		$due = gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS * $interval );
@@ -557,11 +557,25 @@ final class LSCH_Future18 {
 		if ( is_wp_error( $json ) ) { return $json; }
 		$all = json_decode( (string) get_post_meta( $lesson_id, '_lsch_future18_blueprints', true ), true );
 		$all = is_array( $all ) ? $all : array();
-		$all[ $mode ] = json_decode( $json, true );
-		update_post_meta( $lesson_id, '_lsch_future18_blueprints', wp_json_encode( $all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
-		update_post_meta( $lesson_id, '_lsch_future18_blueprint_version', absint( get_post_meta( $lesson_id, '_lsch_future18_blueprint_version', true ) ) + 1 );
-		LSCH_Events::audit( 'future18_blueprint_updated', 'lesson', $lesson_id, array( 'mode' => $mode ), 'curriculum' );
-		return true;
+		$next_blueprint = json_decode( $json, true );
+		$blueprint_version = max( 1, absint( get_post_meta( $lesson_id, '_lsch_future18_blueprint_version', true ) ) );
+		if ( isset( $all[ $mode ] ) && $all[ $mode ] === $next_blueprint ) {
+			return array( 'changed' => false, 'blueprint_version' => $blueprint_version, 'lesson_version' => LSCH_Content::version( $lesson_id ) );
+		}
+		$all[ $mode ] = $next_blueprint;
+		if ( false === update_post_meta( $lesson_id, '_lsch_future18_blueprints', wp_json_encode( $all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ) ) {
+			return new WP_Error( 'lsch_future18_blueprint_write_failed', __( 'The practice blueprint could not be saved.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
+		}
+		$next_blueprint_version = $blueprint_version + 1;
+		if ( false === update_post_meta( $lesson_id, '_lsch_future18_blueprint_version', $next_blueprint_version ) ) {
+			return new WP_Error( 'lsch_future18_blueprint_version_failed', __( 'The practice blueprint version could not be advanced.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
+		}
+		$lesson_version = LSCH_Content::bump_version( $lesson_id, 'future18_blueprint' );
+		if ( absint( $lesson_version ) !== LSCH_Content::version( $lesson_id ) ) {
+			return new WP_Error( 'lsch_future18_lesson_version_failed', __( 'The canonical lesson version could not be advanced for this blueprint change.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
+		}
+		LSCH_Events::audit( 'future18_blueprint_updated', 'lesson', $lesson_id, array( 'mode' => $mode, 'blueprint_version' => $next_blueprint_version, 'lesson_version' => $lesson_version ), 'curriculum' );
+		return array( 'changed' => true, 'blueprint_version' => $next_blueprint_version, 'lesson_version' => $lesson_version );
 	}
 
 	private static function blueprint( $source_type, $source_id, $mode, $user_id ) {

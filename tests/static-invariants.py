@@ -389,3 +389,37 @@ for token in ['LSCH_Events::begin_transaction_buffer()', 'LSCH_Events::flush_tra
     if token not in idem_cycle5:
         errors.append(f'Idempotency transaction is not coupled to the post-commit side-effect buffer: {token}')
 
+
+
+# Eighth independent ten-round review regression invariants (2026-08-11).
+content_cycle8 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-content.php', '')
+for token in ['restrict_native_public_queries', 'filter_native_results', 'guard_native_singular', "'_lsch_access', 'value' => 'public'"]:
+    if token not in content_cycle8:
+        errors.append(f'Missing Cycle8 native-access invariant: {token}')
+
+services_cycle8 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-services.php', '')
+for token in [
+    "$data['course_version'] = LSCH_Content::version( $course_id )",
+    "$data['terms_version'] = LSCH_Policy::access_model()",
+    "'assessment-attempt-' . $assessment_id",
+    'lsch_assessment_version_changed',
+    'lsch_assignment_rubric_changed',
+    "AND item_version=%d AND status='graded'",
+    "AND rubric_version=%d AND status='graded'",
+    "$components['assessment'] = ! empty( $assessment_ids )",
+    "$components['assignment'] = ! empty( $assignment_ids )",
+    "return '0' !== (string) get_post_meta( $id, '_lsch_required', true )",
+    'lesson_version,needs_review',
+]:
+    if token not in services_cycle8:
+        errors.append(f'Missing Cycle8 learning-evidence invariant: {token}')
+
+policy_cycle8 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-policy.php', '')
+for token in ["course_version=%d AND status='earned' AND integrity_status='clear'", 'lsch_prerequisite_completion_grandfathered']:
+    if token not in policy_cycle8:
+        errors.append(f'Missing Cycle8 prerequisite invariant: {token}')
+
+future_cycle8 = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php', '')
+for token in ['! $expected_version || absint( $row[\'version\'] ) !== absint( $expected_version )', "LSCH_Content::bump_version( $lesson_id, 'future18_blueprint' )", 'lsch_future18_blueprint_write_failed']:
+    if token not in future_cycle8:
+        errors.append(f'Missing Cycle8 Future18 invariant: {token}')

@@ -61,6 +61,47 @@ final class LSCH_Content {
 
 		self::register_meta();
 		add_action( 'post_updated', array( __CLASS__, 'bump_version_on_post_update' ), 20, 3 );
+		add_action( 'pre_get_posts', array( __CLASS__, 'restrict_native_public_queries' ), 20 );
+		add_filter( 'the_posts', array( __CLASS__, 'filter_native_results' ), 20, 2 );
+		add_action( 'template_redirect', array( __CLASS__, 'guard_native_singular' ), 1 );
+	}
+
+	private static function native_public_types() {
+		return array( self::PROGRAM, self::COURSE, self::BOOK, self::LESSON );
+	}
+
+	/** Keep native WordPress archives/search public-only; richer account/restricted discovery belongs to governed app surfaces/File 26. */
+	public static function restrict_native_public_queries( $query ) {
+		if ( is_admin() || ! $query instanceof WP_Query || ! $query->is_main_query() || $query->is_singular() ) { return; }
+		if ( ! $query->is_search() && ! $query->is_post_type_archive( self::native_public_types() ) ) { return; }
+		$visibility = array(
+			'relation' => 'OR',
+			array( 'key' => '_lsch_access', 'compare' => 'NOT EXISTS' ),
+			array( 'key' => '_lsch_access', 'value' => 'public' ),
+		);
+		$meta = $query->get( 'meta_query' );
+		$meta = is_array( $meta ) ? $meta : array();
+		$meta[] = $visibility;
+		$query->set( 'meta_query', $meta );
+	}
+
+	/** Final per-object filter also removes public patient-case lessons whose consent gate is not currently valid. */
+	public static function filter_native_results( $posts, $query ) {
+		if ( is_admin() || ! $query instanceof WP_Query || ! $query->is_main_query() || ! is_array( $posts ) ) { return $posts; }
+		return array_values( array_filter( $posts, static function( $post ) {
+			return ! $post instanceof WP_Post || ! in_array( $post->post_type, self::native_public_types(), true ) || LSCH_Policy::can_read_post( $post->ID );
+		} ) );
+	}
+
+	/** Denied native singular requests become a non-cacheable 404 instead of bypassing File 05 access policy. */
+	public static function guard_native_singular() {
+		if ( is_admin() || ! is_singular( self::native_public_types() ) ) { return; }
+		$post_id = absint( get_queried_object_id() );
+		if ( ! $post_id || LSCH_Policy::can_read_post( $post_id ) ) { return; }
+		global $wp_query;
+		if ( $wp_query instanceof WP_Query ) { $wp_query->set_404(); }
+		status_header( 404 );
+		nocache_headers();
 	}
 
 	private static function register_post_type( $type, $plural, $singular, $slug, array $supports, $public = true ) {

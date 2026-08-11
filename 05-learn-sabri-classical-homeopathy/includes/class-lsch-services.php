@@ -91,7 +91,12 @@ final class LSCH_Services {
 		$now = LSCH_Database::now();
 		$data = array( 'status' => $state, 'version' => absint( $current['version'] ) + 1, 'updated_at' => $now );
 		$formats = array( '%s', '%d', '%s' );
-		if ( 'active' === $state ) { $data['paused_at'] = null; $formats[] = '%s'; }
+		if ( 'active' === $state ) {
+			$data['paused_at'] = null;
+			$data['course_version'] = LSCH_Content::version( $course_id );
+			$data['terms_version'] = LSCH_Policy::access_model();
+			$formats[] = '%s'; $formats[] = '%d'; $formats[] = '%s';
+		}
 		if ( 'paused' === $state ) { $data['paused_at'] = $now; $formats[] = '%s'; }
 		if ( 'withdrawn' === $state ) { $data['withdrawn_at'] = $now; $formats[] = '%s'; }
 		$updated = $wpdb->update( $t['enrollments'], $data, array( 'id' => absint( $current['id'] ), 'version' => absint( $current['version'] ), 'status' => $current['status'] ), $formats, array( '%d', '%d', '%s' ) );
@@ -131,17 +136,27 @@ final class LSCH_Services {
 		$components = is_array( $components ) ? $components : array();
 		$components['content'] = ! empty( $input['complete'] ) || ! empty( $components['content'] );
 
-		$assessment_ids = get_posts( array( 'post_type' => LSCH_Content::ASSESSMENT, 'post_status' => 'publish', 'posts_per_page' => 201, 'fields' => 'ids', 'meta_key' => '_lsch_lesson_id', 'meta_value' => $lesson_id, 'no_found_rows' => true ) );
-		if ( count( $assessment_ids ) > 200 ) { return new WP_Error( 'lsch_lesson_component_limit', __( 'This lesson has too many assessment components to evaluate safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
+		$assessment_ids = get_posts( array( 'post_type' => LSCH_Content::ASSESSMENT, 'post_status' => 'publish', 'posts_per_page' => 201, 'fields' => 'ids', 'meta_query' => array( 'relation' => 'AND', array( 'key' => '_lsch_lesson_id', 'value' => $lesson_id, 'type' => 'NUMERIC' ), array( 'relation' => 'OR', array( 'key' => '_lsch_required', 'compare' => 'NOT EXISTS' ), array( 'key' => '_lsch_required', 'value' => '0', 'compare' => '!=' ) ) ), 'no_found_rows' => true ) );
+		if ( count( $assessment_ids ) > 200 ) { return new WP_Error( 'lsch_lesson_component_limit', __( 'This lesson has too many required assessment components to evaluate safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
+		$components['assessment'] = ! empty( $assessment_ids );
 		if ( $assessment_ids ) {
-			$components['assessment'] = true;
-			foreach ( $assessment_ids as $assessment_id ) { $pass = max( 0, min( 100, absint( get_post_meta( $assessment_id, '_lsch_pass_mark', true ) ?: 50 ) ) ); $best = (float) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(score),-1) FROM {$t['attempts']} WHERE user_id=%d AND assessment_id=%d AND status='graded' AND integrity_status='clear'", $user_id, absint( $assessment_id ) ) ); if ( $best < $pass ) { $components['assessment'] = false; break; } }
+			foreach ( $assessment_ids as $assessment_id ) {
+				$pass = max( 0, min( 100, absint( get_post_meta( $assessment_id, '_lsch_pass_mark', true ) ?: 50 ) ) );
+				$item_version = LSCH_Content::version( $assessment_id );
+				$best = (float) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(score),-1) FROM {$t['attempts']} WHERE user_id=%d AND assessment_id=%d AND item_version=%d AND status='graded' AND integrity_status='clear'", $user_id, absint( $assessment_id ), $item_version ) );
+				if ( $best < $pass ) { $components['assessment'] = false; break; }
+			}
 		}
-		$assignment_ids = get_posts( array( 'post_type' => LSCH_Content::ASSIGNMENT, 'post_status' => 'publish', 'posts_per_page' => 201, 'fields' => 'ids', 'meta_key' => '_lsch_lesson_id', 'meta_value' => $lesson_id, 'no_found_rows' => true ) );
-		if ( count( $assignment_ids ) > 200 ) { return new WP_Error( 'lsch_lesson_component_limit', __( 'This lesson has too many assignment components to evaluate safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
+		$assignment_ids = get_posts( array( 'post_type' => LSCH_Content::ASSIGNMENT, 'post_status' => 'publish', 'posts_per_page' => 201, 'fields' => 'ids', 'meta_query' => array( 'relation' => 'AND', array( 'key' => '_lsch_lesson_id', 'value' => $lesson_id, 'type' => 'NUMERIC' ), array( 'relation' => 'OR', array( 'key' => '_lsch_required', 'compare' => 'NOT EXISTS' ), array( 'key' => '_lsch_required', 'value' => '0', 'compare' => '!=' ) ) ), 'no_found_rows' => true ) );
+		if ( count( $assignment_ids ) > 200 ) { return new WP_Error( 'lsch_lesson_component_limit', __( 'This lesson has too many required assignment components to evaluate safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
+		$components['assignment'] = ! empty( $assignment_ids );
 		if ( $assignment_ids ) {
-			$components['assignment'] = true;
-			foreach ( $assignment_ids as $assignment_id ) { $pass = max( 0, min( 100, absint( get_post_meta( $assignment_id, '_lsch_pass_mark', true ) ?: 50 ) ) ); $best = (float) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(score),-1) FROM {$t['submissions']} WHERE user_id=%d AND assignment_id=%d AND status='graded'", $user_id, absint( $assignment_id ) ) ); if ( $best < $pass ) { $components['assignment'] = false; break; } }
+			foreach ( $assignment_ids as $assignment_id ) {
+				$pass = max( 0, min( 100, absint( get_post_meta( $assignment_id, '_lsch_pass_mark', true ) ?: 50 ) ) );
+				$rubric_version = LSCH_Content::version( $assignment_id );
+				$best = (float) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(score),-1) FROM {$t['submissions']} WHERE user_id=%d AND assignment_id=%d AND rubric_version=%d AND status='graded'", $user_id, absint( $assignment_id ), $rubric_version ) );
+				if ( $best < $pass ) { $components['assignment'] = false; break; }
+			}
 		}
 
 		$required = json_decode( (string) get_post_meta( $lesson_id, '_lsch_required_components', true ), true );
@@ -252,7 +267,7 @@ final class LSCH_Services {
 			return new WP_Error( 'lsch_assessment_forbidden', __( 'Assessment is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
 		$enrollment_gate = self::active_child_enrollment( $assessment_id, $user_id ); if ( is_wp_error( $enrollment_gate ) ) { return $enrollment_gate; }
-		$key = LSCH_Policy::idempotency_key( $idempotency, $user_id, 'assessment-attempt' ); if ( is_wp_error( $key ) ) { return $key; }
+		$key = LSCH_Policy::idempotency_key( $idempotency, $user_id, 'assessment-attempt-' . $assessment_id ); if ( is_wp_error( $key ) ) { return $key; }
 		global $wpdb; $t = LSCH_Database::tables();
 		$lock_name = 'lsch:assessment:' . substr( hash( 'sha256', $assessment_id . '|' . $user_id ), 0, 48 );
 		if ( 1 !== (int) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s,3)', $lock_name ) ) ) {
@@ -296,6 +311,10 @@ final class LSCH_Services {
 	public static function submit_assessment( $assessment_id, $user_id, array $answers, $idempotency ) {
 		$attempt = self::start_assessment( $assessment_id, $user_id, $idempotency ); if ( is_wp_error( $attempt ) ) { return $attempt; }
 		if ( 'graded' === $attempt['status'] ) { return $attempt; }
+		$current_item_version = LSCH_Content::version( $assessment_id );
+		if ( absint( $attempt['assessment_id'] ) !== $assessment_id || absint( $attempt['item_version'] ) !== $current_item_version ) {
+			return new WP_Error( 'lsch_assessment_version_changed', __( 'This assessment changed after the attempt began. Start a fresh governed attempt.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
 		if ( count( $answers ) > 200 ) { return new WP_Error( 'lsch_assessment_answers_limit', __( 'Too many assessment answers were submitted.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) ); }
 		$normalized_answers = array();
 		foreach ( $answers as $index => $answer ) {
@@ -320,7 +339,7 @@ final class LSCH_Services {
 		$updated = $wpdb->update( $t['attempts'], array( 'answers_json' => $answers_json, 'result_json' => wp_json_encode( $review ), 'score' => $score, 'status' => 'graded', 'version' => absint( $attempt['version'] ) + 1, 'submitted_at' => $now, 'graded_at' => $now ), array( 'id' => absint( $attempt['id'] ), 'version' => absint( $attempt['version'] ), 'status' => 'started' ), array( '%s', '%s', '%f', '%s', '%d', '%s', '%s' ), array( '%d', '%d', '%s' ) );
 		if ( 1 !== $updated ) { return new WP_Error( 'lsch_assessment_conflict', __( 'The assessment changed while being submitted.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['attempts']} WHERE id=%d", absint( $attempt['id'] ) ), ARRAY_A );
-		LSCH_Events::publish( 'AssessmentSubmitted.v1', 'assessment', $assessment_id, array( 'user_id' => $user_id, 'attempt_id' => $row['public_id'], 'score' => $score, 'item_version' => LSCH_Content::version( $assessment_id ) ) );
+		LSCH_Events::publish( 'AssessmentSubmitted.v1', 'assessment', $assessment_id, array( 'user_id' => $user_id, 'attempt_id' => $row['public_id'], 'score' => $score, 'item_version' => $current_item_version ) );
 		LSCH_Events::audit( 'submit_assessment', 'assessment', $assessment_id, array( 'user_id' => $user_id, 'attempt' => $row['attempt_number'], 'score' => $score ), 'assessment' );
 		$lesson_id = absint( get_post_meta( $assessment_id, '_lsch_lesson_id', true ) ); if ( $lesson_id ) { self::refresh_progress_from_evidence( $lesson_id, $user_id ); }
 		return $row;
@@ -365,6 +384,10 @@ final class LSCH_Services {
 		}
 		if ( ! $row || absint( $row['user_id'] ) === $assessor_id || absint( $row['version'] ) !== absint( $expected_version ) ) {
 			return new WP_Error( 'lsch_grade_conflict', __( 'Submission is unavailable, conflicted, or cannot be self-assessed.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		$assignment_id = absint( $row['assignment_id'] );
+		if ( LSCH_Content::ASSIGNMENT !== get_post_type( $assignment_id ) || absint( $row['rubric_version'] ) !== LSCH_Content::version( $assignment_id ) ) {
+			return new WP_Error( 'lsch_assignment_rubric_changed', __( 'The assignment rubric changed after submission. Reconcile the submission before grading.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
 		$updated = $wpdb->update( $t['submissions'], array( 'status' => 'graded', 'assessor_id' => $assessor_id, 'score' => min( 100, max( 0, (float) $score ) ), 'feedback' => wp_kses_post( $feedback ), 'version' => absint( $row['version'] ) + 1, 'updated_at' => LSCH_Database::now() ), array( 'id' => $submission_id, 'version' => absint( $expected_version ) ), array( '%s', '%d', '%f', '%s', '%d', '%s' ), array( '%d', '%d' ) );
 		if ( 1 !== $updated ) { return new WP_Error( 'lsch_grade_conflict', __( 'Submission changed while grading.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
@@ -526,13 +549,19 @@ final class LSCH_Services {
 		if ( LSCH_Content::COURSE !== get_post_type( $course_id ) ) { return new WP_Error( 'lsch_completion_course_invalid', __( 'Course completion could not be reconciled safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
 		$lessons = get_posts( array( 'post_type' => LSCH_Content::LESSON, 'post_status' => 'publish', 'posts_per_page' => 501, 'fields' => 'ids', 'meta_key' => '_lsch_course_id', 'meta_value' => $course_id, 'no_found_rows' => true ) );
 		if ( count( $lessons ) > 500 ) { LSCH_Events::audit( 'course_completion_scope_exceeded', 'course', $course_id, array( 'user_id' => $user_id, 'limit' => 500 ), 'reliability' ); return new WP_Error( 'lsch_completion_scope_exceeded', __( 'Course completion requires operator reconciliation because its required-lesson scope is too large.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
-		$required = array_filter( $lessons, static function( $id ) { return 1 === absint( get_post_meta( $id, '_lsch_required', true ) ?: 1 ); } );
+		$required = array_values( array_filter( $lessons, static function( $id ) { return '0' !== (string) get_post_meta( $id, '_lsch_required', true ); } ) );
 		if ( ! $required ) { return true; }
 		global $wpdb; $t = LSCH_Database::tables();
 		$placeholders = implode( ',', array_fill( 0, count( $required ), '%d' ) );
 		$args = array_merge( array( $user_id ), array_map( 'absint', $required ) );
-		$completed = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['progress']} WHERE user_id=%d AND lesson_id IN ({$placeholders}) AND state='completed'", $args ) );
-		if ( $completed < count( $required ) ) { return true; }
+		$progress_rows = $wpdb->get_results( $wpdb->prepare( "SELECT lesson_id,state,lesson_version,needs_review FROM {$t['progress']} WHERE user_id=%d AND lesson_id IN ({$placeholders})", $args ), ARRAY_A );
+		$progress_by_lesson = array();
+		foreach ( (array) $progress_rows as $progress_row ) { $progress_by_lesson[ absint( $progress_row['lesson_id'] ) ] = $progress_row; }
+		foreach ( $required as $required_lesson_id ) {
+			$required_lesson_id = absint( $required_lesson_id );
+			$progress_row = isset( $progress_by_lesson[ $required_lesson_id ] ) ? $progress_by_lesson[ $required_lesson_id ] : null;
+			if ( ! $progress_row || 'completed' !== $progress_row['state'] || ! empty( $progress_row['needs_review'] ) || absint( $progress_row['lesson_version'] ) !== LSCH_Content::version( $required_lesson_id ) ) { return true; }
+		}
 		$claims = LSCH_Dependencies::claims( $user_id );
 		if ( empty( $claims['identity_verified'] ) ) { return true; }
 		$enrollment = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $course_id ), ARRAY_A );

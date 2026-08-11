@@ -39,3 +39,8 @@
 ## 0.1.0 — Baseline
 
 - Original supplied source preserved in repository history/baseline branch.
+
+## 2026-08-11 — Eighth independent ten-round corrective review
+- Closed ten sequential source defects covering native WordPress access enforcement, enrollment parity refresh, assessment/assignment immutable-version evidence, optional-vs-required learning components, current-version course/prerequisite completion truth, Future18 optimistic concurrency and blueprint-to-canonical-version integration.
+- Added permanent Cycle-8 regression invariants and `REVIEW-10-CYCLE-8-2026-08-11.md`.
+- Repository-only correction; staging/live status is unchanged.
