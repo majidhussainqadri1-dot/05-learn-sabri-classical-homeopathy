@@ -7,8 +7,8 @@ This status distinguishes repository truth from staging/live truth.
 | Specified | Current consolidated central plan + current File 05 plan + Founder-approved Future Superset 18 mapped |
 | Coded | Existing 18 FR + 10 NFR + central amendments + F05-FUT-01..18 materialized in the actual 4.0.0 source tree |
 | Reviewed | Existing corrective evidence retained; **fifth independent 80-round sequential review/fix cycle completed** on the current 4.0.0 candidate. Every Cycle-5 defect was fixed and asserted before advancing; see `REVIEW-80-CYCLE-5-2026-08-11.md`. |
-| Packaged | Deterministic release builder, embedded `MANIFEST.sha256`, SPDX SBOM and external ZIP checksum configured for 4.0.0; the Cycle-5 runner must pass deterministic A/B package verification before committing this corrected tree. |
-| Automated QA | Cycle-5 source corrections are complete; full source/security/policy/Future18 regression, PHP 8.3, PHP 7.4 and deterministic package A/B are executed by the corrective runner before commit. A normal workflow on the resulting exact HEAD remains the immutable final Automated-QA evidence gate. |
+| Packaged | Cycle-5 corrective runner passed deterministic A/B package generation, archive verification and embedded manifest verification before committing the corrected tree. The normal exact-head workflow remains the immutable package-evidence gate. |
+| Automated QA | Cycle-5 corrective runner passed full source/security/policy/Future18 regression plus PHP 8.3 and PHP 7.4 syntax before committing the corrected tree. A normal workflow on this resulting user-authored exact HEAD remains the immutable final Automated-QA evidence gate. |
 | Staging accepted | **No** — real WordPress/Hostinger and companion-runtime evidence pending |
 | Live deployed | **No claim / not changed by this source work** |
 | Operationally accepted | **No** |
