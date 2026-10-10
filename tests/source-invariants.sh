@@ -7,6 +7,7 @@ python3 tests/static-invariants.py
 python3 tests/future18-invariants.py
 php tests/unit-policy.php
 php tests/security-invariants.php
+php tests/future18-score-safety.php
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
 
 find 05-learn-sabri-classical-homeopathy -type f -name '*.php' -print0 \
