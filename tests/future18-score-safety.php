@@ -37,7 +37,7 @@ $valid = $score( $scalar, array( 'answer' => 'YES' ) );
 $assert( false === $valid['manual'] && 100.0 === (float) $valid['score'], 'valid scalar answer must score 100' );
 $wrong = $score( $scalar, array( 'answer' => 'no' ) );
 $assert( false === $wrong['manual'] && 0.0 === (float) $wrong['score'], 'wrong scalar answer must score zero' );
-$choices = $score( array( 'criteria' => array( array( 'key' => 'answer', 'expected' => array( 'yes', 'sure' ) ) ), array( 'answer' => 'SURE' ) );
+$choices = $score( array( 'criteria' => array( array( 'key' => 'answer', 'expected' => array( 'yes', 'sure' ) ) ) ), array( 'answer' => 'SURE' ) );
 $assert( false === $choices['manual'] && 100.0 === (float) $choices['score'], 'valid multi-choice scalar answer must still work' );
 $array_attack = $score( array( 'criteria' => array( array( 'key' => 'answer', 'expected' => 'Array' ) ) ), array( 'answer' => array( 'ungraded' ) ) );
 $assert( true === $array_attack['manual'] && 0.0 === (float) $array_attack['score'], 'array answer must never stringify to Array and earn 100' );
