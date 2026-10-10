@@ -604,28 +604,46 @@ final class LSCH_Future18 {
 
 	private static function auto_score( array $blueprint, array $response ) {
 		$criteria = isset( $blueprint['criteria'] ) && is_array( $blueprint['criteria'] ) ? $blueprint['criteria'] : array();
-		if ( ! $criteria ) {
-			return array( 'manual' => true, 'score' => 0, 'feedback' => array() );
-		}
+		$manual = array( 'manual' => true, 'score' => 0, 'feedback' => array() );
+		if ( ! $criteria ) { return $manual; }
 		$earned = 0.0;
 		$total = 0.0;
 		$feedback = array();
 		foreach ( $criteria as $criterion ) {
-			if ( ! is_array( $criterion ) || empty( $criterion['key'] ) ) { continue; }
-			$key = sanitize_key( $criterion['key'] );
-			$weight = max( 0.1, min( 100, (float) ( $criterion['weight'] ?? 1 ) ) );
-			$total += $weight;
-			$given = isset( $response[ $key ] ) ? $response[ $key ] : '';
-			$expected = isset( $criterion['expected'] ) ? $criterion['expected'] : null;
-			$matched = false;
-			if ( is_array( $expected ) ) {
-				$normalized = array_map( static function( $v ) { return strtolower( trim( (string) $v ) ); }, $expected );
-				$matched = in_array( strtolower( trim( (string) $given ) ), $normalized, true );
-			} elseif ( null !== $expected ) {
-				$matched = hash_equals( strtolower( trim( (string) $expected ) ), strtolower( trim( (string) $given ) ) );
+			if ( ! is_array( $criterion ) || ! isset( $criterion['key'] ) || ! is_scalar( $criterion['key'] ) || ! array_key_exists( 'expected', $criterion ) ) {
+				return $manual;
 			}
+			$key = sanitize_key( $criterion['key'] );
+			if ( '' === $key ) { return $manual; }
+			$raw_weight = isset( $criterion['weight'] ) ? $criterion['weight'] : 1;
+			if ( ! is_scalar( $raw_weight ) || ! is_numeric( $raw_weight ) || ! is_finite( (float) $raw_weight ) ) {
+				return $manual;
+			}
+			$weight = max( 0.1, min( 100, (float) $raw_weight ) );
+			$expected = $criterion['expected'];
+			if ( is_array( $expected ) ) {
+				if ( ! $expected ) { return $manual; }
+				$normalized = array();
+				foreach ( $expected as $choice ) {
+					if ( ! is_scalar( $choice ) ) { return $manual; }
+					$normalized[] = strtolower( trim( (string) $choice ) );
+				}
+			} elseif ( ! is_scalar( $expected ) ) {
+				return $manual;
+			}
+			$given = array_key_exists( $key, $response ) ? $response[ $key ] : '';
+			if ( ! is_scalar( $given ) && null !== $given ) {
+				// A structured learner response must be graded by an assessor, never coerced to "Array".
+				return $manual;
+			}
+			$given_normalized = strtolower( trim( (string) $given ) );
+			$matched = is_array( $expected )
+				? in_array( $given_normalized, $normalized, true )
+				: hash_equals( strtolower( trim( (string) $expected ) ), $given_normalized );
 			if ( $matched ) { $earned += $weight; }
-			$feedback[] = array( 'key' => $key, 'matched' => $matched, 'feedback' => sanitize_text_field( (string) ( $criterion['feedback'] ?? '' ) ) );
+			$total += $weight;
+			$feedback_text = isset( $criterion['feedback'] ) && is_scalar( $criterion['feedback'] ) ? (string) $criterion['feedback'] : '';
+			$feedback[] = array( 'key' => $key, 'matched' => $matched, 'feedback' => sanitize_text_field( $feedback_text ) );
 		}
 		return array( 'manual' => false, 'score' => $total > 0 ? round( 100 * $earned / $total, 2 ) : 0, 'feedback' => $feedback );
 	}
