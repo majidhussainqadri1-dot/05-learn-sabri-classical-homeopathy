@@ -87,3 +87,12 @@ Source-only corrective IDs:
 - `F05-20261011-B03` (**FR-004/006/018, NFR-003; Files 06/19**): lesson save path reuses the guarded `LSCH_Content::bump_version` instead of independently incrementing a version already changed by `post_updated`.
 - Regression: executable `tests/public-visibility-version.php`; required in `tests/source-invariants.sh`.
 - Full evidence and twenty scoped results: `REVIEW-20-CYCLE-B-2026-10-11.md`. Static/source and fixture success are NOT production/WordPress/LiteSpeed companion acceptance.
+
+## 2026-10-11 — Third independent 20-focus audit (Cycle C)
+
+- `C01 / F05-NFR-001/002 / F05-FR-003`: File05 canonical `_lsch_access` classification now recognizes explicit only `public`, `account`, `restricted`; malformed non-empty values, including `public!` or arrays, fail closed. Legacy missing value remains publicly readable under the existing single-free-tier public catalog rule. Cross-files: 00 identity; 20/25 presentation; 26 public search.
+- `C02 / F05-FR-004/018 / F05-NFR-001/003`: Admin post-meta update strictly validates `_lsch_access`, rejecting invalid form input instead of downgrading to public; valid changes follow File05 version rules and audit evidence.
+- `C03 / F05-NFR-002/003 / F05-FUT-01..18`: Future18 privacy exporter detects any failed `get_results` query and returns an explicit error, never a partial completed export.
+- `C04 / F05-NFR-002/003`: both core File05 and Future18 privacy erasers keep `done=false` on failed DB operations; escalation/retry and File24 legal hold remain mandatory.
+- Tests: `tests/public-visibility-version.php`, `tests/access-governance-contract.php`, `tests/future18-privacy-contract.php`, `tests/core-privacy-erasure.php`, all under `tests/source-invariants.sh`.
+- Full round-specific report: `REVIEW-20-CYCLE-C-2026-10-11.md`. Code and fixture evidence is not peer staging, deployed DB or live proof.
