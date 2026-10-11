@@ -105,3 +105,12 @@ Source-only corrective IDs:
 - **D04 / F05-FR-011 / F05-CEN-04 / F05-NFR-001/002 / Files16/17/26:** File26 publicly indexed results use identity-independent `LSCH_Policy::publicly_visible` in both provider adapters. Guest AI/community context refuses ambient logged-in author privileges; explicit viewer permissions remain scoped.
 - Tests: `tests/core-privacy-projection.php`, `tests/cross-owner-visibility.php`, `tests/static-invariants.py` (updated safe contract) and `tests/source-invariants.sh`. Exact source-level QA pass `38121924971` on `05d70b932b05343a0ff29d9b600e337c04811aba`, final-doc HEAD QA independently required.
 - Detailed review of twenty focus rounds and remaining acceptance gates: `REVIEW-20-CYCLE-D-2026-10-11.md`. This is not staging/live verification.
+
+## 2026-10-11 — Fifth independent 20-focus File05 code audit (Cycle E)
+
+- **E01 / FR-003/004/005/010 / NFR-001/002 / Files00/20/25/26:** public lesson/course/book access now inherits canonical parent publication/access status from `_lsch_course_id`, `_lsch_book_id` and `_lsch_program_id`; authorized managed learning uses governed per-viewer ancestor permissions. Recursive graph is cycle-safe and fail-closed.
+- **E02 / FR-004 / NFR-001/002 / File24:** taxonomy WP_Error fails closed in published patient-case lesson permissions; authorized content editors may repair, not guests.
+- **E03 / FR-009/018 / NFR-002 / File24:** WordPress privacy exporter no longer leaks another user's consent `evidence_reference` or staff `scope_json` merely because the exporter is the withdrawal or assigning actor. Full rows only for the record owner, with separate strictly projected actor-only activity.
+- **E04 / NFR-003/006 / File19:** both background outbox and jobs workers handle failed DB `get_results()` safely, audit the failure and do not mutate any queued record.
+- **E05 / FR-004/018 / NFR-002/009 / File24:** daily orphan cleanup no longer destroys historical patient-case learning consent/withdrawal evidence; deletion belongs to governed retention and explicitly approved policy.
+- Executable fixtures: `tests/parent-access-consent.php`, expanded `tests/core-privacy-projection.php`, `tests/queue-and-consent-retention.php`; mandatory `tests/source-invariants.sh` runner. Full source review and remaining staging checks: `REVIEW-20-CYCLE-E-2026-10-11.md`.
