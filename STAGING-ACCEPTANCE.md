@@ -116,3 +116,12 @@ Before Future-18 may be called staging-accepted, test all 18 IDs with real Membe
 - File24 WordPress privacy tools: fail the retained academic-record COUNT after actual anonymization. The callback must set done=false, conservatively mark retained evidence and require operator retry. Test File24 hold with real records.
 - File19/24 System Check: force false/null dead outbox, dead job and encrypted-note counts individually. Overall health must be fail; then validate true 0 counts pass and true nonzero counts warn, without touching production data.
 - Capture exact deployed package checksum, active plugin version, DB/options/migrations, external File00/06/12/16/17/19/20/22/24/25/26 versions and runtime logs before claiming any staging acceptance.
+
+## 15. 2026-10-11 Cycle H — learning eligibility and institutional analytics release gates
+
+- File05 lesson `_lsch_required_components`: test legitimate absent legacy value, valid approved combinations, malformed JSON, duplicates, bogus assessment name and empty `[]`. No malformed nonempty configuration may produce 100% completion or earn course completion. Test actual WordPress metadata/editorial workflow and File22 corrections.
+- Inject DB `get_var` false/null into assessment `MAX(attempt_number)`; no new attempt may be allocated, lock must release, no false attempt event may be emitted. After DB recovery, normal idempotent retries must work without bypassing maximum attempt restrictions.
+- Inject WP_Error into course COMPETENCY taxonomy at the exact point all lesson evidence is complete. Do not write any new earned completion row; no File19 CourseCompleted.v1 event. Test valid current competency list recovery and File26 projection/index rechecks.
+- Update assessment questions/versions after a formerly passing student attempt and keep old score data. Certificate Readiness must be blocked until a new governed passing current-version attempt; verify File00 identity and wording gate remain enforced.
+- Inject failures separately into enrollment COUNT, completed COUNT, active COUNT, contributor COUNT and average percent in educator analytics; do not present deceptive zeros. Test true zero, 1–4 suppressed cells, >=5 legitimate metrics, and non-admin forbidden access in File25/26 projections.
+- Capture exact active deployed package/version/checksum, File05 source-to-DB core/aux/Future18 schemas, `wp_options`, migrations, File00/06/12/16/19/20/22/24/25/26 deployed partner versions, backup/restore and real live/staging logs. Source CI alone is insufficient.
