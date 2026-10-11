@@ -12,7 +12,7 @@ class FakeRotationDB {
 	public $failRead=true;public $failCount=false;
 	public function prepare($query,...$args){return vsprintf($query,$args);}
 	public function get_results($query,$mode=null){return $this->failRead?null:array();}
-	public function get_var($query){return $this->failCount?null:0;}
+	public function get_var($query){return $this->failCount?false:0;}
 }
 $GLOBALS['wpdb']=new FakeRotationDB();
 function absint($x){return abs((int)$x);}
