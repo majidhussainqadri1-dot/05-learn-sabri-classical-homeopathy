@@ -157,10 +157,17 @@ final class LSCH_Policy {
 		if ( '' === trim( $raw ) ) {
 			return true;
 		}
-		$ids = array_values( array_unique( array_filter( array_map( 'absint', preg_split( '/[\s,]+/', $raw ) ) ) ) );
-		if ( ! $ids ) {
-			return true;
+		// Nonempty malformed course prerequisites must never be treated as optional.
+		// Reject mixed numeric/text data, signs, zeros and noncanonical IDs.
+		$parts = preg_split( '/[\s,]+/', trim( $raw ) );
+		$ids = array();
+		foreach ( $parts as $part ) {
+			if ( ! ctype_digit( $part ) || ! absint( $part ) || (string) absint( $part ) !== $part ) {
+				return new WP_Error( 'lsch_prerequisite_configuration_invalid', __( 'Prerequisite configuration contains an invalid course identifier.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+			}
+			$ids[] = absint( $part );
 		}
+		$ids = array_values( array_unique( $ids ) );
 		global $wpdb;
 		$t = LSCH_Database::tables();
 		foreach ( $ids as $required_course ) {
