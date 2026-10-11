@@ -60,3 +60,12 @@
 - Added `LSCH_Policy::publicly_visible()`, `LSCH_Frontend::public_catalog_posts()`, extended `is_private_learning_surface()`, and reused the canonical content version bump path.
 - Registered executable `tests/public-visibility-version.php` in mandated CI. Source/testing correction HEAD `17e49739bb0241a5d55edd2199128ed3e6e0efca` passed the four-job CI `38112358573`.
 - See `REVIEW-20-CYCLE-B-2026-10-11.md` and the appended staging tests. No main merge or production deployment.
+
+## 2026-10-11 — Third fresh File05 20-focus source review (Cycle C)
+
+- Frozen review baseline `f05c0a6156612498811c1c4156c25128f27042e9`; examined 19 source PHP files in 20 new independent code-focus reviews against current File05 and consolidated master specifications.
+- Four defect classes were found (rounds 1, 2, 14, 15): malformed access declassification, unsafe invalid admin access fallback, incomplete private export on DB failure, and privacy erasure reported done on partial errors.
+- File05 canonical access enums now fail closed for malformed explicit values, including values normalized to public by sanitization. Admin input now rejects malformed access updates.
+- Future18 export now raises an error on any failed dataset read; both core and Future18 erasure record `done=false` when DB failures require retry.
+- Regression coverage expanded for both access paths, export failure, two erasure paths and legal hold. Test runner updated; see `REVIEW-20-CYCLE-C-2026-10-11.md` and staging gates.
+- Draft PR only: no merge or live deployment; successful source CI does not prove Hostinger/WordPress staging or exact-deployed parity.
