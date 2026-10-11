@@ -123,3 +123,12 @@ Source-only corrective IDs:
 - **F04 / F05-FR-004 / F05-NFR-002 / File24:** patient case consent cannot be silently restored by a duplicate same-policy INSERT that resets withdrawal history. New signed consent lifecycle with append-only evidence, DB migration, rollback and Founder approval remains separately **pending**, not implemented.
 - Executable source regressions: `tests/prerequisite-integrity.php`, `tests/lesson-rest-cache.php`, `tests/note-rotation-db-errors.php`, `tests/consent-history-protection.php` in `tests/source-invariants.sh`.
 - Round-by-round source review: `REVIEW-20-CYCLE-F-2026-10-11.md`. Staging acceptance and exact deployed version remain unverified.
+
+## 2026-10-11 — Seventh independent 20-focus source review (Cycle G)
+
+- G01 / F05-FR-005 / F05-NFR-003 / Files00/19: post-insert enrollment verification fails closed on missing/malformed DB reread, emits no false EnrollmentCreated success event, and audits a read-failure operator escalation. Test: enrollment-postwrite-verification.php.
+- G02 / F05-FR-003/011 / F05-NFR-001/002 / Files20/25/26: REST learning catalog fails safely on WordPress taxonomy WP_Error/nonarray lookup, never serializes error objects as valid source facets. Test: catalog-taxonomy-failure.php.
+- G03 / F05-FR-011 / F05-NFR-002/003 / File26: private saved-learning-search get_results DB errors are explicit 503, not false empty results or invalid foreach. Test: saved-search-read-failure.php.
+- G04 / F05-NFR-002/006 / File24: privacy erasure fails its completion gate when retained-record COUNT cannot be verified; conservative items_retained and retry required. Extended test: core-privacy-erasure.php.
+- G05 / F05-NFR-003/006/009 / Files19/24: System Health reports failed DB counts for dead jobs/outbox and stale private-note key records as FAIL, never healthy zero. Test: system-health-db-failure.php.
+- All new regression tests added to required tests/source-invariants.sh. Twenty-round evidence registry: REVIEW-20-CYCLE-G-2026-10-11.md. Genuine WP staging/live proof and proper historical re-consent schema remain outstanding.
