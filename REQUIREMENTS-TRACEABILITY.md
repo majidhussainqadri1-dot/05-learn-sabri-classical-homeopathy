@@ -141,3 +141,13 @@ Source-only corrective IDs:
 - H04 / F05-FR-008/010 / F05-NFR-003 / File00/09: certificate readiness requires the currently governed assessment item_version, not scores from superseded questions. Test `tests/current-competency-evidence.php`.
 - H05 / F05-FR-011 / F05-NFR-002/003/006 / File19/26: course analytics fails safely on unverified DB COUNT/AVG instead of returning false zero statistics, preserving minimum-cell aggregate privacy. Test `tests/course-analytics-db-failclosed.php`.
 - Tests registered in `tests/source-invariants.sh`. Round-by-round source inspection, root-cause evidence, companion owners and remaining staging gates: `REVIEW-20-CYCLE-H-2026-10-11.md`.
+
+## 2026-10-11 — Ninth Fresh Twenty-Focus Review (Cycle I)
+- I01 / File05 private learning notes, File24 encryption/retention: get_note() distinguishes failed WordPress database reads (503) from a truly missing private note; protected note overwrite confusion is not silently allowed.
+- I02 / File05 assessment attempts, File19 event integrity: start_assessment() requires verified post-write persisted attempt fields; failed reread returns 503 and bounded audit, not false confirmation.
+- I03 / File05 assessed evidence, File19 outbox: submit_assessment() requires verified graded saved result before publishing AssessmentSubmitted.v1. Persisted uncertain results require reconciliation.
+- I04 / File05 corrections, File22 reviewer workflow: rest_corrections() fails closed before authorization filtering when get_results() fails.
+- I05 / File05 learner progress, earned course evidence: recalculate_completion() rejects failed progress evidence get_results() instead of silently treating that failure as incomplete/no action.
+- I06 / File05 operational reconciliation, Files19/24: database cleanup, correction queue reads/writes and value-event retention purge must succeed before lsch_last_reconcile records success. Consent histories are explicitly excluded from automatic deletion.
+- Executable focused regressions: tests/ninth-private-note-assessment-read.php, tests/ninth-correction-completion-db.php, tests/ninth-reconcile-failclosed.php; all registered in tests/source-invariants.sh. Full numbered source audit: REVIEW-20-CYCLE-I-2026-10-11.md.
+- Real WordPress staging with current File00/06/12/16/17/19/20/22/24/25/26 partner versions, DB schema versions and live parity are NOT verified. Full append-only case re-consent remains separately pending approval and migration.
