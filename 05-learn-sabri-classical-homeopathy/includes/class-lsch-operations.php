@@ -171,7 +171,7 @@ final class LSCH_Operations {
 			if ( 1 === $updated ) { $rotated++; } else { $failed++; }
 		}
 		$remaining_count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['notes']} WHERE key_version<>%d", $write_version ) );
-		if ( null === $remaining_count ) {
+		if ( null === $remaining_count || false === $remaining_count ) {
 			$failed++;
 			$remaining = null;
 		} else {
