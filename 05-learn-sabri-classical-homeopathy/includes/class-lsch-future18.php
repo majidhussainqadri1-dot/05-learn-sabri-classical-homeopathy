@@ -1211,6 +1211,20 @@ final class LSCH_Future18 {
 		// Actor-only projections: export this user's work without exposing another learner's private answers.
 		$assessed = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,mode,status,assessor_id,version,updated_at FROM {$t['practice']} WHERE assessor_id=%d ORDER BY id ASC LIMIT %d OFFSET %d", $user_id,$limit,$offset ), ARRAY_A );
 		$verified = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,activity_type,status,verified_by,version,completed_at FROM {$t['cpd']} WHERE verified_by=%d ORDER BY id ASC LIMIT %d OFFSET %d", $user_id,$limit,$offset ), ARRAY_A );
+		// WordPress's exporter must not silently skip a table when its DB read fails.
+		foreach ( array(
+			'mastery' => $mastery, 'review' => $review, 'practice' => $practice,
+			'portfolio' => $portfolio, 'cpd' => $cpd, 'impacts' => $impacts,
+			'mentorship' => $mentorship, 'pathways' => $pathways,
+			'assessed' => $assessed, 'verified' => $verified,
+		) as $dataset => $rows ) {
+			if ( ! is_array( $rows ) ) {
+				return new WP_Error(
+					'lsch_future18_privacy_export_failed',
+					__( 'Learning privacy export could not read all required records. Retry or contact the privacy operator.', 'learn-sabri-classical-homeopathy' )
+				);
+			}
+		}
 		$done = count($pathways)<$limit && count($assessed)<$limit && count($verified)<$limit && count($mastery)<$limit && count($review)<$limit && count($practice)<$limit && count($portfolio)<$limit && count($cpd)<$limit && count($impacts)<$limit && count($mentorship)<$limit;
 		$data=array(); if ( $mastery || $review || $practice || $portfolio || $mentorship || $cpd || $impacts || $pathways || $assessed || $verified ) { $data[]=array('group_id'=>'lsch-future18','group_label'=>__( 'Learning Mastery and Clinical Education','learn-sabri-classical-homeopathy' ),'item_id'=>'future18-'.$user_id.'-page-'.$page,'data'=>array(array('name'=>__('Personal learning pathways','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($pathways,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Mastery','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($mastery,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Review queue and flashcards','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($review,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Assessor actions (no learner responses)','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($assessed,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Practice laboratories','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($practice,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Portfolio','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($portfolio,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Mentorship','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($mentorship,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('CPD verification actions (no learner evidence)','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($verified,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Continuing professional development','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($cpd,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)),array('name'=>__('Knowledge-change re-study','learn-sabri-classical-homeopathy'),'value'=>wp_json_encode($impacts,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)))); }
 		return array( 'data'=>$data,'done'=>$done );
@@ -1233,7 +1247,7 @@ final class LSCH_Future18 {
 			if ( $assessor_redaction > 0 || $verifier_redaction > 0 ) { $messages[] = __( 'References to this assessor or CPD verifier were de-identified in other learners\' academic records.', 'learn-sabri-classical-homeopathy' ); }
 		}
 		if($failures){$messages[]=__('Some Future Learning privacy operations require operator retry.','learn-sabri-classical-homeopathy'); LSCH_Events::audit('future18_privacy_erasure_partial_failure','user',$user_id,array('failure_count'=>count($failures)),'privacy');}
-		LSCH_Events::audit('future18_privacy_erasure','user',$user_id,array('legal_hold'=>$hold,'failure_count'=>count($failures)),'privacy'); return array('items_removed'=>$removed,'items_retained'=>$retained,'messages'=>$messages,'done'=>true);
+		LSCH_Events::audit('future18_privacy_erasure','user',$user_id,array('legal_hold'=>$hold,'failure_count'=>count($failures)),'privacy'); return array('items_removed'=>$removed,'items_retained'=>$retained,'messages'=>$messages,'done'=>empty($failures));
 	}
 
 }
