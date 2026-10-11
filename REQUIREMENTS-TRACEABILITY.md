@@ -114,3 +114,12 @@ Source-only corrective IDs:
 - **E04 / NFR-003/006 / File19:** both background outbox and jobs workers handle failed DB `get_results()` safely, audit the failure and do not mutate any queued record.
 - **E05 / FR-004/018 / NFR-002/009 / File24:** daily orphan cleanup no longer destroys historical patient-case learning consent/withdrawal evidence; deletion belongs to governed retention and explicitly approved policy.
 - Executable fixtures: `tests/parent-access-consent.php`, expanded `tests/core-privacy-projection.php`, `tests/queue-and-consent-retention.php`; mandatory `tests/source-invariants.sh` runner. Full source review and remaining staging checks: `REVIEW-20-CYCLE-E-2026-10-11.md`.
+
+## 2026-10-11 — Sixth fresh twenty-focus audit (Cycle F)
+
+- **F01 / F05-FR-001,005 / F05-NFR-001,003:** malformed or nonempty garbage prerequisite text cannot silently bypass the course eligibility gate. The parser enforces canonical positive course IDs and valid comma/whitespace delimiters, rejecting mixed text, double commas, zero and self dependencies.
+- **F02 / F05-FR-007 / F05-NFR-002,003 / File24:** encrypted private-note key rotation handles failed database reads and unverifiable remaining-count queries with explicit `failed/partial`, audit and `remaining=null`; no success on a DB outage.
+- **F03 / F05-FR-003,004,012 / F05-NFR-001,002 / Files00,20,25,26:** lesson REST cache header is public only when the effective canonical public-visibility predicate passes and no protected viewer state is involved. Restricted ancestors and viewer-dependent related links are private/no-store.
+- **F04 / F05-FR-004 / F05-NFR-002 / File24:** patient case consent cannot be silently restored by a duplicate same-policy INSERT that resets withdrawal history. New signed consent lifecycle with append-only evidence, DB migration, rollback and Founder approval remains separately **pending**, not implemented.
+- Executable source regressions: `tests/prerequisite-integrity.php`, `tests/lesson-rest-cache.php`, `tests/note-rotation-db-errors.php`, `tests/consent-history-protection.php` in `tests/source-invariants.sh`.
+- Round-by-round source review: `REVIEW-20-CYCLE-F-2026-10-11.md`. Staging acceptance and exact deployed version remain unverified.
