@@ -44,3 +44,11 @@
 - Closed ten sequential source defects covering native WordPress access enforcement, enrollment parity refresh, assessment/assignment immutable-version evidence, optional-vs-required learning components, current-version course/prerequisite completion truth, Future18 optimistic concurrency and blueprint-to-canonical-version integration.
 - Added permanent Cycle-8 regression invariants and `REVIEW-10-CYCLE-8-2026-08-11.md`.
 - Repository-only correction; staging/live status is unchanged.
+
+## 2026-10-11 — Draft PR #4, Source-level privacy correction
+
+- Completed 20 distinct focused File05 master-plan/current-governance/cross-file source inspections (`REVIEW-20-FOCUSED-2026-10-11.md`).
+- Exported persisted Future18 personal learning pathways and restricted assessor/CPD-verifier actor projections.
+- Redacted assessor and CPD verifier identifiers in other learners' records on erasure when no active legal hold applies; kept academic results.
+- Added standalone PHP privacy contract regression `tests/future18-privacy-contract.php` to mandatory CI.
+- No change to plugin runtime/schema versions, `main`, staging or live. Staging/privacy integration gates remain open.
