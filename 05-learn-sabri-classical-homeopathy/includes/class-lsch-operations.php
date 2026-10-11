@@ -54,10 +54,18 @@ final class LSCH_Operations {
 			'status' => ! empty( $pages['home'] ) && ! empty( $pages['dashboard'] ) && ! empty( $pages['mastery'] ) ? 'pass' : 'warn',
 			'detail' => wp_json_encode( $pages ),
 		);
-		$dead_outbox=(int)$wpdb->get_var("SELECT COUNT(*) FROM {$t['outbox']} WHERE status='dead'"); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$dead_jobs=(int)$wpdb->get_var("SELECT COUNT(*) FROM {$t['jobs']} WHERE status='dead'"); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$checks['Dead outbox']=array('status'=>$dead_outbox?'warn':'pass','detail'=>sprintf('%d exhausted outbox event(s).',$dead_outbox));
-		$checks['Dead jobs']=array('status'=>$dead_jobs?'warn':'pass','detail'=>sprintf('%d exhausted background job(s).',$dead_jobs));
+		$dead_outbox = $wpdb->get_var( "SELECT COUNT(*) FROM {$t['outbox']} WHERE status='dead'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$dead_jobs = $wpdb->get_var( "SELECT COUNT(*) FROM {$t['jobs']} WHERE status='dead'" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$outbox_verified = null !== $dead_outbox && false !== $dead_outbox;
+		$jobs_verified = null !== $dead_jobs && false !== $dead_jobs;
+		$checks['Dead outbox'] = array(
+			'status' => ! $outbox_verified ? 'fail' : ( (int) $dead_outbox > 0 ? 'warn' : 'pass' ),
+			'detail' => $outbox_verified ? sprintf( '%d exhausted outbox event(s).', (int) $dead_outbox ) : 'Outbox dead-letter count could not be verified.',
+		);
+		$checks['Dead jobs'] = array(
+			'status' => ! $jobs_verified ? 'fail' : ( (int) $dead_jobs > 0 ? 'warn' : 'pass' ),
+			'detail' => $jobs_verified ? sprintf( '%d exhausted background job(s).', (int) $dead_jobs ) : 'Background job dead-letter count could not be verified.',
+		);
 		$checks['Cron outbox'] = array(
 			'status' => wp_next_scheduled( 'lsch_process_outbox' ) ? 'pass' : 'warn',
 			'detail' => wp_next_scheduled( 'lsch_process_outbox' ) ? 'Scheduled' : 'Not scheduled',
@@ -71,16 +79,19 @@ final class LSCH_Operations {
 			'detail' => LSCH_Policy::note_encryption_ready() ? 'Independent AES-256-GCM File 05 note key is configured.' : 'Private notes fail closed until LSCH_NOTE_MASTER_KEY / approved keyring is configured.',
 		);
 		$write_key_version = LSCH_Policy::note_write_key_version();
-		$stale_note_keys = 0;
+		$stale_note_keys = null;
 		if ( $write_key_version >= LSCH_Policy::NOTE_KEY_VERSION ) {
 			$t = LSCH_Database::tables();
-			$stale_note_keys = (int) $wpdb->get_var(
+			$stale_note_keys = $wpdb->get_var(
 				$wpdb->prepare( "SELECT COUNT(*) FROM {$t['notes']} WHERE key_version<>%d", $write_key_version )
 			);
 		}
+		$stale_verified = null !== $stale_note_keys && false !== $stale_note_keys;
 		$checks['Private note key rotation'] = array(
-			'status' => $stale_note_keys ? 'warn' : ( $write_key_version ? 'pass' : 'fail' ),
-			'detail' => $write_key_version ? sprintf( 'Write key generation %d; %d note(s) require bounded re-encryption.', $write_key_version, $stale_note_keys ) : 'No current note write-key generation is available.',
+			'status' => ! $stale_verified ? 'fail' : ( (int) $stale_note_keys > 0 ? 'warn' : 'pass' ),
+			'detail' => $stale_verified
+				? sprintf( 'Write key generation %d; %d note(s) require bounded re-encryption.', $write_key_version, (int) $stale_note_keys )
+				: 'No active encryption key, or pending encrypted-note count could not be verified.',
 		);
 
 		$overall = 'pass';
