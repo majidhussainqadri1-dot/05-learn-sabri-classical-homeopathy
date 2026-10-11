@@ -35,6 +35,7 @@ function get_option($key,$default=false){
 	$map=array('lsch_schema_version'=>18,'lsch_state_schema_version'=>3,'lsch_future18_schema_version'=>2,'lsch_page_map'=>array('home'=>10,'dashboard'=>11,'mastery'=>12),'lsch_safe_mode'=>false);
 	return isset($map[$key])?$map[$key]:$default;
 }
+function apply_filters($name,$default,...$args){return $default;}
 function wp_next_scheduled($name){return true;}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 function check_h($yes,$message){if(!$yes){fwrite(STDERR,"FAIL: $message\n");exit(1);}}
