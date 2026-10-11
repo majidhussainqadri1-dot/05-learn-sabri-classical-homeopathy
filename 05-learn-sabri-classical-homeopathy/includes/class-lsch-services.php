@@ -65,6 +65,10 @@ final class LSCH_Services {
 			if ( 1 !== $inserted ) { return new WP_Error( 'lsch_enrollment_failed', __( 'Enrollment could not be saved.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) ); }
 		}
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d", $user_id, $course_id ), ARRAY_A );
+		if ( ! is_array( $row ) || ! isset( $row['terms_version'] ) ) {
+			LSCH_Events::audit( 'enrollment_postwrite_read_failed', 'course', $course_id, array( 'user_id' => $user_id ), 'reliability' );
+			return new WP_Error( 'lsch_enrollment_read_failed', __( 'The enrollment write could not be verified. Check the saved enrollment before retrying.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		LSCH_Events::publish( 'LearningEnrollmentCreated.v1', 'course', $course_id, array( 'user_id' => $user_id, 'course_id' => $course_id, 'status' => 'enrolled', 'terms_version' => $row['terms_version'] ) );
 		LSCH_Events::audit( 'enroll_course', 'course', $course_id, array( 'user_id' => $user_id, 'idempotency_hash' => $key, 'state' => 'enrolled' ), 'learning' );
 		return $row;
