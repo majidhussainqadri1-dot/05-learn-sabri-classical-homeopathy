@@ -11,7 +11,7 @@ $fixtures = array(
     6 => array( 'type' => 'lsch_course', 'status' => 'publish', 'access' => 'public', 'version' => 1 ),
     7 => array( 'type' => 'lsch_lesson', 'status' => 'publish', 'access' => 'public', 'version' => 1 ),
     8 => array( 'type' => 'lsch_book', 'status' => 'publish', 'access' => 'private-unknown', 'version' => 1 ),
-    9 => array( 'type' => 'lsch_book', 'status' => 'publish', 'access' => '', 'version' => 1 ),
+    9 => array( 'type' => 'lsch_lesson', 'status' => 'publish', 'access' => '', 'version' => 1 ),
 );
 $GLOBALS['fixtures'] = $fixtures;
 $GLOBALS['metadata'] = array();
