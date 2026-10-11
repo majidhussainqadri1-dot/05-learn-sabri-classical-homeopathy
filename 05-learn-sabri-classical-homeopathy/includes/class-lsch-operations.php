@@ -139,6 +139,10 @@ final class LSCH_Operations {
 		);
 		$rotated = 0;
 		$failed = 0;
+		if ( ! is_array( $rows ) ) {
+			LSCH_Events::audit( 'private_note_key_rotation_read_failed', 'system', 'file05', array( 'write_key_version' => $write_version ), 'privacy' );
+			return array( 'status' => 'failed', 'rotated' => 0, 'failed' => 1, 'remaining' => null );
+		}
 		foreach ( $rows as $row ) {
 			$plain = LSCH_Policy::decrypt_note_checked( $row, absint( $row['user_id'] ), absint( $row['lesson_id'] ) );
 			if ( is_wp_error( $plain ) ) {
@@ -166,7 +170,13 @@ final class LSCH_Operations {
 			);
 			if ( 1 === $updated ) { $rotated++; } else { $failed++; }
 		}
-		$remaining = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['notes']} WHERE key_version<>%d", $write_version ) );
+		$remaining_count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['notes']} WHERE key_version<>%d", $write_version ) );
+		if ( null === $remaining_count ) {
+			$failed++;
+			$remaining = null;
+		} else {
+			$remaining = (int) $remaining_count;
+		}
 		LSCH_Events::audit( 'private_note_key_rotation', 'system', 'file05', array( 'write_key_version' => $write_version, 'rotated' => $rotated, 'failed' => $failed, 'remaining' => $remaining ), 'privacy' );
 		return array( 'status' => $failed ? 'partial' : 'ok', 'rotated' => $rotated, 'failed' => $failed, 'remaining' => $remaining );
 	}
