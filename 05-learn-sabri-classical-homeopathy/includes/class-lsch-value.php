@@ -78,7 +78,7 @@ final class LSCH_Value {
 			'global_rank_owner' => 'file26',
 			'query_endpoint'    => rest_url( LSCH_REST::NS . '/catalog' ),
 			'public_types'      => array( LSCH_Content::PROGRAM, LSCH_Content::COURSE, LSCH_Content::BOOK, LSCH_Content::LESSON ),
-			'visibility_recheck'=> array( 'LSCH_Policy', 'can_read_post' ),
+			'visibility_recheck'=> array( 'LSCH_Policy', 'publicly_visible' ),
 			'freshness'         => 'owner-version',
 			'why_metadata'      => true,
 			'no_copied_truth'   => true,
