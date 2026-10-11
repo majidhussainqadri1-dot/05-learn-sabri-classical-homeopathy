@@ -92,7 +92,7 @@ final class LSCH_Plugin {
 			'query'              => rest_url( LSCH_REST::NS . '/catalog' ),
 			'delete_event'       => 'LearningContentRemoved.v1',
 			'correction_event'   => 'LearningContentCorrected.v1',
-			'visibility_recheck' => array( 'LSCH_Policy', 'can_read_post' ),
+			'visibility_recheck' => array( 'LSCH_Policy', 'publicly_visible' ),
 			'why_metadata'       => true,
 			'no_copied_truth'    => true,
 		);
