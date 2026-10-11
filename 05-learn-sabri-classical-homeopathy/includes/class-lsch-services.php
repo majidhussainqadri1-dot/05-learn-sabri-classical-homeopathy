@@ -271,6 +271,9 @@ final class LSCH_Services {
 		global $wpdb;
 		$t = LSCH_Database::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['notes']} WHERE user_id=%d AND lesson_id=%d", absint( $user_id ), absint( $lesson_id ) ), ARRAY_A );
+		if ( ! $row && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_note_read_failed', __( 'The private note could not be read. Retry without overwriting existing notes.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $row ) { return array( 'lesson_id' => absint( $lesson_id ), 'note' => '', 'version' => 0 ); }
 		$plain = LSCH_Policy::decrypt_note_checked( $row, absint( $user_id ), absint( $lesson_id ) );
 		if ( is_wp_error( $plain ) ) { return $plain; }
@@ -321,6 +324,10 @@ final class LSCH_Services {
 				return new WP_Error( 'lsch_assessment_start_failed', __( 'The assessment attempt could not be started.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
 			}
 			$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['attempts']} WHERE idempotency_key=%s", $key ), ARRAY_A );
+			if ( ! is_array( $row ) || ! isset( $row['id'], $row['status'], $row['item_version'] ) ) {
+				LSCH_Events::audit( 'assessment_postwrite_read_failed', 'assessment', $assessment_id, array( 'user_id' => $user_id ), 'reliability' );
+				return new WP_Error( 'lsch_assessment_read_failed', __( 'The saved assessment attempt could not be verified. Check its status before retrying.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			}
 			LSCH_Events::audit( 'assessment_started', 'assessment', $assessment_id, array( 'user_id' => $user_id, 'attempt' => $attempt_number ), 'assessment' );
 			return $row;
 		} finally {
@@ -359,6 +366,10 @@ final class LSCH_Services {
 		$updated = $wpdb->update( $t['attempts'], array( 'answers_json' => $answers_json, 'result_json' => wp_json_encode( $review ), 'score' => $score, 'status' => 'graded', 'version' => absint( $attempt['version'] ) + 1, 'submitted_at' => $now, 'graded_at' => $now ), array( 'id' => absint( $attempt['id'] ), 'version' => absint( $attempt['version'] ), 'status' => 'started' ), array( '%s', '%s', '%f', '%s', '%d', '%s', '%s' ), array( '%d', '%d', '%s' ) );
 		if ( 1 !== $updated ) { return new WP_Error( 'lsch_assessment_conflict', __( 'The assessment changed while being submitted.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['attempts']} WHERE id=%d", absint( $attempt['id'] ) ), ARRAY_A );
+		if ( ! is_array( $row ) || ! isset( $row['public_id'], $row['attempt_number'], $row['status'] ) || 'graded' !== $row['status'] ) {
+			LSCH_Events::audit( 'assessment_submission_postwrite_read_failed', 'assessment', $assessment_id, array( 'user_id' => $user_id ), 'reliability' );
+			return new WP_Error( 'lsch_assessment_submission_read_failed', __( 'The submitted assessment could not be verified. Reconcile the stored attempt before retrying.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		LSCH_Events::publish( 'AssessmentSubmitted.v1', 'assessment', $assessment_id, array( 'user_id' => $user_id, 'attempt_id' => $row['public_id'], 'score' => $score, 'item_version' => $current_item_version ) );
 		LSCH_Events::audit( 'submit_assessment', 'assessment', $assessment_id, array( 'user_id' => $user_id, 'attempt' => $row['attempt_number'], 'score' => $score ), 'assessment' );
 		$lesson_id = absint( get_post_meta( $assessment_id, '_lsch_lesson_id', true ) ); if ( $lesson_id ) { self::refresh_progress_from_evidence( $lesson_id, $user_id ); }
@@ -601,6 +612,10 @@ final class LSCH_Services {
 		$placeholders = implode( ',', array_fill( 0, count( $required ), '%d' ) );
 		$args = array_merge( array( $user_id ), array_map( 'absint', $required ) );
 		$progress_rows = $wpdb->get_results( $wpdb->prepare( "SELECT lesson_id,state,lesson_version,needs_review FROM {$t['progress']} WHERE user_id=%d AND lesson_id IN ({$placeholders})", $args ), ARRAY_A );
+		if ( ! is_array( $progress_rows ) ) {
+			LSCH_Events::audit( 'completion_evidence_read_failed', 'course', $course_id, array( 'user_id' => $user_id ), 'reliability' );
+			return new WP_Error( 'lsch_completion_evidence_unverified', __( 'Required lesson evidence could not be checked; completion must be retried after recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		$progress_by_lesson = array();
 		foreach ( (array) $progress_rows as $progress_row ) { $progress_by_lesson[ absint( $progress_row['lesson_id'] ) ] = $progress_row; }
 		foreach ( $required as $required_lesson_id ) {
