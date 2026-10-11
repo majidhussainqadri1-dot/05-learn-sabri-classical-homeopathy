@@ -10,6 +10,8 @@ $fixtures = array(
     5 => array( 'type' => 'lsch_lesson', 'status' => 'publish', 'access' => 'public', 'version' => 1 ),
     6 => array( 'type' => 'lsch_course', 'status' => 'publish', 'access' => 'public', 'version' => 1 ),
     7 => array( 'type' => 'lsch_lesson', 'status' => 'publish', 'access' => 'public', 'version' => 1 ),
+    8 => array( 'type' => 'lsch_book', 'status' => 'publish', 'access' => 'private-unknown', 'version' => 1 ),
+    9 => array( 'type' => 'lsch_book', 'status' => 'publish', 'access' => '', 'version' => 1 ),
 );
 $GLOBALS['fixtures'] = $fixtures;
 $GLOBALS['metadata'] = array();
@@ -92,6 +94,9 @@ assert_file05( !LSCH_Policy::publicly_visible(4), 'restricted course excluded de
 assert_file05( !LSCH_Policy::publicly_visible(1), 'draft not public' );
 assert_file05( !LSCH_Policy::publicly_visible(999), 'nonexistent not public' );
 assert_file05( !LSCH_Policy::publicly_visible(7), 'patient-case lesson without consent never public' );
+assert_file05( LSCH_Content::access(8)==='restricted', 'malformed explicit access fails closed' );
+assert_file05( !LSCH_Policy::publicly_visible(8), 'malformed explicit access not published to public indexes' );
+assert_file05( LSCH_Content::access(9)==='public', 'missing legacy access retains approved public default' );
 $GLOBALS['consent_ok']=true;
 assert_file05( LSCH_Policy::publicly_visible(7), 'verified public case consent accepted' );
 
