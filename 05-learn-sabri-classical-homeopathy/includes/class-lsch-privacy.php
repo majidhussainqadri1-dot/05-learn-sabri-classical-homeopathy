@@ -35,7 +35,7 @@ final class LSCH_Privacy {
 			array( $t['progress'], 'user_id=%d', array( $uid ), 'lsch-progress', __( 'Learning progress', 'learn-sabri-classical-homeopathy' ) ),
 			array( $t['bookmarks'], 'user_id=%d', array( $uid ), 'lsch-bookmarks', __( 'Learning bookmarks', 'learn-sabri-classical-homeopathy' ) ),
 			array( $t['attempts'], 'user_id=%d', array( $uid ), 'lsch-attempts', __( 'Assessment attempts', 'learn-sabri-classical-homeopathy' ) ),
-			array( $t['submissions'], '(user_id=%d OR assessor_id=%d)', array( $uid, $uid ), 'lsch-submissions', __( 'Assignment submissions and assessment actions', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['submissions'], 'user_id=%d', array( $uid ), 'lsch-submissions', __( 'My assignment submissions', 'learn-sabri-classical-homeopathy' ) ),
 			array( $t['staff'], '(user_id=%d OR assigned_by=%d)', array( $uid, $uid ), 'lsch-staff-assignments', __( 'Learning staff assignments', 'learn-sabri-classical-homeopathy' ) ),
 			array( $t['completions'], 'user_id=%d', array( $uid ), 'lsch-completions', __( 'Learning completions', 'learn-sabri-classical-homeopathy' ) ),
 			array( $t['reminders'], 'user_id=%d', array( $uid ), 'lsch-reminders', __( 'Learning reminders', 'learn-sabri-classical-homeopathy' ) ),
@@ -52,11 +52,26 @@ final class LSCH_Privacy {
 			if ( count( $rows ) === $limit ) { $done = false; }
 			foreach ( $rows as $row ) { $item_id = isset( $row['id'] ) ? absint( $row['id'] ) : substr( hash( 'sha256', wp_json_encode( $row ) ), 0, 16 ); $data[] = array( 'group_id' => $spec[3], 'group_label' => $spec[4], 'item_id' => $spec[3] . '-' . $item_id, 'data' => array_map( static function( $key, $value ) { return array( 'name' => (string) $key, 'value' => is_scalar( $value ) || null === $value ? (string) $value : wp_json_encode( $value ) ); }, array_keys( $row ), array_values( $row ) ) ); }
 		}
+		// Reviewer/assessor activity is personal to the actor, but another
+		// learner's answers, attachments, appeal text and correction proposal
+		// belong to that learner. Project strictly allowlisted actor-only fields.
+		$actor_specs = array(
+			array( $t['submissions'], 'id,status,assessor_id,version,updated_at', 'assessor_id=%d AND user_id<>%d', 'lsch-assessor-actions', __( 'My assessment actions (no learner answers)', 'learn-sabri-classical-homeopathy' ) ),
+			array( $state['corrections'], 'id,status,reviewer_id,version,decided_at', 'reviewer_id=%d AND proposer_id<>%d', 'lsch-correction-review-actions', __( 'My correction review actions (no proposal text)', 'learn-sabri-classical-homeopathy' ) ),
+		);
+		foreach ( $actor_specs as $spec ) {
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT {$spec[1]} FROM {$spec[0]} WHERE {$spec[2]} ORDER BY id ASC LIMIT %d OFFSET %d", $uid, $uid, $limit, $offset ), ARRAY_A );
+			if ( ! is_array( $rows ) ) { return new WP_Error( 'lsch_privacy_export_query_failed', __( 'Learning actor activity could not be read safely for export.', 'learn-sabri-classical-homeopathy' ) ); }
+			if ( count( $rows ) === $limit ) { $done = false; }
+			foreach ( $rows as $row ) {
+				$data[] = array( 'group_id' => $spec[3], 'group_label' => $spec[4], 'item_id' => $spec[3] . '-' . absint( $row['id'] ), 'data' => array_map( static function( $key, $value ) { return array( 'name' => (string) $key, 'value' => is_scalar( $value ) || null === $value ? (string) $value : wp_json_encode( $value ) ); }, array_keys( $row ), array_values( $row ) ) );
+			}
+		}
 		$notes = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['notes']} WHERE user_id=%d ORDER BY id ASC LIMIT %d OFFSET %d", $uid, $limit, $offset ), ARRAY_A );
 		if ( ! is_array( $notes ) ) { return new WP_Error( 'lsch_privacy_export_query_failed', __( 'Private learning notes could not be read safely for export.', 'learn-sabri-classical-homeopathy' ) ); }
 		if ( count( $notes ) === $limit ) { $done = false; }
 		foreach ( $notes as $row ) { $plain = LSCH_Policy::decrypt_note_checked( $row, $uid, $row['lesson_id'] ); $data[] = array( 'group_id' => 'lsch-private-notes', 'group_label' => __( 'Private learning notes', 'learn-sabri-classical-homeopathy' ), 'item_id' => 'note-' . $row['id'], 'data' => array( array( 'name' => __( 'Lesson', 'learn-sabri-classical-homeopathy' ), 'value' => get_the_title( $row['lesson_id'] ) ), array( 'name' => __( 'Note', 'learn-sabri-classical-homeopathy' ), 'value' => is_wp_error( $plain ) ? '[encrypted-note-unavailable:' . sanitize_key( $plain->get_error_code() ) . ']' : $plain ), array( 'name' => __( 'Version', 'learn-sabri-classical-homeopathy' ), 'value' => (string) $row['version'] ), array( 'name' => __( 'Updated', 'learn-sabri-classical-homeopathy' ), 'value' => $row['updated_at'] ) ) ); }
-		$corrections = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$state['corrections']} WHERE proposer_id=%d OR reviewer_id=%d ORDER BY id ASC LIMIT %d OFFSET %d", $uid, $uid, $limit, $offset ), ARRAY_A );
+		$corrections = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$state['corrections']} WHERE proposer_id=%d ORDER BY id ASC LIMIT %d OFFSET %d", $uid, $limit, $offset ), ARRAY_A );
 		if ( ! is_array( $corrections ) ) { return new WP_Error( 'lsch_privacy_export_query_failed', __( 'Learning correction records could not be read safely for export.', 'learn-sabri-classical-homeopathy' ) ); }
 		if ( count( $corrections ) === $limit ) { $done = false; }
 		foreach ( $corrections as $row ) { $data[] = array( 'group_id' => 'lsch-corrections', 'group_label' => __( 'Learning correction records', 'learn-sabri-classical-homeopathy' ), 'item_id' => 'correction-' . $row['id'], 'data' => array_map( static function( $key, $value ) { return array( 'name' => (string) $key, 'value' => is_scalar( $value ) || null === $value ? (string) $value : wp_json_encode( $value ) ); }, array_keys( $row ), array_values( $row ) ) ); }
