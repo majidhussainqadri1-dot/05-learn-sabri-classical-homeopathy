@@ -368,17 +368,37 @@ final class LSCH_Operations {
 		}
 	}
 
-	public static function related_links( $source_type, $source_id ) {
+	/**
+	 * Related targets remain owned by Files 06/10/12/15. Stored approval at
+	 * write time is not proof of CURRENT permission, withdrawal or existence.
+	 * The owning module must explicitly revalidate each target at read time.
+	 */
+	public static function related_links( $source_type, $source_id, $viewer_id = 0 ) {
+		$source_type = sanitize_key( $source_type );
+		$source_id = absint( $source_id );
+		$viewer_id = $viewer_id ? absint( $viewer_id ) : get_current_user_id();
+		if ( LSCH_Content::object_type( $source_id ) !== $source_type || ! LSCH_Policy::can_read_post( $source_id, $viewer_id ) ) {
+			return array();
+		}
 		global $wpdb;
 		$t = LSCH_Database::tables();
-		return $wpdb->get_results(
+		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT target_file,target_type,target_id,target_url,relation,version FROM {$t['related']} WHERE source_type=%s AND source_id=%d AND status='active' ORDER BY id ASC LIMIT 100",
-				sanitize_key( $source_type ),
-				absint( $source_id )
+				$source_type,
+				$source_id
 			),
 			ARRAY_A
 		);
+		if ( ! is_array( $rows ) ) { return array(); }
+		$visible = array();
+		foreach ( $rows as $row ) {
+			// No provider or unavailable owner must FAIL CLOSED, never trust the stored URL.
+			if ( true === apply_filters( 'lsch_related_learning_reference_visible', false, $row, $source_type, $source_id, $viewer_id ) ) {
+				$visible[] = $row;
+			}
+		}
+		return $visible;
 	}
 
 	public function site_health_tests( $tests ) {
