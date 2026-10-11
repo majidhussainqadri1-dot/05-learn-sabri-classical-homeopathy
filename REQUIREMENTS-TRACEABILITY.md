@@ -132,3 +132,12 @@ Source-only corrective IDs:
 - G04 / F05-NFR-002/006 / File24: privacy erasure fails its completion gate when retained-record COUNT cannot be verified; conservative items_retained and retry required. Extended test: core-privacy-erasure.php.
 - G05 / F05-NFR-003/006/009 / Files19/24: System Health reports failed DB counts for dead jobs/outbox and stale private-note key records as FAIL, never healthy zero. Test: system-health-db-failure.php.
 - All new regression tests added to required tests/source-invariants.sh. Twenty-round evidence registry: REVIEW-20-CYCLE-G-2026-10-11.md. Genuine WP staging/live proof and proper historical re-consent schema remain outstanding.
+
+## 2026-10-11 — Eighth independent 20-focus source audit (Cycle H)
+
+- H01 / F05-FR-004/006/007/010 / F05-NFR-001/003: malformed, empty, duplicate or unsupported `_lsch_required_components` no longer silently reduces course/lesson completion obligations to `content`; only truly absent legacy metadata uses the governed historical default. Test `tests/learning-requirement-failclosed.php`.
+- H02 / F05-FR-008 / F05-NFR-003/006: assessment attempts cannot allocate attempt number one after a failed MAX-history DB query. Explicit 503 and existing allocation lock. Test `tests/learning-requirement-failclosed.php`.
+- H03 / F05-FR-001/010 / F05-NFR-001/003 / File06/26: `recalculate_completion` must read canonical course competency taxonomy successfully before materializing an earned credential. Taxonomy `WP_Error` or nonarray is fatal to that credit attempt. Test `tests/current-competency-evidence.php`.
+- H04 / F05-FR-008/010 / F05-NFR-003 / File00/09: certificate readiness requires the currently governed assessment item_version, not scores from superseded questions. Test `tests/current-competency-evidence.php`.
+- H05 / F05-FR-011 / F05-NFR-002/003/006 / File19/26: course analytics fails safely on unverified DB COUNT/AVG instead of returning false zero statistics, preserving minimum-cell aggregate privacy. Test `tests/course-analytics-db-failclosed.php`.
+- Tests registered in `tests/source-invariants.sh`. Round-by-round source inspection, root-cause evidence, companion owners and remaining staging gates: `REVIEW-20-CYCLE-H-2026-10-11.md`.
