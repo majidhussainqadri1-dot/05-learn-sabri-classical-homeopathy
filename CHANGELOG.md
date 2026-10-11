@@ -93,3 +93,10 @@
 - Added four PHP regression files to required CI. A failing test for `4,,5` identified and corrected the overly permissive delimiter parsing before final acceptance. Extra rotation check covers null/false count errors.
 - Patient re-consent is now safe-by-default (no silent rewrite); a proper history-preserving renewal and schema migration remain a separate approved integration task. See `REVIEW-20-CYCLE-F-2026-10-11.md`.
 - No merge/deploy or Staging/Live runtime verification performed.
+
+## 2026-10-11 — Seventh File05 20-focus audit, Cycle G
+
+- Reviewed nineteen actual PHP implementation files in twenty fresh areas at frozen exact PR HEAD dbef11220009676ec716f016a67652b1fdfde0c5 against File05 v1.1, consolidated Three Central Plans and source-linked File06/12/25 owner specs.
+- Patched five proven source defects: unverified enrollment reread leading to false event/PHP offset access, REST taxonomy WP_Error projection, false/null private saved-search rows, unknown privacy-retention count reported erased, and missing DB health metrics reported as zero.
+- Created enrollment-postwrite-verification.php, catalog-taxonomy-failure.php, saved-search-read-failure.php, system-health-db-failure.php; extended core-privacy-erasure.php and mandatory source-invariants runner. Repaired missing apply_filters test stub after real CI feedback.
+- Documentation: REVIEW-20-CYCLE-G-2026-10-11.md. Staging/live, merged code, migration parity and full governed re-consent remain unverified/pending.
