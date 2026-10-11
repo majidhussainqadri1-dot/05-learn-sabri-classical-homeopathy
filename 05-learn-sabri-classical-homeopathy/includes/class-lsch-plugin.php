@@ -135,9 +135,10 @@ final class LSCH_Plugin {
 			return;
 		}
 
-		$version = LSCH_Content::version( $post_id );
+		// post_updated may already have advanced this content's version.
+		// Reuse the per-request guarded mutation to avoid a second bump on save_post_.
 		if ( $update ) {
-			update_post_meta( $post_id, '_lsch_version', $version + 1 );
+			LSCH_Content::bump_version( $post_id, 'lesson_save' );
 		}
 		if ( 'publish' !== $post->post_status ) {
 			return;
