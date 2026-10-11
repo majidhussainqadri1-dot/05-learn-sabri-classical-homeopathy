@@ -96,3 +96,12 @@ Source-only corrective IDs:
 - `C04 / F05-NFR-002/003`: both core File05 and Future18 privacy erasers keep `done=false` on failed DB operations; escalation/retry and File24 legal hold remain mandatory.
 - Tests: `tests/public-visibility-version.php`, `tests/access-governance-contract.php`, `tests/future18-privacy-contract.php`, `tests/core-privacy-erasure.php`, all under `tests/source-invariants.sh`.
 - Full round-specific report: `REVIEW-20-CYCLE-C-2026-10-11.md`. Code and fixture evidence is not peer staging, deployed DB or live proof.
+
+## 2026-10-11 — Fourth independent 20-focus audit (Cycle D)
+
+- **D01 / F05-FR-009 / F05-NFR-001/002 / File24:** WordPress privacy export now selects full assignment submissions only where `user_id` is the requester. A separate bounded assessor-only projection includes status and version, never another learner's answers, attachments, feedback, appeal or identity.
+- **D02 / F05-FR-018 / F05-NFR-002 / Files17/24:** Reviewers' involvement in other authors' correction proposals is exported as limited actor-only metadata, not `reason`, `source_reference` or entire third-party correction rows.
+- **D03 / F05-FR-012 / F05-NFR-001/002 / Files06/10/12/15/25:** Native File05 related source must be readable; every foreign target needs current, explicit owner visibility approval through `lsch_related_learning_reference_visible`. Absent/invalid external responder fails closed and degrades safely.
+- **D04 / F05-FR-011 / F05-CEN-04 / F05-NFR-001/002 / Files16/17/26:** File26 publicly indexed results use identity-independent `LSCH_Policy::publicly_visible` in both provider adapters. Guest AI/community context refuses ambient logged-in author privileges; explicit viewer permissions remain scoped.
+- Tests: `tests/core-privacy-projection.php`, `tests/cross-owner-visibility.php`, `tests/static-invariants.py` (updated safe contract) and `tests/source-invariants.sh`. Exact source-level QA pass `38121924971` on `05d70b932b05343a0ff29d9b600e337c04811aba`, final-doc HEAD QA independently required.
+- Detailed review of twenty focus rounds and remaining acceptance gates: `REVIEW-20-CYCLE-D-2026-10-11.md`. This is not staging/live verification.
