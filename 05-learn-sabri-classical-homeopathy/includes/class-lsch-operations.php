@@ -341,23 +341,33 @@ final class LSCH_Operations {
 		global $wpdb;
 		$t = LSCH_Database::tables();
 		$state = LSCH_State::tables();
-
-		$wpdb->query( "DELETE b FROM {$t['bookmarks']} b LEFT JOIN {$wpdb->posts} p ON p.ID=b.object_id WHERE p.ID IS NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query( "DELETE p FROM {$t['progress']} p LEFT JOIN {$wpdb->posts} l ON l.ID=p.lesson_id WHERE l.ID IS NULL OR l.post_type<>'lsch_lesson'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query( "DELETE n FROM {$t['notes']} n LEFT JOIN {$wpdb->posts} l ON l.ID=n.lesson_id WHERE l.ID IS NULL OR l.post_type<>'lsch_lesson'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		// Preserve historical consent/withdrawal evidence even after a learning
-		// lesson is deleted or its post type changes. Consent is an auditable
-		// record; automatic cron cleanup must not destroy legal history.
-		// Any retention purge requires a separate governed File24-approved procedure.
-		$wpdb->query( "DELETE r FROM {$t['reminders']} r LEFT JOIN {$wpdb->posts} c ON c.ID=r.course_id WHERE c.ID IS NULL OR c.post_type<>'lsch_course'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query( "DELETE s FROM {$t['staff']} s LEFT JOIN {$wpdb->users} u ON u.ID=s.user_id WHERE u.ID IS NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query( "UPDATE {$t['jobs']} SET status='retry',locked_at=NULL,run_after=UTC_TIMESTAMP(),updated_at=UTC_TIMESTAMP() WHERE status='running' AND locked_at<DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 MINUTE)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-
-		$wpdb->query( "UPDATE {$state['corrections']} c LEFT JOIN {$wpdb->posts} p ON p.ID=c.object_id SET c.status='object_gone',c.version=c.version+1,c.updated_at=UTC_TIMESTAMP() WHERE p.ID IS NULL AND c.status IN ('submitted','under_review','needs_information','applying','apply_failed')" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		self::reconcile_corrections();
-		$wpdb->query( "DELETE FROM {$state['value_events']} WHERE created_at<DATE_SUB(UTC_TIMESTAMP(), INTERVAL 395 DAY)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-
+		// These bounded, owner-local maintenance writes must not be marked
+		// successful if a database operation failed midway through the batch.
+		$queries = array(
+			"DELETE b FROM {$t['bookmarks']} b LEFT JOIN {$wpdb->posts} p ON p.ID=b.object_id WHERE p.ID IS NULL",
+			"DELETE p FROM {$t['progress']} p LEFT JOIN {$wpdb->posts} l ON l.ID=p.lesson_id WHERE l.ID IS NULL OR l.post_type<>'lsch_lesson'",
+			"DELETE n FROM {$t['notes']} n LEFT JOIN {$wpdb->posts} l ON l.ID=n.lesson_id WHERE l.ID IS NULL OR l.post_type<>'lsch_lesson'",
+			// Historical patient-case consent or withdrawals are deliberately
+			// retained until File24 approves a versioned retention operation.
+			"DELETE r FROM {$t['reminders']} r LEFT JOIN {$wpdb->posts} c ON c.ID=r.course_id WHERE c.ID IS NULL OR c.post_type<>'lsch_course'",
+			"DELETE s FROM {$t['staff']} s LEFT JOIN {$wpdb->users} u ON u.ID=s.user_id WHERE u.ID IS NULL",
+			"UPDATE {$t['jobs']} SET status='retry',locked_at=NULL,run_after=UTC_TIMESTAMP(),updated_at=UTC_TIMESTAMP() WHERE status='running' AND locked_at<DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 MINUTE)",
+			"UPDATE {$state['corrections']} c LEFT JOIN {$wpdb->posts} p ON p.ID=c.object_id SET c.status='object_gone',c.version=c.version+1,c.updated_at=UTC_TIMESTAMP() WHERE p.ID IS NULL AND c.status IN ('submitted','under_review','needs_information','applying','apply_failed')",
+		);
+		foreach ( $queries as $index => $sql ) {
+			if ( false === $wpdb->query( $sql ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				LSCH_Events::audit( 'reconcile_database_write_failed', 'system', 'file05', array( 'step' => $index ), 'reliability' );
+				return new WP_Error( 'lsch_reconcile_failed', __( 'Learning reconciliation could not be completed safely. Retry after the database recovers.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			}
+		}
+		$corrections = self::reconcile_corrections();
+		if ( is_wp_error( $corrections ) ) { return $corrections; }
+		if ( false === $wpdb->query( "DELETE FROM {$state['value_events']} WHERE created_at<DATE_SUB(UTC_TIMESTAMP(), INTERVAL 395 DAY)" ) ) { // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			LSCH_Events::audit( 'reconcile_database_write_failed', 'system', 'file05', array( 'step' => 7 ), 'reliability' );
+			return new WP_Error( 'lsch_reconcile_failed', __( 'Learning reconciliation could not be completed safely. Retry after the database recovers.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		update_option( 'lsch_last_reconcile', gmdate( 'c' ), false );
+		return true;
 	}
 
 	private static function reconcile_corrections() {
