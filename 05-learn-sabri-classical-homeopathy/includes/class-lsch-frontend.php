@@ -53,9 +53,9 @@ final class LSCH_Frontend {
 	public function shell_layout( $mode, $settings ) { unset( $settings ); return $this->is_learning_context() ? 'two' : $mode; }
 
 	public function home() {
-		$programs = get_posts( array( 'post_type' => LSCH_Content::PROGRAM, 'post_status' => 'publish', 'posts_per_page' => 8, 'orderby' => 'menu_order title', 'order' => 'ASC', 'no_found_rows' => true ) );
-		$books    = get_posts( array( 'post_type' => LSCH_Content::BOOK, 'post_status' => 'publish', 'posts_per_page' => 8, 'orderby' => 'menu_order title', 'order' => 'ASC', 'no_found_rows' => true ) );
-		$courses  = get_posts( array( 'post_type' => LSCH_Content::COURSE, 'post_status' => 'publish', 'posts_per_page' => 12, 'orderby' => 'menu_order title', 'order' => 'ASC', 'no_found_rows' => true ) );
+		$programs = self::public_catalog_posts( LSCH_Content::PROGRAM, 8 );
+		$books    = self::public_catalog_posts( LSCH_Content::BOOK, 8 );
+		$courses  = self::public_catalog_posts( LSCH_Content::COURSE, 12 );
 		ob_start();
 		?>
 		<main class="lsch-shell" data-lsch-context="catalog">
@@ -69,6 +69,27 @@ final class LSCH_Frontend {
 			<?php echo $this->catalog_section( 'books', __( 'Founder library', 'learn-sabri-classical-homeopathy' ), __( 'Approved learning books', 'learn-sabri-classical-homeopathy' ), $books ); // phpcs:ignore ?>
 		</main>
 		<?php return ob_get_clean();
+	}
+
+	/** A shared public home-page catalog must never vary by the viewer's learning privileges. */
+	public static function public_catalog_posts( $type, $limit = 12 ) {
+		$types = array( LSCH_Content::PROGRAM, LSCH_Content::COURSE, LSCH_Content::BOOK );
+		if ( ! in_array( $type, $types, true ) ) { return array(); }
+		$posts = get_posts( array(
+			'post_type'      => $type,
+			'post_status'    => 'publish',
+			'posts_per_page' => max( 1, min( 24, absint( $limit ) ) ),
+			'orderby'        => 'menu_order title',
+			'order'          => 'ASC',
+			'no_found_rows'  => true,
+			'meta_query'     => array( 'relation' => 'OR',
+				array( 'key' => '_lsch_access', 'compare' => 'NOT EXISTS' ),
+				array( 'key' => '_lsch_access', 'value' => 'public' ),
+			),
+		) );
+		return array_values( array_filter( (array) $posts, static function( $post ) {
+			return $post instanceof WP_Post && LSCH_Policy::publicly_visible( $post->ID );
+		} ) );
 	}
 
 	private function catalog_section( $id, $kicker, $heading, array $posts, $always = false ) {
@@ -134,7 +155,17 @@ final class LSCH_Frontend {
 	}
 
 	public function guard_private_surfaces() { if ( is_singular( array( LSCH_Content::ASSESSMENT, LSCH_Content::ASSIGNMENT ) ) && ! is_user_logged_in() ) { auth_redirect(); } }
-	private function is_private_learning_surface() { $pages = (array) get_option( 'lsch_page_map', array() ); return is_singular( array( LSCH_Content::ASSESSMENT, LSCH_Content::ASSIGNMENT ) ) || ( ! empty( $pages['dashboard'] ) && is_page( absint( $pages['dashboard'] ) ) ); }
+	private function is_private_learning_surface() {
+		$pages = (array) get_option( 'lsch_page_map', array() );
+		if ( ! empty( $pages['dashboard'] ) && is_page( absint( $pages['dashboard'] ) ) ) { return true; }
+		if ( ! empty( $pages['mastery'] ) && is_page( absint( $pages['mastery'] ) ) ) { return true; }
+		if ( is_singular( array( LSCH_Content::ASSESSMENT, LSCH_Content::ASSIGNMENT, LSCH_Content::COHORT ) ) ) { return true; }
+		if ( is_singular( array( LSCH_Content::PROGRAM, LSCH_Content::COURSE, LSCH_Content::BOOK, LSCH_Content::LESSON ) ) ) {
+			$object_id = absint( get_queried_object_id() );
+			return is_user_logged_in() || ! LSCH_Policy::publicly_visible( $object_id );
+		}
+		return false;
+	}
 	public function send_private_headers() { if ( $this->is_private_learning_surface() ) { nocache_headers(); header( 'X-Robots-Tag: noindex, nofollow, noarchive', true ); } }
 	public function privacy_headers() { if ( $this->is_private_learning_surface() ) { echo "<meta name=\"robots\" content=\"noindex,nofollow,noarchive\">\n"; } }
 	private function dashboard_url() { $pages = (array) get_option( 'lsch_page_map', array() ); return ! empty( $pages['dashboard'] ) ? get_permalink( $pages['dashboard'] ) : home_url( '/learn/dashboard/' ); }
