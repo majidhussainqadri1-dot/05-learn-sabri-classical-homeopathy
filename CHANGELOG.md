@@ -69,3 +69,12 @@
 - Future18 export now raises an error on any failed dataset read; both core and Future18 erasure record `done=false` when DB failures require retry.
 - Regression coverage expanded for both access paths, export failure, two erasure paths and legal hold. Test runner updated; see `REVIEW-20-CYCLE-C-2026-10-11.md` and staging gates.
 - Draft PR only: no merge or live deployment; successful source CI does not prove Hostinger/WordPress staging or exact-deployed parity.
+
+## 2026-10-11 — Fourth fresh File05 20-focus audit (Cycle D)
+
+- Reviewed actual 19 PHP source files in 20 focused passes at frozen baseline `018e07d2d19900a0ea56f8f71e64c8ddd47baa71` against the File05 plan, consolidated central plan and canonical companion ownership.
+- Corrected third-party student data leakage from WP privacy exports: learner-owned full rows separated from strictly projected assessor/reviewer actor history.
+- Applied current canonical-owner authorization at read time for File06/10/12/15 related references; missing owner approval fails closed, including revoked links.
+- Restricted global File26 public search adapters to `publicly_visible` and guest File16/17 educational/community resolvers to public-only when no explicit viewer ID is provided.
+- Added PHP regressions `tests/core-privacy-projection.php` and `tests/cross-owner-visibility.php`; corrected an unsafe legacy Python invariant. All four GitHub jobs green on code/test HEAD `05d70b932b05343a0ff29d9b600e337c04811aba`.
+- Cross-provider staging, main merge, deployed runtime/database parity and live re-test remain unverified/unperformed. Details: `REVIEW-20-CYCLE-D-2026-10-11.md`.
