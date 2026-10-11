@@ -12,11 +12,11 @@ class LSCH_Database { public static function tables() {
 class LSCH_State { public static function tables() {return array('saved_searches'=>'wp_lsch_saved_searches','value_events'=>'wp_lsch_value_events','corrections'=>'wp_lsch_corrections');} }
 class LSCH_Events { public static function audit( $event, $object_type, $object_id, $data, $purpose ) {} }
 class CoreDB {
- public $failDelete = false; public $statements = array();
+ public $failDelete = false; public $failRetainedCount = false; public $statements = array();
  public function delete( $table, $data, $formats ) { return $this->failDelete && false!==strpos($table,'_progress') ? false : 0; }
  public function prepare( $sql, ...$arguments ) { return vsprintf($sql,$arguments); }
  public function query( $sql ) { $this->statements[]=$sql;return 0; }
- public function get_var( $sql ) { return 0; }
+ public function get_var( $sql ) { return $this->failRetainedCount ? false : 0; }
 }
 $GLOBALS['wpdb'] = new CoreDB();
 require __DIR__ . '/../05-learn-sabri-classical-homeopathy/includes/class-lsch-privacy.php';
@@ -29,6 +29,10 @@ check_core(!empty($failed['messages']),'partial failure is disclosed to privacy 
 $GLOBALS['wpdb']->failDelete=false;
 $passed=$service->erase('test@example.test',1);
 check_core(true===$passed['done'],'successful erasure can finish');
+$GLOBALS['wpdb']->failRetainedCount=true;
+$unverified=$service->erase('test@example.test',1);
+check_core(false===$unverified['done'] && true===$unverified['items_retained'],'failed retained count requires retry and conservatively flags possible academic evidence');
+$GLOBALS['wpdb']->failRetainedCount=false;
 $GLOBALS['core_hold']=true;
 $held=$service->erase('test@example.test',1);
 check_core(true===$held['done'] && true===$held['items_retained'],'legal hold returns correctly retained state');
