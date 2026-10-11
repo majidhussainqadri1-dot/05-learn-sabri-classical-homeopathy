@@ -21,11 +21,14 @@ final class File05TestDB {
     public $prefix = 'wp_';
     public $queries = array();
     public $prepared = array();
+    public $failRead = false;
+    public $failDelete = false;
     public function prepare( $sql, ...$params ) {
         $this->prepared[] = $sql;
         return vsprintf( $sql, $params );
     }
     public function get_results( $sql, $mode = null ) {
+        if ( $this->failRead && false !== strpos( $sql, 'lsch_f18_pathways' ) ) { return null; }
         if ( false !== strpos( $sql, 'lsch_f18_pathways' ) ) {
             return array( array( 'goal' => 'balanced_mastery', 'plan_json' => '{"recommendations":[]}', 'version' => 1 ) );
         }
@@ -37,7 +40,7 @@ final class File05TestDB {
         }
         return array();
     }
-    public function delete( $table, $where, $formats = array() ) { return 0; }
+    public function delete( $table, $where, $formats = array() ) { return $this->failDelete && false !== strpos( $table, 'lsch_f18_mastery' ) ? false : 0; }
     public function query( $sql ) {
         $this->queries[] = $sql;
         return ( false !== strpos( $sql, 'SET assessor_id=0' ) || false !== strpos( $sql, 'SET verified_by=0' ) ) ? 1 : 0;
@@ -46,6 +49,7 @@ final class File05TestDB {
 $wpdb = new File05TestDB();
 define( 'ARRAY_A', 'ARRAY_A' );
 require __DIR__ . '/../05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php';
+class WP_Error { public $code; public function __construct( $code, $message = '' ) { $this->code = $code; } }
 function check_file05( $truth, $label ) {
     if ( ! $truth ) { fwrite( STDERR, "FAIL: {$label}\n" ); exit( 1 ); }
 }
@@ -78,4 +82,15 @@ $hold_result = LSCH_Future18::privacy_erase( 'learner@example.test', 1 );
 check_file05( $hold_result['items_retained'], 'legal hold reported' );
 $sql = implode( "\n", $wpdb->queries );
 check_file05( false === strpos( $sql, 'SET assessor_id=0' ) && false === strpos( $sql, 'SET verified_by=0' ), 'legal hold preserves audit identities' );
+// Export must fail closed if a private table cannot be read.
+$GLOBALS['file05_hold'] = false;
+$wpdb->failRead = true;
+$failed_export = LSCH_Future18::privacy_export( 'learner@example.test', 1 );
+check_file05( $failed_export instanceof WP_Error && 'lsch_future18_privacy_export_failed' === $failed_export->code, 'partial privacy export reports database read failure' );
+$wpdb->failRead = false;
+// Deletion failures must remain unfinished so WordPress/operator can retry.
+$wpdb->failDelete = true;
+$failed_erase = LSCH_Future18::privacy_erase( 'learner@example.test', 1 );
+check_file05( false === $failed_erase['done'], 'partial Future18 erasure is not reported complete' );
+$wpdb->failDelete = false;
 echo "PASS: File05 Future18 privacy export, actor redaction and legal-hold contract tests.\n";
