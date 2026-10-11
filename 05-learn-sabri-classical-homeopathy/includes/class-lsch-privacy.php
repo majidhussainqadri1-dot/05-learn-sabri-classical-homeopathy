@@ -132,7 +132,15 @@ final class LSCH_Privacy {
 					$failures[] = 'anonymize-' . $index;
 				}
 			}
-			$retained = (bool) $wpdb->get_var( $wpdb->prepare( "SELECT (SELECT COUNT(*) FROM {$t['enrollments']} WHERE user_id=%d) + (SELECT COUNT(*) FROM {$t['attempts']} WHERE user_id=%d) + (SELECT COUNT(*) FROM {$t['submissions']} WHERE user_id=%d) + (SELECT COUNT(*) FROM {$t['completions']} WHERE user_id=%d)", $user->ID, $user->ID, $user->ID, $user->ID ) );
+			$retained_count = $wpdb->get_var( $wpdb->prepare( "SELECT (SELECT COUNT(*) FROM {$t['enrollments']} WHERE user_id=%d) + (SELECT COUNT(*) FROM {$t['attempts']} WHERE user_id=%d) + (SELECT COUNT(*) FROM {$t['submissions']} WHERE user_id=%d) + (SELECT COUNT(*) FROM {$t['completions']} WHERE user_id=%d)", $user->ID, $user->ID, $user->ID, $user->ID ) );
+			if ( null === $retained_count || false === $retained_count ) {
+				// Incomplete verification must never be reported as successful
+				// full removal to a data-subject rights operator.
+				$retained = true;
+				$failures[] = 'retained-evidence-count';
+			} else {
+				$retained = ( (int) $retained_count > 0 );
+			}
 			$messages[] = __( 'Private activity and notes were removed. Minimum enrollment, assessment, submission and earned-record evidence may remain identifiable only under the documented academic-retention policy; other actor-role identifiers were anonymized.', 'learn-sabri-classical-homeopathy' );
 		}
 
