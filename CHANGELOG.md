@@ -85,3 +85,11 @@
 - Closed five concrete source defect classes: parent ACL/public lesson leak, patient case taxonomy-error fail-open, third-party consent/staff data exposure in WordPress privacy exports, DB failure handling in background outbox/jobs workers, and silent deletion of historical case consent records by daily reconciliation.
 - Added `tests/parent-access-consent.php` and `tests/queue-and-consent-retention.php`; extended `tests/core-privacy-projection.php`; registered all in mandatory source QA.
 - Details `REVIEW-20-CYCLE-E-2026-10-11.md`. CI success must be verified on exact final documentation HEAD; no live/staging changes or main merge.
+
+## 2026-10-11 — Sixth new twenty-focus source audit (Cycle F)
+
+- Inspected 19 native PHP source files at frozen exact branch HEAD `e8f0596a527a4957c4c479ff9ec5883408162545` in twenty fresh areas against File05 v1.1 Future18 and governing Three Central Plans.
+- **Four confirmed new source defects corrected:** nonempty malformed curriculum prerequisites were treated as optional; note key rotation hid DB-read errors or fabricated zero remaining; lesson REST used raw child `public` rather than effective ancestor/viewer privacy for shared caches; same-policy case consent upsert erased withdrawn history and silently reactivated consent.
+- Added four PHP regression files to required CI. A failing test for `4,,5` identified and corrected the overly permissive delimiter parsing before final acceptance. Extra rotation check covers null/false count errors.
+- Patient re-consent is now safe-by-default (no silent rewrite); a proper history-preserving renewal and schema migration remain a separate approved integration task. See `REVIEW-20-CYCLE-F-2026-10-11.md`.
+- No merge/deploy or Staging/Live runtime verification performed.
