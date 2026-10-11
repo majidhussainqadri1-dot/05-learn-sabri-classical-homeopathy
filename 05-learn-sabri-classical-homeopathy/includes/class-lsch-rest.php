@@ -91,7 +91,12 @@ final class LSCH_REST {
 		$query = new WP_Query( $args ); $items = array();
 		foreach ( $query->posts as $post ) {
 			if ( ! LSCH_Policy::can_read_post( $post->ID ) ) { continue; }
-			$items[] = array( 'id' => $post->ID, 'type' => $post->post_type, 'title' => get_the_title( $post ), 'summary' => get_the_excerpt( $post ), 'url' => get_permalink( $post ), 'access' => LSCH_Content::access( $post->ID ), 'version' => LSCH_Content::version( $post->ID ), 'duration' => (string) get_post_meta( $post->ID, '_lsch_duration', true ), 'language' => (string) get_post_meta( $post->ID, '_lsch_language', true ), 'levels' => wp_get_object_terms( $post->ID, LSCH_Content::LEVEL, array( 'fields' => 'names' ) ), 'topics' => wp_get_object_terms( $post->ID, LSCH_Content::TOPIC, array( 'fields' => 'names' ) ) );
+			$levels = wp_get_object_terms( $post->ID, LSCH_Content::LEVEL, array( 'fields' => 'names' ) );
+			$topics = wp_get_object_terms( $post->ID, LSCH_Content::TOPIC, array( 'fields' => 'names' ) );
+			if ( is_wp_error( $levels ) || is_wp_error( $topics ) || ! is_array( $levels ) || ! is_array( $topics ) ) {
+				return new WP_Error( 'lsch_catalog_taxonomy_failed', __( 'Learning catalog taxonomy could not be verified. Retry the request.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			}
+			$items[] = array( 'id' => $post->ID, 'type' => $post->post_type, 'title' => get_the_title( $post ), 'summary' => get_the_excerpt( $post ), 'url' => get_permalink( $post ), 'access' => LSCH_Content::access( $post->ID ), 'version' => LSCH_Content::version( $post->ID ), 'duration' => (string) get_post_meta( $post->ID, '_lsch_duration', true ), 'language' => (string) get_post_meta( $post->ID, '_lsch_language', true ), 'levels' => $levels, 'topics' => $topics );
 		}
 		$response = rest_ensure_response( array( 'items' => $items, 'page' => $page, 'pages' => (int) $query->max_num_pages, 'total' => count( $items ), 'access_model' => LSCH_Policy::access_model() ) );
 		$response->header( 'Cache-Control', $protected_viewer ? 'private, no-store' : 'public, max-age=60, stale-while-revalidate=120' ); return $response;
