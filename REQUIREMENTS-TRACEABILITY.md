@@ -71,3 +71,11 @@ No Must requirement is intentionally omitted from repository source. Browser/Hos
 | F05-FUT-18 | Knowledge-Change Impact & Mandatory Re-study | correction-event impact ledger, targeted review and `LearningRestudyRequired.v1` event | correction/load/File19 staging pending |
 
 These enhancements remain inside File 05 learning/mastery ownership. File 06/12/15/16/17/19/26 retain their canonical truths; simulations and AI do not acquire real-patient diagnosis, prescription or emergency authority.
+
+## 2026-10-11 — Twenty-focus review: privacy gap closure
+
+Source-only corrective IDs:
+- **F05-20261011-01 / F05-NFR-002 / F05-FUT-11:** The persisted Future18 personal learning-path rows (`pathways`) are now included in WordPress privacy export, in bounded pages alongside other private learning state.
+- **F05-20261011-02 / F05-NFR-002 / F05-FUT-09/10/16:** A user who assessed another learner's simulated practice or verified CPD may have actor identifiers in those learners' records. The export now gives actor-only, redacted projections; the eraser now clears `practice.assessor_id` and `cpd.verified_by` outside active legal hold, preserving academic result records.
+- **Regression:** `tests/future18-privacy-contract.php` invoked from `tests/source-invariants.sh`; WordPress staging role/privacy export/erasure and File24 legal-hold acceptance remain pending.
+- **Evidence:** `REVIEW-20-FOCUSED-2026-10-11.md`. This is source correction evidence, not a claim of WordPress, staging or live acceptance.
