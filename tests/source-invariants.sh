@@ -24,6 +24,9 @@ php tests/enrollment-postwrite-verification.php
 php tests/catalog-taxonomy-failure.php
 php tests/saved-search-read-failure.php
 php tests/system-health-db-failure.php
+php tests/learning-requirement-failclosed.php
+php tests/current-competency-evidence.php
+php tests/course-analytics-db-failclosed.php
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
 
 find 05-learn-sabri-classical-homeopathy -type f -name '*.php' -print0 \
