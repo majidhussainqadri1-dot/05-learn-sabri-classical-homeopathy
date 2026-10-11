@@ -262,11 +262,10 @@ final class LSCH_Content {
 	}
 
 	public static function access( $post_id ) {
-		$raw_access = (string) get_post_meta( $post_id, '_lsch_access', true );
-		// Older approved public lessons may have no access metadata. An explicit,
-		// malformed value must NEVER broaden a protected object to public access.
+		$raw_access = get_post_meta( $post_id, '_lsch_access', true );
+		// Missing legacy metadata can remain public; any supplied value must match
+		// a canonical enum EXACTLY. Sanitization could turn 'public!' into 'public'.
 		if ( '' === $raw_access ) { return 'public'; }
-		$access = sanitize_key( $raw_access );
-		return in_array( $access, array( 'public', 'account', 'restricted' ), true ) ? $access : 'restricted';
+		return is_string( $raw_access ) && in_array( $raw_access, array( 'public', 'account', 'restricted' ), true ) ? $raw_access : 'restricted';
 	}
 }
