@@ -17,7 +17,7 @@ class LSCH_State {
 }
 class WP_Error { public function __construct( $code, $message = '' ) {} }
 class PrivacyProjectionDB {
-	public function prepare( $query, ...$args ) { return vsprintf( $query, $args ); }
+	public function prepare( $query, ...$args ) { if ( 1 === count( $args ) && is_array( $args[0] ) ) { $args = $args[0]; } return vsprintf( $query, $args ); }
 	public function get_results( $query, $return = null ) {
 		$GLOBALS['export_sql'][] = $query;
 		if ( false !== strpos( $query, 'wp_lsch_submissions' ) ) {
