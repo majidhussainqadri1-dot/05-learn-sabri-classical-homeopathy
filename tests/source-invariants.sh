@@ -27,6 +27,9 @@ php tests/system-health-db-failure.php
 php tests/learning-requirement-failclosed.php
 php tests/current-competency-evidence.php
 php tests/course-analytics-db-failclosed.php
+php tests/ninth-private-note-assessment-read.php
+php tests/ninth-correction-completion-db.php
+php tests/ninth-reconcile-failclosed.php
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
 
 find 05-learn-sabri-classical-homeopathy -type f -name '*.php' -print0 \
