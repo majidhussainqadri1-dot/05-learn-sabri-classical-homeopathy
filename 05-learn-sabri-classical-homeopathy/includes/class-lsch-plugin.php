@@ -112,7 +112,7 @@ final class LSCH_Plugin {
 
 	public function community_context_card( $object_type, $object_id, $viewer_id = 0 ) {
 		$object_id = absint( $object_id );
-		if ( LSCH_Content::object_type( $object_id ) !== $object_type || ! LSCH_Policy::can_read_post( $object_id, absint( $viewer_id ) ) ) {
+		if ( LSCH_Content::object_type( $object_id ) !== $object_type || ! ( $viewer_id ? LSCH_Policy::can_read_post( $object_id, $viewer_id ) : LSCH_Policy::publicly_visible( $object_id ) ) ) {
 			return null;
 		}
 		return array(
