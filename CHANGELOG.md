@@ -100,3 +100,10 @@
 - Patched five proven source defects: unverified enrollment reread leading to false event/PHP offset access, REST taxonomy WP_Error projection, false/null private saved-search rows, unknown privacy-retention count reported erased, and missing DB health metrics reported as zero.
 - Created enrollment-postwrite-verification.php, catalog-taxonomy-failure.php, saved-search-read-failure.php, system-health-db-failure.php; extended core-privacy-erasure.php and mandatory source-invariants runner. Repaired missing apply_filters test stub after real CI feedback.
 - Documentation: REVIEW-20-CYCLE-G-2026-10-11.md. Staging/live, merged code, migration parity and full governed re-consent remain unverified/pending.
+
+## 2026-10-11 — File05 eighth twenty-focus source audit (Cycle H)
+
+- Fetched and inspected nineteen PHP class source files at exact frozen PR #4 HEAD `5a9297a0fc3d87cccb8b656a213735b2510a412c` across twenty new source focus areas against File05 v1.1 Future18 and consolidated Three Central Plans; five fresh defects confirmed.
+- Corrected five actual source defects: invalid required learning components silently waived; failed assessment attempt MAX read cast as zero; failed competency taxonomy turned into empty earned snapshot; certificate readiness counted obsolete assessment-version score; privacy-safe educator analytics cast failed counts/AVG into fake zero results.
+- Added PHP regression suites `learning-requirement-failclosed.php`, `current-competency-evidence.php` and `course-analytics-db-failclosed.php` to mandatory integrity runner.
+- Report: `REVIEW-20-CYCLE-H-2026-10-11.md`. Proper patient historical re-consent migration and real WordPress staging/live integration are still pending. No PR merge or deployment performed.
