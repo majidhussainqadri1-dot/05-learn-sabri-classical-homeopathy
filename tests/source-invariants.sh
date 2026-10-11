@@ -10,6 +10,8 @@ php tests/security-invariants.php
 php tests/future18-score-safety.php
 php tests/future18-privacy-contract.php
 php tests/public-visibility-version.php
+php tests/access-governance-contract.php
+php tests/core-privacy-erasure.php
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
 
 find 05-learn-sabri-classical-homeopathy -type f -name '*.php' -print0 \
