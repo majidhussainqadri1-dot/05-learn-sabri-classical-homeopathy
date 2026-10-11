@@ -12,6 +12,8 @@ php tests/future18-privacy-contract.php
 php tests/public-visibility-version.php
 php tests/access-governance-contract.php
 php tests/core-privacy-erasure.php
+php tests/core-privacy-projection.php
+php tests/cross-owner-visibility.php
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
 
 find 05-learn-sabri-classical-homeopathy -type f -name '*.php' -print0 \
