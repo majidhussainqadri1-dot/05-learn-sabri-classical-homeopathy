@@ -20,6 +20,10 @@ php tests/prerequisite-integrity.php
 php tests/lesson-rest-cache.php
 php tests/note-rotation-db-errors.php
 php tests/consent-history-protection.php
+php tests/enrollment-postwrite-verification.php
+php tests/catalog-taxonomy-failure.php
+php tests/saved-search-read-failure.php
+php tests/system-health-db-failure.php
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
 
 find 05-learn-sabri-classical-homeopathy -type f -name '*.php' -print0 \
