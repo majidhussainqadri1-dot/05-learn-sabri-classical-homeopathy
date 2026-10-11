@@ -107,3 +107,12 @@ Before Future-18 may be called staging-accepted, test all 18 IDs with real Membe
 - Inject database read failure and verification count error into File05 private-note File24 key rotation. No false success, unknown remaining count, no destructive fallback; restore keyring and database, retry safely and validate actual decryption of earlier note versions.
 - After consent withdrawal, attempt a second `store_case_consent` with the same lesson and current policy. Must return conflict, preserve `withdrawn_at`, `withdrawn_by`, evidence and no new public case publication. A new genuinely authorized append-only re-consent workflow needs a separate approved spec/schema/versioned migration, test and rollback; mark pending rather than falsely claiming completion.
 - Verify exact deployed plugin checksum/version, WordPress/PHP/database schema and migration state; all other File00/06/10/12/15/16/17/19/20/22/24/25/26 companion contracts at real runtime before staging signoff.
+
+## 14. 2026-10-11 seventh review (Cycle G) — database failure-injection and health evidence
+
+- File05 enrollment: make initial insert succeed, then force final get_row failure. The action must return an explicit verification error, avoid false Created event, preserve the persisted enrollment and require operator reconciliation/idempotent retry. Repeat with successful reread.
+- File05 REST catalog on WordPress: inject WP_Error/nonarray from LEVEL or TOPIC lookup and ensure no malformed JSON/source data or cacheable success. Retest healthy typed level/topic lists with File25 cards and File26 search consumer.
+- File05 private saved searches: force false/null get_results; expect explicit error and no false empty list or PHP warning. Test normal owned per-user list recovery.
+- File24 WordPress privacy tools: fail the retained academic-record COUNT after actual anonymization. The callback must set done=false, conservatively mark retained evidence and require operator retry. Test File24 hold with real records.
+- File19/24 System Check: force false/null dead outbox, dead job and encrypted-note counts individually. Overall health must be fail; then validate true 0 counts pass and true nonzero counts warn, without touching production data.
+- Capture exact deployed package checksum, active plugin version, DB/options/migrations, external File00/06/12/16/17/19/20/22/24/25/26 versions and runtime logs before claiming any staging acceptance.
