@@ -377,37 +377,51 @@ final class LSCH_Operations {
 			"SELECT * FROM {$state['corrections']} WHERE status IN ('applying','apply_failed') ORDER BY updated_at ASC,id ASC LIMIT 100", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			ARRAY_A
 		);
+		if ( ! is_array( $rows ) ) {
+			LSCH_Events::audit( 'reconcile_correction_read_failed', 'system', 'file05', array(), 'reliability' );
+			return new WP_Error( 'lsch_reconcile_failed', __( 'Correction reconciliation could not read its queue safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		foreach ( $rows as $row ) {
 			$current = LSCH_Content::version( absint( $row['object_id'] ) );
 			$proposed = absint( $row['proposed_object_version'] );
 			if ( $current === $proposed + 1 && 'applying' === $row['status'] ) {
-				$wpdb->update(
+				$updated = $wpdb->update(
 					$state['corrections'],
 					array( 'status' => 'accepted', 'applied_object_version' => $current, 'version' => absint( $row['version'] ) + 1, 'updated_at' => current_time( 'mysql', true ), 'decided_at' => current_time( 'mysql', true ) ),
 					array( 'id' => absint( $row['id'] ), 'version' => absint( $row['version'] ), 'status' => 'applying' ),
 					array( '%s', '%d', '%d', '%s', '%s' ),
 					array( '%d', '%d', '%s' )
 				);
+				if ( 1 !== $updated ) {
+					return new WP_Error( 'lsch_reconcile_failed', __( 'Correction reconciliation update could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+				}
 				continue;
 			}
 			if ( $current === $proposed ) {
-				$wpdb->update(
+				$updated = $wpdb->update(
 					$state['corrections'],
 					array( 'status' => 'submitted', 'reviewer_id' => 0, 'applied_object_version' => 0, 'version' => absint( $row['version'] ) + 1, 'updated_at' => current_time( 'mysql', true ), 'decided_at' => null ),
 					array( 'id' => absint( $row['id'] ), 'version' => absint( $row['version'] ), 'status' => $row['status'] ),
 					array( '%s', '%d', '%d', '%d', '%s', '%s' ),
 					array( '%d', '%d', '%s' )
 				);
+				if ( 1 !== $updated ) {
+					return new WP_Error( 'lsch_reconcile_failed', __( 'Correction reconciliation update could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+				}
 				continue;
 			}
-			$wpdb->update(
+			$updated = $wpdb->update(
 				$state['corrections'],
 				array( 'status' => 'stale_conflict', 'version' => absint( $row['version'] ) + 1, 'updated_at' => current_time( 'mysql', true ) ),
 				array( 'id' => absint( $row['id'] ), 'version' => absint( $row['version'] ), 'status' => $row['status'] ),
 				array( '%s', '%d', '%s' ),
 				array( '%d', '%d', '%s' )
 			);
+			if ( 1 !== $updated ) {
+				return new WP_Error( 'lsch_reconcile_failed', __( 'Correction reconciliation update could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			}
 		}
+		return true;
 	}
 
 	/**
