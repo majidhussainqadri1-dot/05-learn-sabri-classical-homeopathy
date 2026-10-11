@@ -277,6 +277,9 @@ final class LSCH_State {
 			);
 		}
 		$rows = $wpdb->get_results( $sql, ARRAY_A );
+		if ( ! is_array( $rows ) ) {
+			return new WP_Error( 'lsch_corrections_read_failed', __( 'Learning corrections could not be read safely. Retry after the database recovers.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( $reviewer && ! current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) ) {
 			$rows = array_values( array_filter( $rows, static function( $row ) use ( $user_id ) {
 				return absint( $row['proposer_id'] ) === $user_id || user_can( $user_id, 'edit_post', absint( $row['object_id'] ) );
