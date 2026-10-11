@@ -107,3 +107,10 @@
 - Corrected five actual source defects: invalid required learning components silently waived; failed assessment attempt MAX read cast as zero; failed competency taxonomy turned into empty earned snapshot; certificate readiness counted obsolete assessment-version score; privacy-safe educator analytics cast failed counts/AVG into fake zero results.
 - Added PHP regression suites `learning-requirement-failclosed.php`, `current-competency-evidence.php` and `course-analytics-db-failclosed.php` to mandatory integrity runner.
 - Report: `REVIEW-20-CYCLE-H-2026-10-11.md`. Proper patient historical re-consent migration and real WordPress staging/live integration are still pending. No PR merge or deployment performed.
+
+## 2026-10-11 — Ninth File05 20-focus source review (Cycle I)
+
+- Froze and inspected Draft PR #4 at b82f044b25b0de376f12eb0dfc18254f74cdedb5; studied File05 v1.1 Future18, consolidated Three Central Plans and related File06/File12 owner boundaries.
+- Completed twenty distinct focused source inspections and corrected six confirmed new defects: private note failed read misreported as empty; assessment start post-insert re-read unverified; assessment grade post-update re-read falsely publishing event; reviewer corrections inbox DB error; completion-evidence DB read masquerading as empty; partial daily reconciliation incorrectly marked successful.
+- Added three PHP failure-injection regression suites, extended mandatory source runner and corrected missing is_wp_error WordPress fixture stub after live CI failure.
+- Full review in REVIEW-20-CYCLE-I-2026-10-11.md. Source-level passing CI does not represent merge, deploy, schema migration or staging/live acceptance; full case re-consent schema still pending governed approval.
