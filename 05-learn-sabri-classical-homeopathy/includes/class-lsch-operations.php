@@ -213,6 +213,10 @@ final class LSCH_Operations {
 		global $wpdb;
 		$t = LSCH_Database::tables();
 		$rows = $wpdb->get_results( "SELECT id FROM {$t['outbox']} WHERE status IN ('pending','retry') AND next_attempt_at<=UTC_TIMESTAMP() ORDER BY id ASC LIMIT 50", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		if ( ! is_array( $rows ) ) {
+			LSCH_Events::audit( 'outbox_queue_read_failed', 'system', 'file05', array( 'operation' => 'process_outbox' ), 'reliability' );
+			return;
+		}
 		foreach ( $rows as $candidate ) {
 			$id = absint( $candidate['id'] );
 			$lock = self::mysql_lock( 'outbox_' . $id );
@@ -262,6 +266,10 @@ final class LSCH_Operations {
 		global $wpdb;
 		$t = LSCH_Database::tables();
 		$jobs = $wpdb->get_results( "SELECT id FROM {$t['jobs']} WHERE status IN ('pending','retry') AND run_after<=UTC_TIMESTAMP() ORDER BY id ASC LIMIT 25", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		if ( ! is_array( $jobs ) ) {
+			LSCH_Events::audit( 'jobs_queue_read_failed', 'system', 'file05', array( 'operation' => 'process_jobs' ), 'reliability' );
+			return;
+		}
 		foreach ( $jobs as $candidate ) {
 			$id = absint( $candidate['id'] );
 			$claimed = $wpdb->query(
@@ -316,7 +324,10 @@ final class LSCH_Operations {
 		$wpdb->query( "DELETE b FROM {$t['bookmarks']} b LEFT JOIN {$wpdb->posts} p ON p.ID=b.object_id WHERE p.ID IS NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		$wpdb->query( "DELETE p FROM {$t['progress']} p LEFT JOIN {$wpdb->posts} l ON l.ID=p.lesson_id WHERE l.ID IS NULL OR l.post_type<>'lsch_lesson'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		$wpdb->query( "DELETE n FROM {$t['notes']} n LEFT JOIN {$wpdb->posts} l ON l.ID=n.lesson_id WHERE l.ID IS NULL OR l.post_type<>'lsch_lesson'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$wpdb->query( "DELETE c FROM {$t['consents']} c LEFT JOIN {$wpdb->posts} l ON l.ID=c.lesson_id WHERE l.ID IS NULL OR l.post_type<>'lsch_lesson'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		// Preserve historical consent/withdrawal evidence even after a learning
+		// lesson is deleted or its post type changes. Consent is an auditable
+		// record; automatic cron cleanup must not destroy legal history.
+		// Any retention purge requires a separate governed File24-approved procedure.
 		$wpdb->query( "DELETE r FROM {$t['reminders']} r LEFT JOIN {$wpdb->posts} c ON c.ID=r.course_id WHERE c.ID IS NULL OR c.post_type<>'lsch_course'" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		$wpdb->query( "DELETE s FROM {$t['staff']} s LEFT JOIN {$wpdb->users} u ON u.ID=s.user_id WHERE u.ID IS NULL" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		$wpdb->query( "UPDATE {$t['jobs']} SET status='retry',locked_at=NULL,run_after=UTC_TIMESTAMP(),updated_at=UTC_TIMESTAMP() WHERE status='running' AND locked_at<DATE_SUB(UTC_TIMESTAMP(), INTERVAL 30 MINUTE)" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
