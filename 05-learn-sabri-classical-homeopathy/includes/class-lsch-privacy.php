@@ -129,7 +129,7 @@ final class LSCH_Privacy {
 			'items_removed'  => $removed,
 			'items_retained' => $retained,
 			'messages'       => $messages,
-			'done'           => true,
+			'done'           => empty( $failures ),
 		);
 	}
 }
