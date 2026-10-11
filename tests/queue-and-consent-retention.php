@@ -25,6 +25,7 @@ class QueueFailDB {
 $GLOBALS['wpdb']=new QueueFailDB();
 function get_option($key,$default=false){return $default;}
 function apply_filters($hook,$default,...$args){return $default;}
+function is_wp_error($value){return $value instanceof WP_Error;}
 function absint($v){return abs((int)$v);}
 function update_option($name,$value,$autoload=false){return true;}
 function check_op($ok,$what){if(!$ok){fwrite(STDERR,"FAIL: ".$what."\n");exit(1);}}
