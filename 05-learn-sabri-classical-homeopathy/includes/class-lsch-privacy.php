@@ -36,12 +36,12 @@ final class LSCH_Privacy {
 			array( $t['bookmarks'], 'user_id=%d', array( $uid ), 'lsch-bookmarks', __( 'Learning bookmarks', 'learn-sabri-classical-homeopathy' ) ),
 			array( $t['attempts'], 'user_id=%d', array( $uid ), 'lsch-attempts', __( 'Assessment attempts', 'learn-sabri-classical-homeopathy' ) ),
 			array( $t['submissions'], 'user_id=%d', array( $uid ), 'lsch-submissions', __( 'My assignment submissions', 'learn-sabri-classical-homeopathy' ) ),
-			array( $t['staff'], '(user_id=%d OR assigned_by=%d)', array( $uid, $uid ), 'lsch-staff-assignments', __( 'Learning staff assignments', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['staff'], 'user_id=%d', array( $uid ), 'lsch-staff-assignments', __( 'My learning staff assignments', 'learn-sabri-classical-homeopathy' ) ),
 			array( $t['completions'], 'user_id=%d', array( $uid ), 'lsch-completions', __( 'Learning completions', 'learn-sabri-classical-homeopathy' ) ),
 			array( $t['reminders'], 'user_id=%d', array( $uid ), 'lsch-reminders', __( 'Learning reminders', 'learn-sabri-classical-homeopathy' ) ),
 			array( $t['request_keys'], 'user_id=%d', array( $uid ), 'lsch-request-history', __( 'Protected request history', 'learn-sabri-classical-homeopathy' ) ),
 			array( $t['audit'], 'actor_id=%d', array( $uid ), 'lsch-audit-history', __( 'Learning audit history', 'learn-sabri-classical-homeopathy' ) ),
-			array( $t['consents'], '(created_by=%d OR withdrawn_by=%d)', array( $uid, $uid ), 'lsch-case-consent-actions', __( 'Learning case consent actions', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['consents'], 'created_by=%d', array( $uid ), 'lsch-case-consent-actions', __( 'My learning case consent actions', 'learn-sabri-classical-homeopathy' ) ),
 			array( $state['saved_searches'], 'user_id=%d', array( $uid ), 'lsch-saved-learning-searches', __( 'Saved learning searches', 'learn-sabri-classical-homeopathy' ) ),
 			array( $state['value_events'], 'user_id=%d', array( $uid ), 'lsch-learning-value-events', __( 'Learning value events', 'learn-sabri-classical-homeopathy' ) ),
 		);
@@ -58,6 +58,8 @@ final class LSCH_Privacy {
 		$actor_specs = array(
 			array( $t['submissions'], 'id,status,assessor_id,version,updated_at', 'assessor_id=%d AND user_id<>%d', 'lsch-assessor-actions', __( 'My assessment actions (no learner answers)', 'learn-sabri-classical-homeopathy' ) ),
 			array( $state['corrections'], 'id,status,reviewer_id,version,decided_at', 'reviewer_id=%d AND proposer_id<>%d', 'lsch-correction-review-actions', __( 'My correction review actions (no proposal text)', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['staff'], 'id,object_type,object_id,role,active,assigned_by,version', 'assigned_by=%d AND user_id<>%d', 'lsch-staff-assignment-actions', __( 'My staff assignment actions (no colleague private scope)', 'learn-sabri-classical-homeopathy' ) ),
+			array( $t['consents'], 'id,policy_version,withdrawn_by,withdrawn_at,version', 'withdrawn_by=%d AND created_by<>%d', 'lsch-consent-withdrawal-actions', __( 'My case consent withdrawal actions (no patient evidence)', 'learn-sabri-classical-homeopathy' ) ),
 		);
 		foreach ( $actor_specs as $spec ) {
 			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT {$spec[1]} FROM {$spec[0]} WHERE {$spec[2]} ORDER BY id ASC LIMIT %d OFFSET %d", $uid, $uid, $limit, $offset ), ARRAY_A );
