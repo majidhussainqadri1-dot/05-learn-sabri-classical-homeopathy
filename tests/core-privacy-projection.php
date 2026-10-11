@@ -20,6 +20,20 @@ class PrivacyProjectionDB {
 	public function prepare( $query, ...$args ) { if ( 1 === count( $args ) && is_array( $args[0] ) ) { $args = $args[0]; } return vsprintf( $query, $args ); }
 	public function get_results( $query, $return = null ) {
 		$GLOBALS['export_sql'][] = $query;
+		if ( false !== strpos( $query, 'wp_lsch_consents' ) ) {
+			if ( false !== strpos( $query, 'WHERE withdrawn_by=25 AND created_by<>25' ) ) {
+				return array( array('id'=>401,'policy_version'=>'v1','withdrawn_by'=>25,'withdrawn_at'=>'2026-01-01','version'=>2) );
+			}
+			if ( false !== strpos( $query, 'WHERE created_by=25' ) ) { return array( array('id'=>400,'created_by'=>25,'evidence_reference'=>'OWN_CONSENT_EVIDENCE') ); }
+			return array( array('id'=>401,'created_by'=>33,'withdrawn_by'=>25,'evidence_reference'=>'OTHER_PATIENT_CONSENT_SECRET') );
+		}
+		if ( false !== strpos( $query, 'wp_lsch_staff' ) ) {
+			if ( false !== strpos( $query, 'WHERE assigned_by=25 AND user_id<>25' ) ) {
+				return array( array('id'=>501,'object_type'=>'lesson','object_id'=>13,'role'=>'assessor','active'=>1,'assigned_by'=>25,'version'=>1) );
+			}
+			if ( false !== strpos( $query, 'WHERE user_id=25' ) ) { return array( array('id'=>500,'user_id'=>25,'scope_json'=>'OWN_SCOPE') ); }
+			return array( array('id'=>501,'assigned_by'=>25,'user_id'=>34,'scope_json'=>'OTHER_PERSON_SCOPE_SECRET') );
+		}
 		if ( false !== strpos( $query, 'wp_lsch_submissions' ) ) {
 			if ( false !== strpos( $query, 'WHERE assessor_id=25 AND user_id<>25' ) ) {
 				return array( array( 'id'=>202, 'status'=>'graded', 'assessor_id'=>25, 'version'=>3, 'updated_at'=>'2026-01-01 00:00:00' ) );
@@ -57,6 +71,14 @@ privacy_check( false === strpos($json,'OTHER_LEARNER_ANSWER_SECRET'), 'no other 
 privacy_check( false === strpos($json,'PRIVATE_APPEAL_SECRET'), 'no other learner appeal leakage' );
 privacy_check( false === strpos($json,'OTHER_LEARNER_PROPOSAL_SECRET'), 'no other user correction content' );
 privacy_check( false !== strpos($json,'lsch-assessor-actions'), 'assessor actor-only audit visible' );
+
+privacy_check( false !== strpos($json,'OWN_CONSENT_EVIDENCE'), 'my own consent evidence exported' );
+privacy_check( false !== strpos($json,'OWN_SCOPE'), 'my own staff assignment included' );
+privacy_check( false === strpos($json,'OTHER_PATIENT_CONSENT_SECRET'), 'no other patient consent evidence leaked to withdrawal actor' );
+privacy_check( false === strpos($json,'OTHER_PERSON_SCOPE_SECRET'), 'no other staff member protected scope leaked to assigner' );
+privacy_check( false !== strpos($json,'lsch-consent-withdrawal-actions'), 'withdrawal actor-only reference exported' );
+privacy_check( false !== strpos($json,'lsch-staff-assignment-actions'), 'staff-assignment actor-only reference exported' );
+
 privacy_check( false !== strpos($json,'lsch-correction-review-actions'), 'reviewer actor-only audit visible' );
 foreach($GLOBALS['export_sql'] as $sql){
 	if ( false !== strpos($sql,'wp_lsch_submissions') ) {
