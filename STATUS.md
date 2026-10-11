@@ -54,3 +54,7 @@ See `REVIEW-20-CYCLE-D-2026-10-11.md`. New frozen baseline `018e07d2d19900a0ea56
 ## 2026-10-11 — Cycle E: fifth independent 20-focus File05 review
 
 `REVIEW-20-CYCLE-E-2026-10-11.md` records twenty fresh focus checks at baseline `c1c072a3754bc51f404f1bd5188bf4f4ec21a58b`. Five confirmed source defects found and patched: public lesson parent-access inheritance, taxonomy error/consent fail-closed, actor-only consent/staff privacy export, outbox/job DB failures, and historical consent retention. Two new executable PHP regressions + expanded privacy fixture added to mandatory CI. Latest exact HEAD CI must be independently checked. Draft PR#4 remains unmerged; actual Hostinger staging, deployed artifact checksum, DB/schema/migrations, cross-file runtime parity and live verification remain unverified.
+
+## 2026-10-11 — Sixth File05 20-focus audit (Cycle F)
+
+Report `REVIEW-20-CYCLE-F-2026-10-11.md`: new twenty-area source review of frozen branch `e8f0596a527a4957c4c479ff9ec5883408162545`. Four defects corrected: failing-open malformed prerequisites, DB rotation failure masking, public cache headers on ancestor-restricted/user-sensitive lesson REST, and same-policy consent overwrite destroying withdrawal history. Four executable PHP regressions now in mandatory source QA. Final HEAD CI needs independent run verification. **Important open requirement:** full append-only patient re-consent workflow remains pending approved design/migration/rollback. PR#4 still draft, unmerged; deployed plugin DB/schema/migration/staging/live parity not verified.
