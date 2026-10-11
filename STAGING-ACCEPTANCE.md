@@ -64,3 +64,12 @@ Before Future-18 may be called staging-accepted, test all 18 IDs with real Membe
 - Repeat with a verified active legal hold; identities and governed records must remain preserved and visibly reported until lawful retention expires.
 - Inject database read/write failure during these privacy operations: no false success, cross-learner disclosure or silent untracked partial erasure. Check retry/operator process, backup, restore, and audit without raw private data in logs.
 - Validate File00 consent/eligibility, File24 privacy/retention policy, and WordPress core eraser/exporter runtime. Do not mark this area staging-accepted from static or stub-based CI alone.
+
+## 9. 2026-10-11 second twenty-focus regression staging gates
+
+- Seed public, account, restricted and unpublished File05 books, programs and courses. View the public home `/learn/` as guest/member/teacher/Founder (including cached visits). No nonpublic title, excerpt, cover or link may appear, regardless of the visitor's author/edit permissions.
+- Seed public, account and restricted lessons of one public course. Compare guest and approved member course outlines. Verify real WordPress `Cache-Control`/noindex headers, File20 render integration, and LiteSpeed/CDN caches never serve one member's account/restricted lesson links to a guest or another member.
+- Confirm a restricted object is absent from public WordPress search, archives and File26 indexed public suggestions; a member-eligible learning-specific read is no-store and every File26 referral rechecks File05 native visibility.
+- Verify `/learn/dashboard/`, `/learn/mastery/`, assessment, assignment and cohort surfaces are private, noindex, and not shared across roles/guardians/suspended users.
+- Change a learning lesson's content exactly once using native WordPress and File22 authoring; ensure its `_lsch_version` increments once, one content-version event is produced, and affected learner progress/re-study is updated only once. Repeat with metadata-only edit and retry/correction events.
+- Verify real File00/06/12/15/16/17/19/20/22/24/25/26 compatibility before any staging signoff. Run failed migration/rollback, user role state changes and concurrent edits under actual MySQL/PHP.
