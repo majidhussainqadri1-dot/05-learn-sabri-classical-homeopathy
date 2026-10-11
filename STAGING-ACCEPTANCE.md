@@ -55,3 +55,12 @@ Only after these gates pass may status advance from `Automated-QA Green` to `Sta
 ## Future-18 staging acceptance matrix
 
 Before Future-18 may be called staging-accepted, test all 18 IDs with real Member/Doctor/Teacher/Assessor/Founder roles; suspended/guardian states; IDOR and self-assessment negatives; mastery concurrency; spaced-review scheduling; flashcards; all eight labs; File06/12/15 references; File16 citation/no-provider/failure paths; mentorship scope; verified vs self-recorded CPD; correction-impact fan-out and File19 event projection; privacy export/erase; RTL/mobile/keyboard/reduced-motion; weak connection; backup/restore and rollback. No live claim follows automatically.
+
+## 8. 2026-10-11 privacy regression staging gates
+
+- Seed a learner with a persisted `pathways` Personal Learning Prescription, including a second page (more than the export page limit), then run WordPress's native personal-data export. Verify all saved plans are included, with no duplicates or omissions and consistent `done` pagination.
+- Seed assessor A grading learner B's Future18 practice, and verifier A validating learner B's CPD. On A's export, verify actor-only projections are present but learner B's private answer, CPD evidence and other personal data are not exposed.
+- On A's legal-hold-free erasure, verify the `assessor_id` and `verified_by` links in learner B's records are de-identified, while learner B's academic results remain available under the owner policy. Confirm retained-data messages are truthful.
+- Repeat with a verified active legal hold; identities and governed records must remain preserved and visibly reported until lawful retention expires.
+- Inject database read/write failure during these privacy operations: no false success, cross-learner disclosure or silent untracked partial erasure. Check retry/operator process, backup, restore, and audit without raw private data in logs.
+- Validate File00 consent/eligibility, File24 privacy/retention policy, and WordPress core eraser/exporter runtime. Do not mark this area staging-accepted from static or stub-based CI alone.
