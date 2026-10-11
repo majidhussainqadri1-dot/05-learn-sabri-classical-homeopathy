@@ -14,26 +14,60 @@ final class LSCH_Policy {
 		return LSCH_Dependencies::governing_policy_ready();
 	}
 
+	private static $public_visibility_stack = array();
+	private static $reader_visibility_stack = array();
+
+	/** An explicit native hierarchy never grants a child broader access than its parent. */
+	private static function governed_parents( $post ) {
+		$links = array();
+		$allowed = array();
+		if ( LSCH_Content::COURSE === $post->post_type ) {
+			$allowed['_lsch_program_id'] = LSCH_Content::PROGRAM;
+		} elseif ( LSCH_Content::LESSON === $post->post_type ) {
+			$allowed['_lsch_course_id'] = LSCH_Content::COURSE;
+			$allowed['_lsch_book_id'] = LSCH_Content::BOOK;
+		} elseif ( in_array( $post->post_type, array( LSCH_Content::ASSESSMENT, LSCH_Content::ASSIGNMENT ), true ) ) {
+			$allowed['_lsch_lesson_id'] = LSCH_Content::LESSON;
+		}
+		foreach ( $allowed as $meta_key => $type ) {
+			$id = absint( get_post_meta( $post->ID, $meta_key, true ) );
+			if ( $id ) { $links[] = array( $id, $type ); }
+		}
+		return $links;
+	}
+
 	/**
 	 * Context-independent public visibility for cacheable catalogs and indexes.
 	 * Author, member and private staff privileges must never change this verdict.
 	 */
 	public static function publicly_visible( $post_id ) {
 		$post_id = absint( $post_id );
-		$post = get_post( $post_id );
-		if ( ! $post || ! LSCH_Content::object_type( $post_id ) || 'publish' !== $post->post_status || 'public' !== LSCH_Content::access( $post_id ) ) {
-			return false;
+		if ( ! $post_id || isset( self::$public_visibility_stack[ $post_id ] ) ) { return false; }
+		self::$public_visibility_stack[ $post_id ] = true;
+		try {
+			$post = get_post( $post_id );
+			if ( ! $post || ! LSCH_Content::object_type( $post_id ) || 'publish' !== $post->post_status || 'public' !== LSCH_Content::access( $post_id ) ) {
+				return false;
+			}
+			foreach ( self::governed_parents( $post ) as $parent ) {
+				if ( get_post_type( $parent[0] ) !== $parent[1] || ! self::publicly_visible( $parent[0] ) ) { return false; }
+			}
+			if ( LSCH_Content::LESSON === $post->post_type ) {
+				$topics = wp_get_object_terms( $post_id, LSCH_Content::TOPIC, array( 'fields' => 'slugs' ) );
+				if ( is_wp_error( $topics ) ) { return false; }
+				if ( in_array( 'patient-case-learning', (array) $topics, true ) && ! self::valid_case_consent( $post_id ) ) { return false; }
+			}
+			return true;
+		} finally {
+			unset( self::$public_visibility_stack[ $post_id ] );
 		}
-		if ( LSCH_Content::LESSON === $post->post_type ) {
-			$topics = wp_get_object_terms( $post_id, LSCH_Content::TOPIC, array( 'fields' => 'slugs' ) );
-			if ( is_wp_error( $topics ) ) { return false; }
-			if ( in_array( 'patient-case-learning', (array) $topics, true ) && ! self::valid_case_consent( $post_id ) ) { return false; }
-		}
-		return true;
 	}
 
 	public static function can_read_post( $post_id, $user_id = 0 ) {
 		$post_id = absint( $post_id );
+		if ( ! $post_id || isset( self::$reader_visibility_stack[ $post_id ] ) ) { return false; }
+		self::$reader_visibility_stack[ $post_id ] = true;
+		try {
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
 		$post    = get_post( $post_id );
 		if ( ! $post || ! LSCH_Content::object_type( $post_id ) ) {
@@ -42,9 +76,12 @@ final class LSCH_Policy {
 		if ( 'publish' !== $post->post_status ) {
 			return $user_id && user_can( $user_id, 'edit_post', $post_id );
 		}
+		foreach ( self::governed_parents( $post ) as $parent ) {
+			if ( get_post_type( $parent[0] ) !== $parent[1] || ! self::can_read_post( $parent[0], $user_id ) ) { return false; }
+		}
 		if ( LSCH_Content::LESSON === $post->post_type ) {
 			$topics = wp_get_object_terms( $post_id, LSCH_Content::TOPIC, array( 'fields' => 'slugs' ) );
-			if ( ! is_wp_error( $topics ) && in_array( 'patient-case-learning', (array) $topics, true ) && ! self::valid_case_consent( $post_id ) ) {
+			if ( is_wp_error( $topics ) || ( in_array( 'patient-case-learning', (array) $topics, true ) && ! self::valid_case_consent( $post_id ) ) ) {
 				return $user_id && user_can( $user_id, 'edit_post', $post_id );
 			}
 		}
@@ -73,6 +110,9 @@ final class LSCH_Policy {
 			}
 		}
 		return true === apply_filters( 'lsch_restricted_learning_access', false, $post_id, $user_id );
+		} finally {
+			unset( self::$reader_visibility_stack[ $post_id ] );
+		}
 	}
 
 	public static function valid_case_consent( $lesson_id ) {
