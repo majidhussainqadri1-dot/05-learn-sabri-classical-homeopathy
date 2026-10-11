@@ -52,3 +52,11 @@
 - Redacted assessor and CPD verifier identifiers in other learners' records on erasure when no active legal hold applies; kept academic results.
 - Added standalone PHP privacy contract regression `tests/future18-privacy-contract.php` to mandatory CI.
 - No change to plugin runtime/schema versions, `main`, staging or live. Staging/privacy integration gates remain open.
+
+## 2026-10-11 — Second fresh 20-focus File05 code audit
+
+- Separately reviewed twenty File05 source concerns against the File05 v1.1, consolidated central plan and native-owner companion boundaries, from exact baseline `691d7d871f3186e87395e77b2cc54b5d348a9bd5`.
+- Corrected three demonstrated source defects: public catalog audience leak, account-sensitive course HTML cache classification, and duplicate lesson version increments across WordPress save hooks.
+- Added `LSCH_Policy::publicly_visible()`, `LSCH_Frontend::public_catalog_posts()`, extended `is_private_learning_surface()`, and reused the canonical content version bump path.
+- Registered executable `tests/public-visibility-version.php` in mandated CI. Source/testing correction HEAD `17e49739bb0241a5d55edd2199128ed3e6e0efca` passed the four-job CI `38112358573`.
+- See `REVIEW-20-CYCLE-B-2026-10-11.md` and the appended staging tests. No main merge or production deployment.
