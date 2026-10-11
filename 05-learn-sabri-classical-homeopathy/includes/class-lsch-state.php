@@ -202,6 +202,9 @@ final class LSCH_State {
 			),
 			ARRAY_A
 		);
+		if ( ! is_array( $rows ) ) {
+			return new WP_Error( 'lsch_saved_search_read_failed', __( 'Saved learning searches could not be read safely. Retry the request.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		foreach ( $rows as &$row ) {
 			$row['query'] = json_decode( (string) $row['query_json'], true );
 			unset( $row['query_json'] );
