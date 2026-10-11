@@ -237,9 +237,16 @@ for token in ['decrypt_note_checked', 'lsch:assessment:', 'lsch_assessment_busy'
         errors.append(f'Missing note-integrity/assessment-concurrency invariant: {token}')
 
 privacy_current = files.get('05-learn-sabri-classical-homeopathy/includes/class-lsch-privacy.php', '')
-for token in ['LIMIT %d OFFSET %d', "array( $t['request_keys'], 'user_id=%d'", "proposer_id=%d OR reviewer_id=%d", 'decrypt_note_checked']:
+for token in ['LIMIT %d OFFSET %d', "array( $t['request_keys'], 'user_id=%d'", "reviewer_id=%d AND proposer_id<>%d", 'decrypt_note_checked']:
     if token not in privacy_current:
         errors.append(f'Missing bounded/complete privacy regression invariant: {token}')
+
+# A reviewer/assessor must export only their own actor activity, never another learner's raw answers.
+for token in ["array( $t['submissions'], 'user_id=%d'", "WHERE proposer_id=%d ORDER BY id ASC", "'id,status,assessor_id,version,updated_at'", "'id,status,reviewer_id,version,decided_at'", "'lsch-assessor-actions'", "'lsch-correction-review-actions'"]:
+    if token not in privacy_current:
+        errors.append(f'Missing cross-learner privacy segregation invariant: {token}')
+if "'(user_id=%d OR assessor_id=%d)'" in privacy_current or "WHERE proposer_id=%d OR reviewer_id=%d" in privacy_current:
+    errors.append('Privacy exporter still combines actor and other learner records into full-row exports.')
 
 
 # Fourth independent Review-80 regression invariants (2026-08-11).
