@@ -85,7 +85,10 @@ final class LSCH_Admin {
 		$changed = false;
 		foreach ( $input as $key => $value ) {
 			$key = sanitize_key( $key ); if ( 0 !== strpos( $key, '_lsch_' ) || ! in_array( $key, $allowed_keys, true ) ) { continue; }
-			if ( '_lsch_access' === $key ) { $value = sanitize_key( $value ); $value = in_array( $value, array( 'public', 'account', 'restricted' ), true ) ? $value : 'public'; }
+			if ( '_lsch_access' === $key ) {
+				// Invalid/malformed form input must not silently declassify content.
+				if ( ! is_string( $value ) || ! in_array( $value, array( 'public', 'account', 'restricted' ), true ) ) { continue; }
+			}
 			elseif ( in_array( $key, $integer_keys, true ) ) {
 				$value = absint( $value );
 				if ( '_lsch_pass_mark' === $key && ( $value < 1 || $value > 100 ) ) { continue; }
