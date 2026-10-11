@@ -16,6 +16,10 @@ php tests/core-privacy-projection.php
 php tests/cross-owner-visibility.php
 php tests/parent-access-consent.php
 php tests/queue-and-consent-retention.php
+php tests/prerequisite-integrity.php
+php tests/lesson-rest-cache.php
+php tests/note-rotation-db-errors.php
+php tests/consent-history-protection.php
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
 
 find 05-learn-sabri-classical-homeopathy -type f -name '*.php' -print0 \
