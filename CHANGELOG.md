@@ -78,3 +78,10 @@
 - Restricted global File26 public search adapters to `publicly_visible` and guest File16/17 educational/community resolvers to public-only when no explicit viewer ID is provided.
 - Added PHP regressions `tests/core-privacy-projection.php` and `tests/cross-owner-visibility.php`; corrected an unsafe legacy Python invariant. All four GitHub jobs green on code/test HEAD `05d70b932b05343a0ff29d9b600e337c04811aba`.
 - Cross-provider staging, main merge, deployed runtime/database parity and live re-test remain unverified/unperformed. Details: `REVIEW-20-CYCLE-D-2026-10-11.md`.
+
+## 2026-10-11 — Fifth File05 twenty-focus source review (Cycle E)
+
+- Froze Draft PR#4 at `c1c072a3754bc51f404f1bd5188bf4f4ec21a58b`; inspected nineteen actual PHP source files across twenty new focus areas and the current File05 + consolidated central plans.
+- Closed five concrete source defect classes: parent ACL/public lesson leak, patient case taxonomy-error fail-open, third-party consent/staff data exposure in WordPress privacy exports, DB failure handling in background outbox/jobs workers, and silent deletion of historical case consent records by daily reconciliation.
+- Added `tests/parent-access-consent.php` and `tests/queue-and-consent-retention.php`; extended `tests/core-privacy-projection.php`; registered all in mandatory source QA.
+- Details `REVIEW-20-CYCLE-E-2026-10-11.md`. CI success must be verified on exact final documentation HEAD; no live/staging changes or main merge.
