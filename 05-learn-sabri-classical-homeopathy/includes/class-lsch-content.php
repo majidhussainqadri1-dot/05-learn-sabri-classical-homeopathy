@@ -262,7 +262,11 @@ final class LSCH_Content {
 	}
 
 	public static function access( $post_id ) {
-		$access = sanitize_key( (string) get_post_meta( $post_id, '_lsch_access', true ) );
-		return in_array( $access, array( 'public', 'account', 'restricted' ), true ) ? $access : 'public';
+		$raw_access = (string) get_post_meta( $post_id, '_lsch_access', true );
+		// Older approved public lessons may have no access metadata. An explicit,
+		// malformed value must NEVER broaden a protected object to public access.
+		if ( '' === $raw_access ) { return 'public'; }
+		$access = sanitize_key( $raw_access );
+		return in_array( $access, array( 'public', 'account', 'restricted' ), true ) ? $access : 'restricted';
 	}
 }
