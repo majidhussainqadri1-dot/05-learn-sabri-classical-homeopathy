@@ -463,7 +463,14 @@ final class LSCH_Services {
 		$policy = sanitize_text_field( isset( $data['policy_version'] ) ? $data['policy_version'] : $expected_policy );
 		if ( ! in_array( $source, array( 'patient', 'guardian', 'institution' ), true ) || ! in_array( $subject_type, array( 'patient', 'minor_patient', 'guardian', 'institution' ), true ) || '' === trim( $scope ) || '' === trim( $evidence_reference ) || $policy !== $expected_policy ) { return new WP_Error( 'lsch_consent_invalid', __( 'Current policy, valid subject/source, scope and consent evidence are required.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) ); }
 		global $wpdb; $t = LSCH_Database::tables(); $now = LSCH_Database::now();
-		$sql = $wpdb->prepare( "INSERT INTO {$t['consents']} (lesson_id,created_by,policy_version,subject_type,consent_source,scope,evidence_reference,confirmed_at,withdrawn_at,withdrawn_by,version) VALUES (%d,%d,%s,%s,%s,%s,%s,%s,NULL,0,1) ON DUPLICATE KEY UPDATE created_by=VALUES(created_by),subject_type=VALUES(subject_type),consent_source=VALUES(consent_source),scope=VALUES(scope),evidence_reference=VALUES(evidence_reference),confirmed_at=VALUES(confirmed_at),withdrawn_at=NULL,withdrawn_by=0,version=version+1", $lesson_id, $actor_id, $policy, $subject_type, $source, $scope, $evidence_reference, $now );
+		// A revoked or earlier consent must not be silently rewritten or revived.
+		// New authorization evidence requires a separately governed, versioned
+		// re-consent lifecycle rather than replacing the historical audit row.
+		$existing = $wpdb->get_row( $wpdb->prepare( "SELECT id,withdrawn_at FROM {$t['consents']} WHERE lesson_id=%d AND policy_version=%s LIMIT 1", $lesson_id, $policy ), ARRAY_A );
+		if ( $existing ) {
+			return new WP_Error( 'lsch_consent_record_exists', __( 'A consent record already exists for this policy. Renewals require the governed re-consent process.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		$sql = $wpdb->prepare( "INSERT INTO {$t['consents']} (lesson_id,created_by,policy_version,subject_type,consent_source,scope,evidence_reference,confirmed_at,withdrawn_at,withdrawn_by,version) VALUES (%d,%d,%s,%s,%s,%s,%s,%s,NULL,0,1)", $lesson_id, $actor_id, $policy, $subject_type, $source, $scope, $evidence_reference, $now );
 		if ( false === $wpdb->query( $sql ) ) { return new WP_Error( 'lsch_consent_write_failed', __( 'Case consent could not be saved.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) ); }
 		LSCH_Events::audit( 'case_consent_recorded', 'lesson', $lesson_id, array( 'actor_id' => $actor_id, 'policy_version' => $policy ), 'patient_privacy' );
 		return array( 'valid' => LSCH_Policy::valid_case_consent( $lesson_id ) );
