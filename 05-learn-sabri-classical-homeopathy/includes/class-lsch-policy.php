@@ -14,6 +14,24 @@ final class LSCH_Policy {
 		return LSCH_Dependencies::governing_policy_ready();
 	}
 
+	/**
+	 * Context-independent public visibility for cacheable catalogs and indexes.
+	 * Author, member and private staff privileges must never change this verdict.
+	 */
+	public static function publicly_visible( $post_id ) {
+		$post_id = absint( $post_id );
+		$post = get_post( $post_id );
+		if ( ! $post || ! LSCH_Content::object_type( $post_id ) || 'publish' !== $post->post_status || 'public' !== LSCH_Content::access( $post_id ) ) {
+			return false;
+		}
+		if ( LSCH_Content::LESSON === $post->post_type ) {
+			$topics = wp_get_object_terms( $post_id, LSCH_Content::TOPIC, array( 'fields' => 'slugs' ) );
+			if ( is_wp_error( $topics ) ) { return false; }
+			if ( in_array( 'patient-case-learning', (array) $topics, true ) && ! self::valid_case_consent( $post_id ) ) { return false; }
+		}
+		return true;
+	}
+
 	public static function can_read_post( $post_id, $user_id = 0 ) {
 		$post_id = absint( $post_id );
 		$user_id = $user_id ? absint( $user_id ) : get_current_user_id();
