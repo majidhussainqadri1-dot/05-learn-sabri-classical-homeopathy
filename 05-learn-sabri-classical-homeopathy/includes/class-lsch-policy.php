@@ -159,7 +159,11 @@ final class LSCH_Policy {
 		}
 		// Nonempty malformed course prerequisites must never be treated as optional.
 		// Reject mixed numeric/text data, signs, zeros and noncanonical IDs.
-		$parts = preg_split( '/[\s,]+/', trim( $raw ) );
+		$trimmed = trim( $raw );
+		if ( ! preg_match( '/^[1-9][0-9]*(?:\s*(?:,|\s)\s*[1-9][0-9]*)*$/', $trimmed ) ) {
+			return new WP_Error( 'lsch_prerequisite_configuration_invalid', __( 'Prerequisite configuration contains invalid separators or identifiers.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		$parts = preg_split( '/[\s,]+/', $trimmed );
 		$ids = array();
 		foreach ( $parts as $part ) {
 			if ( ! ctype_digit( $part ) || ! absint( $part ) || (string) absint( $part ) !== $part ) {
