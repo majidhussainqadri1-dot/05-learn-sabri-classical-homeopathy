@@ -79,3 +79,11 @@ Source-only corrective IDs:
 - **F05-20261011-02 / F05-NFR-002 / F05-FUT-09/10/16:** A user who assessed another learner's simulated practice or verified CPD may have actor identifiers in those learners' records. The export now gives actor-only, redacted projections; the eraser now clears `practice.assessor_id` and `cpd.verified_by` outside active legal hold, preserving academic result records.
 - **Regression:** `tests/future18-privacy-contract.php` invoked from `tests/source-invariants.sh`; WordPress staging role/privacy export/erasure and File24 legal-hold acceptance remain pending.
 - **Evidence:** `REVIEW-20-FOCUSED-2026-10-11.md`. This is source correction evidence, not a claim of WordPress, staging or live acceptance.
+
+## 2026-10-11 — Second 20-focus inspection and source-closure addendum
+
+- `F05-20261011-B01` (**FR-002/003, NFR-001/002; Files 00/20/26**): `LSCH_Policy::publicly_visible()` and `LSCH_Frontend::public_catalog_posts()` now prevent a public homepage list from showing published but account/restricted books, courses and programs. The public list does not elevate entries for the logged-in viewer.
+- `F05-20261011-B02` (**FR-003/004/010, NFR-002/004; Files 20/24/25**): learning dashboard/mastery/cohort/assessment/assignment and viewer-sensitive learning singular requests get no-cache/noindex private headers. Guest public items keep the existing public reading behavior.
+- `F05-20261011-B03` (**FR-004/006/018, NFR-003; Files 06/19**): lesson save path reuses the guarded `LSCH_Content::bump_version` instead of independently incrementing a version already changed by `post_updated`.
+- Regression: executable `tests/public-visibility-version.php`; required in `tests/source-invariants.sh`.
+- Full evidence and twenty scoped results: `REVIEW-20-CYCLE-B-2026-10-11.md`. Static/source and fixture success are NOT production/WordPress/LiteSpeed companion acceptance.
