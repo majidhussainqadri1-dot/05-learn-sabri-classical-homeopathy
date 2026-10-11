@@ -73,3 +73,12 @@ Before Future-18 may be called staging-accepted, test all 18 IDs with real Membe
 - Verify `/learn/dashboard/`, `/learn/mastery/`, assessment, assignment and cohort surfaces are private, noindex, and not shared across roles/guardians/suspended users.
 - Change a learning lesson's content exactly once using native WordPress and File22 authoring; ensure its `_lsch_version` increments once, one content-version event is produced, and affected learner progress/re-study is updated only once. Repeat with metadata-only edit and retry/correction events.
 - Verify real File00/06/12/15/16/17/19/20/22/24/25/26 compatibility before any staging signoff. Run failed migration/rollback, user role state changes and concurrent edits under actual MySQL/PHP.
+
+## 10. 2026-10-11 Cycle C — access declassification and privacy-failure acceptance
+
+- Create File05 content with public, account, restricted and empty legacy `_lsch_access`. Inject malformed saved meta (`private-unknown`, `public!`, invalid type/array, whitespace, case-confusable text). None of the *explicitly invalid* values may be visible to unauthorized guests through native pages, archives, File05 REST, File20/25 public cards, File26 global index or cache.
+- Submit an administrative governed metadata update with an invalid string, an array `_lsch_access[]=public`, then a valid enum. Verify fail-closed invalid input does not change the prior classification or content version, while the authorized valid transition persists with the correct version/audit trail.
+- Keep real intended legacy missing-meta public lessons readable by guests while current File00 entitlement/guardian/suspension gates apply to account/restricted objects.
+- Simulate MySQL failure in each of the ten Future18 privacy export datasets. The WordPress privacy exporter must signal failure, never mark the export done or silently omit records. Confirm HTML/JSON and PHP7.4/PHP8.3 behavior without raw data leakage.
+- Simulate all core and Future18 privacy erase failures and legal-hold scenarios. A failed operation must not return `done=true`; successful retry finishes, and legally retained records remain auditable. Verify no processing loop, duplicate side effects or erroneous deletion of another learner's academic record.
+- Repeat on exact deployed staging version/schema, and capture backup/restore, File24 policy owner approval and WordPress export/erase workflow evidence.
