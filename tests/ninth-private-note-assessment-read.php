@@ -69,7 +69,7 @@ $done=LSCH_Services::submit_assessment(30,2,array('a'),'submit-key');
 check_i($done instanceof WP_Error&&$done->code==='lsch_assessment_submission_read_failed','graded attempt must be reverified before success event');
 check_i(!in_array('AssessmentSubmitted.v1',LSCH_Events::$published,true),'no false assessment submitted event after failed DB reread');
 $oldWrites=$GLOBALS['wpdb']->writes;
-foreach(array('[{"correct":"a"},{"prompt":"no grading key"}]','[{"correct":"a"},{"correct":{"bad":true}}]','[{"correct":"a"},null]','{"0":{"correct":"a"}}','[{"correct":""}]') as $badBlueprint) {
+foreach(array('[{"correct":"a"},{"prompt":"no grading key"}]','[{"correct":"a"},{"correct":{"bad":true}}]','[{"correct":"a"},null]','{"1":{"correct":"a"}}','[{"correct":""}]') as $badBlueprint) {
 	$GLOBALS['quiz_blueprint']=$badBlueprint;
 	$result=LSCH_Services::submit_assessment(30,2,array('a'),'submit-key');
 	check_i($result instanceof WP_Error&&$result->code==='lsch_assessment_invalid','malformed quiz cannot silently drop a required question');
