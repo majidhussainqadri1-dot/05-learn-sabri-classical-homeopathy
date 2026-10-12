@@ -44,6 +44,7 @@ class ReadDB {
 $GLOBALS['wpdb']=new ReadDB();
 function __( $t,$d=''){return $t;}
 function absint($x){return abs((int)$x);}
+function sanitize_key($x){return strtolower((string)$x);}
 function is_wp_error($x){return $x instanceof WP_Error;}
 function get_post_type($id){if((int)$id===7)return LSCH_Content::LESSON;if((int)$id===31)return LSCH_Content::ASSESSMENT;return LSCH_Content::COURSE;}
 function get_post_meta($id,$key,$single=true){$meta=array('_lsch_course_id'=>9,'_lsch_required_components'=>'["content"]','_lsch_required'=>1,'_lsch_pass_mark'=>50,'_lsch_certificate_jurisdiction'=>'PK','_lsch_certificate_wording'=>'Learning award','_lsch_certificate_wording_approved'=>1);return isset($meta[$key])?$meta[$key]:'';}
