@@ -27,6 +27,7 @@ class DB {
   return null;
  }
  public function get_results($sql,$format=null){return array();}
+ public function get_var($sql){$this->last_error='';return null;}
  public function update($table,$values,$where,$format,$whereFormat){
   if(strpos($table,'f18_mastery')!==false){$this->masteryWrites++;return $this->mode==='mastery_fail'?false:1;}
   $this->academicWrites++;return 1;
