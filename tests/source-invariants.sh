@@ -33,6 +33,9 @@ php tests/ninth-reconcile-failclosed.php
 php tests/tenth-dashboard-projection-db.php
 php tests/eleventh-postwrite-verified.php
 php tests/eleventh-private-read-guards.php
+php tests/twelfth-owner-ledger-failures.php
+php tests/twelfth-corrections-idempotency-db.php
+php tests/twelfth-future18-private-projections.php
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
 
 find 05-learn-sabri-classical-homeopathy -type f -name '*.php' -print0 \
