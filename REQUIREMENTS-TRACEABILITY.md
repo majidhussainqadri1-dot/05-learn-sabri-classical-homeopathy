@@ -218,3 +218,10 @@ Source-only corrective IDs:
 - **P04 / F05-FUT-02** Review result persisted before mastery projection failure: no false successful review reply; `lsch_future18_review_mastery_pending` 503 + reliability audit; partial state must be reconciled, not blindly replayed. Test `tests/sixteenth-grade-evidence-integrity.php`.
 - **P05 / F05-FUT-04..10 & 14** Assessor practice grade persisted before mastery/portfolio failure: `lsch_future18_practice_mastery_pending` or `lsch_future18_practice_portfolio_pending` 503; suppress `LearningPracticeGraded.v1` final event when evidence incomplete. Same test; actual File19 state+outbox atomicity and MySQL concurrency remain separate release gates.
 - Frozen PR HEAD `969a3734b432f83921906d56be8c7dbefc56773f`, 19 PHP source files, 20 separately scoped focus inspections: `REVIEW-20-CYCLE-P-2026-10-12.md`. Both tests wired into `tests/source-invariants.sh`. File08 clinical owner truth never delegated to File05 simulations. Real File00/06/08/09/12/16/17/19/20/22/24/25/26 deployed partner parity and approved historical patient consent renewal remain unverified/pending.
+
+## 2026-10-12 — Seventeenth File05 20-focus review (Cycle Q)
+- Q01 / File05-File19 job worker: after an already-persisted running claim, a failed job reread must requeue or dead-letter under bounded attempts, log reliability audit, and return 503 if recovery itself cannot be confirmed.
+- Q02 / File19 handler payload: malformed or non-array JSON never enters a typed external handler. Retry/dead-letter with invalid_payload.
+- Q03 / File19 handler failure: catch Throwable, record handler_exception without leaking private payload/error text, and use existing retry/dead-letter contract.
+- Q04 / File19 terminal job status: failed or mismatched completed/retry/dead DB update is not an acknowledged success; audit and return lsch_job_terminal_state_unverified (503).
+- Test: tests/seventeenth-job-worker-recovery.php, registered in tests/source-invariants.sh. Exact reviewed source and 20-focus matrix: REVIEW-20-CYCLE-Q-2026-10-12.md. Source CI does not prove MySQL atomicity, installed versions, historical patient re-consent, staging, or live parity.
