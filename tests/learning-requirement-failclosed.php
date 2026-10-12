@@ -13,7 +13,7 @@ class LSCH_Policy {
 	public static function idempotency_key($key,$user,$action){return 'hashed-key';}
 }
 class LSCH_Database {
-	public static function tables(){return array('enrollments'=>'wp_enrollments','progress'=>'wp_progress','attempts'=>'wp_attempts');}
+	public static function tables(){return array('enrollments'=>'wp_enrollments','progress'=>'wp_progress','attempts'=>'wp_attempts','submissions'=>'wp_submissions');}
 	public static function now(){return '2026-10-11 10:00:00';}
 }
 class DBH {
