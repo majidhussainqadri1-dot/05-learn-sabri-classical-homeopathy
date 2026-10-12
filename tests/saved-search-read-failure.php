@@ -13,6 +13,7 @@ class TestSearchDB {
 	}
 }
 $GLOBALS['wpdb']=new TestSearchDB();
+function absint($v){return abs((int)$v);}
 function get_current_user_id(){return 12;}
 function __($s,$domain=''){return $s;}
 function check_search($ok,$msg){if(!$ok){fwrite(STDERR,"FAIL: $msg\n");exit(1);}}
