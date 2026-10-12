@@ -105,10 +105,15 @@ final class LSCH_Services {
 		if ( 'withdrawn' === $state ) { $data['withdrawn_at'] = $now; $formats[] = '%s'; }
 		$updated = $wpdb->update( $t['enrollments'], $data, array( 'id' => absint( $current['id'] ), 'version' => absint( $current['version'] ), 'status' => $current['status'] ), $formats, array( '%d', '%d', '%s' ) );
 		if ( 1 !== $updated ) { return new WP_Error( 'lsch_stale_enrollment', __( 'Enrollment changed while saving. Reload and try again.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
+		$verified_row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE id=%d", absint( $current['id'] ) ), ARRAY_A );
+		if ( ! is_array( $verified_row ) || ! isset( $verified_row['status'], $verified_row['version'] ) || $state !== $verified_row['status'] || absint( $verified_row['version'] ) !== absint( $current['version'] ) + 1 ) {
+			LSCH_Events::audit( 'enrollment_transition_postwrite_read_failed', 'course', $course_id, array( 'user_id' => $user_id ), 'reliability' );
+			return new WP_Error( 'lsch_enrollment_transition_unverified', __( 'The enrollment transition could not be verified after saving. Reconcile the persisted row before retrying.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		$event = 'active' === $state ? 'LearningEnrollmentActivated.v1' : 'LearningEnrollmentStateChanged.v1';
 		LSCH_Events::publish( $event, 'course', $course_id, array( 'user_id' => $user_id, 'from' => $current['status'], 'to' => $state, 'version' => absint( $current['version'] ) + 1 ) );
 		LSCH_Events::audit( 'enrollment_' . $state, 'course', $course_id, array( 'user_id' => $user_id, 'from' => $current['status'], 'to' => $state ), 'learning' );
-		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE id=%d", absint( $current['id'] ) ), ARRAY_A );
+		return $verified_row;
 	}
 
 	private static function refresh_progress_from_evidence( $lesson_id, $user_id ) {
@@ -129,6 +134,9 @@ final class LSCH_Services {
 		$enrollment_gate = self::active_course_enrollment( $course_id, $user_id );
 		if ( is_wp_error( $enrollment_gate ) ) { return $enrollment_gate; }
 		$current    = self::progress_row( $lesson_id, $user_id );
+		if ( ! $current && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_progress_read_failed', __( 'Saved learning progress could not be read. Do not overwrite it until the database recovers.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		$expected   = isset( $input['version'] ) ? absint( $input['version'] ) : 0;
 		if ( $current && ! $expected ) {
 			return new WP_Error( 'lsch_progress_version_required', __( 'The current progress version is required before updating this lesson.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
@@ -230,6 +238,9 @@ final class LSCH_Services {
 		global $wpdb;
 		$t = LSCH_Database::tables();
 		$id = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['bookmarks']} WHERE user_id=%d AND object_type=%s AND object_id=%d", $user_id, $object_type, $object_id ) );
+		if ( false === $id || ( null === $id && ! empty( $wpdb->last_error ) ) ) {
+			return new WP_Error( 'lsch_bookmark_read_failed', __( 'Saved bookmarks could not be checked. Retry without changing bookmark state.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( $id ) {
 			$deleted = $wpdb->delete( $t['bookmarks'], array( 'id' => absint( $id ) ), array( '%d' ) );
 			if ( false === $deleted ) { return new WP_Error( 'lsch_bookmark_write_failed', __( 'Bookmark state could not be changed.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) ); }
@@ -258,6 +269,9 @@ final class LSCH_Services {
 		$t = LSCH_Database::tables();
 		$now = LSCH_Database::now();
 		$current = $wpdb->get_row( $wpdb->prepare( "SELECT id,version FROM {$t['notes']} WHERE user_id=%d AND lesson_id=%d", $user_id, $lesson_id ), ARRAY_A );
+		if ( ! $current && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_note_read_failed', __( 'The existing private note could not be verified. Retry without overwriting saved notes.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( $current ) {
 			if ( ! $expected_version ) {
 				return new WP_Error( 'lsch_note_version_required', __( 'The current private-note version is required before saving changes.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
@@ -419,9 +433,14 @@ final class LSCH_Services {
 		global $wpdb; $t = LSCH_Database::tables(); $now = LSCH_Database::now();
 		$inserted = $wpdb->insert( $t['submissions'], array( 'public_id' => LSCH_Database::uuid(), 'assignment_id' => $assignment_id, 'user_id' => $user_id, 'body' => $body, 'attachments_json' => $files, 'status' => 'submitted', 'rubric_version' => LSCH_Content::version( $assignment_id ), 'assessor_id' => 0, 'feedback' => '', 'score' => 0, 'appeal_text' => '', 'appeal_status' => '', 'version' => 1, 'created_at' => $now, 'updated_at' => $now ), array( '%s', '%d', '%d', '%s', '%s', '%s', '%d', '%d', '%s', '%f', '%s', '%s', '%d', '%s', '%s' ) );
 		if ( 1 !== $inserted ) { return new WP_Error( 'lsch_assignment_write_failed', __( 'Assignment submission could not be saved.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) ); }
-		$id = $wpdb->insert_id;
+		$id = absint( $wpdb->insert_id );
+		$verified = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['submissions']} WHERE id=%d", $id ), ARRAY_A );
+		if ( ! is_array( $verified ) || ! isset( $verified['id'], $verified['status'], $verified['user_id'], $verified['assignment_id'] ) || 'submitted' !== $verified['status'] || absint( $verified['user_id'] ) !== $user_id || absint( $verified['assignment_id'] ) !== $assignment_id ) {
+			LSCH_Events::audit( 'assignment_postwrite_read_failed', 'assignment', $assignment_id, array( 'user_id' => $user_id ), 'reliability' );
+			return new WP_Error( 'lsch_assignment_read_failed', __( 'The assignment write could not be verified. Check the saved submission before retrying.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		LSCH_Events::audit( 'assignment_submitted', 'assignment', $assignment_id, array( 'user_id' => $user_id, 'submission_id' => $id ), 'assessment' );
-		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['submissions']} WHERE id=%d", $id ), ARRAY_A );
+		return $verified;
 	}
 
 	public static function grade_submission( $submission_id, $assessor_id, $score, $feedback, $expected_version ) {
@@ -551,8 +570,12 @@ final class LSCH_Services {
 		global $wpdb; $t = LSCH_Database::tables(); $now = LSCH_Database::now();
 		$sql = $wpdb->prepare( "INSERT INTO {$t['reminders']} (user_id,course_id,enabled,cadence,quiet_hours_json,version,created_at,updated_at) VALUES (%d,%d,%d,%s,%s,1,%s,%s) ON DUPLICATE KEY UPDATE enabled=VALUES(enabled),cadence=VALUES(cadence),quiet_hours_json=VALUES(quiet_hours_json),version=version+1,updated_at=VALUES(updated_at)", absint( $user_id ), absint( $course_id ), $enabled ? 1 : 0, $cadence, $quiet, $now, $now );
 		if ( false === $wpdb->query( $sql ) ) { return new WP_Error( 'lsch_reminder_write_failed', __( 'Reminder preference could not be saved.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) ); }
+		$verified_reminder = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['reminders']} WHERE user_id=%d AND course_id=%d", absint( $user_id ), absint( $course_id ) ), ARRAY_A );
+		if ( ! is_array( $verified_reminder ) || ! isset( $verified_reminder['enabled'], $verified_reminder['cadence'] ) || (int) $verified_reminder['enabled'] !== ( $enabled ? 1 : 0 ) || (string) $verified_reminder['cadence'] !== $cadence ) {
+			return new WP_Error( 'lsch_reminder_read_failed', __( 'The saved learning reminder could not be verified. Check its state before retrying.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		LSCH_Events::publish( 'LearningReminderPreferenceChanged.v1', 'course', $course_id, array( 'user_id' => absint( $user_id ), 'enabled' => (bool) $enabled, 'cadence' => $cadence ) );
-		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['reminders']} WHERE user_id=%d AND course_id=%d", absint( $user_id ), absint( $course_id ) ), ARRAY_A );
+		return $verified_reminder;
 	}
 
 	public static function upsert_related_link( $source_type, $source_id, array $data ) {
@@ -698,7 +721,11 @@ final class LSCH_Services {
 			if ( '0' === (string) get_post_meta( $assessment_id, '_lsch_required', true ) ) { continue; }
 			$required_assessments[] = absint( $assessment_id );
 			$pass = max( 1, min( 100, absint( get_post_meta( $assessment_id, '_lsch_pass_mark', true ) ?: 50 ) ) );
-			$best = (float) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(score),-1) FROM {$t['attempts']} WHERE user_id=%d AND assessment_id=%d AND item_version=%d AND status='graded' AND integrity_status='clear'", $user_id, absint( $assessment_id ), LSCH_Content::version( $assessment_id ) ) );
+			$best_value = $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(score),-1) FROM {$t['attempts']} WHERE user_id=%d AND assessment_id=%d AND item_version=%d AND status='graded' AND integrity_status='clear'", $user_id, absint( $assessment_id ), LSCH_Content::version( $assessment_id ) ) );
+			if ( null === $best_value || false === $best_value || ! is_numeric( $best_value ) ) {
+				return new WP_Error( 'lsch_certificate_assessment_read_failed', __( 'Current assessment evidence could not be verified. Certificate readiness must be retried.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			}
+			$best = (float) $best_value;
 			$competence_floor = null === $competence_floor ? $best : min( $competence_floor, $best );
 			if ( $best < $pass ) { $blockers[] = 'assessment_' . absint( $assessment_id ) . '_not_passed'; }
 		}
