@@ -13,6 +13,7 @@ class WP_REST_Request implements ArrayAccess {
 	public function offsetSet($key,$value){}
 	public function offsetUnset($key){}
 }
+class LSCH_Events {public static function reset_request_integrity(){} }
 class LSCH_Database {public static function tables(){return array('request_keys'=>'wp_request_keys');}public static function now(){return '2026-10-12 12:00:00';}}
 class LSCH_Policy {
 	public static function rate_limit($k,$subject,$count,$period){return true;}
