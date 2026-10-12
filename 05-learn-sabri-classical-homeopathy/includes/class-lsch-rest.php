@@ -110,7 +110,7 @@ final class LSCH_REST {
 		$response = rest_ensure_response( $data ); $response->header( 'Cache-Control', LSCH_Policy::publicly_visible( $id ) && ! LSCH_Policy::can_use_protected_reads() ? 'public, max-age=120' : 'private, no-store' ); return $response;
 	}
 
-	public function dashboard() { $response = rest_ensure_response( LSCH_Services::dashboard( get_current_user_id() ) ); $response->header( 'Cache-Control', 'private, no-store' ); return $response; }
+	public function dashboard() { $data = LSCH_Services::dashboard( get_current_user_id() ); if ( is_wp_error( $data ) ) { return $data; } $response = rest_ensure_response( $data ); $response->header( 'Cache-Control', 'private, no-store' ); return $response; }
 	public function enroll( WP_REST_Request $r ) { return LSCH_Services::enroll( absint( $r['id'] ), get_current_user_id(), $r->get_header( 'Idempotency-Key' ) ); }
 	public function enrollment_state( WP_REST_Request $r ) { return LSCH_Services::change_enrollment_state( absint( $r['id'] ), get_current_user_id(), $r->get_param( 'state' ), absint( $r->get_param( 'version' ) ) ); }
 	public function reminder( WP_REST_Request $r ) { return LSCH_Services::set_reminder( absint( $r['id'] ), get_current_user_id(), (bool) $r->get_param( 'enabled' ), $r->get_param( 'cadence' ), (array) $r->get_param( 'quiet_hours' ) ); }
