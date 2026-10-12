@@ -17,7 +17,7 @@ class DB {
    $this->last_error='database inaccessible';return null;
   }
   $this->last_error='';
-  if(strpos($sql,'f18_impacts')!==false)return array('event_id'=>'rev-1','object_id'=>7,'competency_key'=>'case_taking');
+  if(strpos($sql,'f18_change_impacts')!==false)return array('event_id'=>'rev-1','object_id'=>7,'competency_key'=>'case_taking');
   if(strpos($sql,'f18_mastery')!==false)return array('id'=>1,'mastery_score'=>75,'confidence'=>10,'evidence_count'=>1,'version'=>1);
   return null;
  }
