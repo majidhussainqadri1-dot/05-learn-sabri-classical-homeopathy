@@ -47,7 +47,7 @@ $GLOBALS['wpdb']=new CycleDB();
 function absint($v){return abs((int)$v);}
 function get_post_type($id){return (int)$id===30?'lsch_assessment':((int)$id===7?'lsch_lesson':'lsch_course');}
 function get_post_meta($id,$key,$single=true){
-	$vals=array('_lsch_lesson_id'=>7,'_lsch_course_id'=>9,'_lsch_max_attempts'=>3,'_lsch_time_limit'=>0,'_lsch_questions'=>'[{"correct":"a"}]');
+	$vals=array('_lsch_lesson_id'=>7,'_lsch_course_id'=>9,'_lsch_max_attempts'=>3,'_lsch_time_limit'=>0,'_lsch_questions'=>isset($GLOBALS['quiz_blueprint'])?$GLOBALS['quiz_blueprint']:'[{"correct":"a"}]');
 	return isset($vals[$key])?$vals[$key]:'';
 }
 function __( $s,$d=''){return $s;}
@@ -68,4 +68,11 @@ $GLOBALS['wpdb']->stage='submit_read_error';
 $done=LSCH_Services::submit_assessment(30,2,array('a'),'submit-key');
 check_i($done instanceof WP_Error&&$done->code==='lsch_assessment_submission_read_failed','graded attempt must be reverified before success event');
 check_i(!in_array('AssessmentSubmitted.v1',LSCH_Events::$published,true),'no false assessment submitted event after failed DB reread');
-echo "PASS: Cycle I private note read, assessment start and submission verification failures.\n";
+$oldWrites=$GLOBALS['wpdb']->writes;
+foreach(array('[{"correct":"a"},{"prompt":"no grading key"}]','[{"correct":"a"},{"correct":{"bad":true}}]','[{"correct":"a"},null]','{"0":{"correct":"a"}}','[{"correct":""}]') as $badBlueprint) {
+	$GLOBALS['quiz_blueprint']=$badBlueprint;
+	$result=LSCH_Services::submit_assessment(30,2,array('a'),'submit-key');
+	check_i($result instanceof WP_Error&&$result->code==='lsch_assessment_invalid','malformed quiz cannot silently drop a required question');
+}
+check_i($GLOBALS['wpdb']->writes===$oldWrites,'malformed question list cannot write false academic grade');
+echo "PASS: Cycle I/J private note, postwrite verification and malformed-quiz grading regressions.\n";
