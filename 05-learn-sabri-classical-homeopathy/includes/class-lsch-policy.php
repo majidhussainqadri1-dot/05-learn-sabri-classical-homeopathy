@@ -180,6 +180,9 @@ final class LSCH_Policy {
 			}
 			$required_version = LSCH_Content::version( $required_course );
 			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['completions']} WHERE user_id=%d AND course_id=%d AND course_version=%d AND status='earned' AND integrity_status='clear' LIMIT 1", $user_id, $required_course, $required_version ) );
+			if ( false === $exists || ( null === $exists && ! empty( $wpdb->last_error ) ) ) {
+				return new WP_Error( 'lsch_prerequisite_read_failed', __( 'The prerequisite completion ledger could not be checked. An exception cannot be granted during a database failure.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			}
 			$grandfathered = ! $exists && true === apply_filters( 'lsch_prerequisite_completion_grandfathered', false, $required_course, $required_version, $user_id );
 			if ( ! $exists && ! $grandfathered ) {
 				return new WP_Error( 'lsch_prerequisite_missing', __( 'The current governed version of a required course has not yet been completed.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
