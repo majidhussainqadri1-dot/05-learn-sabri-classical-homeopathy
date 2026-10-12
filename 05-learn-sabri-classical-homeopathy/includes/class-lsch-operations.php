@@ -303,13 +303,35 @@ final class LSCH_Operations {
 				continue;
 			}
 			$job = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['jobs']} WHERE id=%d AND status='running' LIMIT 1", $id ), ARRAY_A );
-			if ( ! $job ) {
+			if ( ! is_array( $job ) ) {
+				// A claim is already persisted. Make it retryable instead of leaving
+				// an unobserved running job until a separate daily stale-lock sweep.
+				$requeued = $wpdb->query( $wpdb->prepare(
+					"UPDATE {$t['jobs']} SET status=CASE WHEN attempts+1>=GREATEST(1,max_attempts) THEN 'dead' ELSE 'retry' END,attempts=attempts+1,run_after=DATE_ADD(UTC_TIMESTAMP(), INTERVAL 60 SECOND),locked_at=NULL,last_error_code='claim_read_failed',updated_at=UTC_TIMESTAMP() WHERE id=%d AND status='running'",
+					$id
+				) );
+				LSCH_Events::audit( 'job_claim_read_failed', 'job', $id, array( 'requeued' => 1 === $requeued ), 'reliability' );
+				if ( 1 !== $requeued ) {
+					return new WP_Error( 'lsch_job_recovery_unverified', __( 'A claimed learning job could not be recovered. Operator reconciliation is required.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+				}
 				continue;
 			}
-			$payload = json_decode( $job['payload_json'], true );
-			$result = apply_filters( 'lsch_run_job', null, $job['job_type'], $payload, $job['job_key'] );
-			if ( true === $result ) {
-				$wpdb->update(
+			$payload = json_decode( (string) $job['payload_json'], true );
+			$failure_code = '';
+			$result = false;
+			if ( ! is_array( $payload ) ) {
+				$failure_code = 'invalid_payload';
+			} else {
+				try {
+					$result = apply_filters( 'lsch_run_job', null, $job['job_type'], $payload, $job['job_key'] );
+				} catch ( Throwable $error ) {
+					// Do not persist exception text: it may contain private payloads.
+					$failure_code = 'handler_exception';
+					LSCH_Events::audit( 'job_handler_exception', 'job', $id, array( 'job_type' => sanitize_key( $job['job_type'] ) ), 'reliability' );
+				}
+			}
+			if ( true === $result && '' === $failure_code ) {
+				$status_write = $wpdb->update(
 					$t['jobs'],
 					array( 'status' => 'completed', 'locked_at' => null, 'updated_at' => LSCH_Database::now() ),
 					array( 'id' => $id, 'status' => 'running' ),
@@ -319,20 +341,24 @@ final class LSCH_Operations {
 			} else {
 				$attempts = absint( $job['attempts'] ) + 1;
 				$dead = $attempts >= absint( $job['max_attempts'] );
-				$wpdb->update(
+				$status_write = $wpdb->update(
 					$t['jobs'],
 					array(
 						'status'          => $dead ? 'dead' : 'retry',
 						'attempts'        => $attempts,
 						'run_after'       => gmdate( 'Y-m-d H:i:s', time() + min( DAY_IN_SECONDS, 60 * ( 2 ** min( 10, $attempts ) ) ) ),
 						'locked_at'       => null,
-						'last_error_code' => null === $result ? 'handler_unavailable' : 'handler_rejected',
+						'last_error_code' => $failure_code ? $failure_code : ( null === $result ? 'handler_unavailable' : 'handler_rejected' ),
 						'updated_at'      => LSCH_Database::now(),
 					),
 					array( 'id' => $id, 'status' => 'running' ),
 					array( '%s', '%d', '%s', '%s', '%s', '%s' ),
 					array( '%d', '%s' )
 				);
+			}
+			if ( 1 !== $status_write ) {
+				LSCH_Events::audit( 'job_terminal_state_unverified', 'job', $id, array( 'success_candidate' => true === $result && '' === $failure_code ), 'reliability' );
+				return new WP_Error( 'lsch_job_terminal_state_unverified', __( 'A learning job ran, but its persisted status could not be verified. Operator reconciliation is required.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 			}
 		}
 	}
