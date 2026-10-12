@@ -454,6 +454,9 @@ final class LSCH_Future18 {
 		global $wpdb;
 		$t = self::tables();
 		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT competency_key,mastery_score,confidence,evidence_count,last_source_type,last_source_id,last_evidence_at,next_review_at,version FROM {$t['mastery']} WHERE user_id=%d ORDER BY mastery_score ASC,competency_key ASC LIMIT 500", $user_id ), ARRAY_A );
+		if ( ! is_array( $rows ) ) {
+			return new WP_Error( 'lsch_future18_mastery_read_failed', __( 'Private mastery evidence could not be verified. Retry after database recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		$summary = array( 'count' => count( $rows ), 'average' => 0, 'weak' => 0, 'strong' => 0 );
 		if ( $rows ) {
 			$total = 0.0;
@@ -505,7 +508,8 @@ final class LSCH_Future18 {
 		} else {
 			$sql = $wpdb->prepare( "SELECT id,public_id,item_type,source_type,source_id,competency_key,prompt,answer,metadata_json,interval_days,ease,due_at,last_result,version FROM {$t['review']} WHERE user_id=%d AND due_at<=%s ORDER BY due_at ASC,id ASC LIMIT %d", $user_id, current_time( 'mysql', true ), $limit );
 		}
-		return $wpdb->get_results( $sql, ARRAY_A );
+		$rows = $wpdb->get_results( $sql, ARRAY_A );
+		return is_array( $rows ) ? $rows : new WP_Error( 'lsch_future18_review_read_failed', __( 'Private spaced-review records could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 	}
 
 	public static function record_review_result( $user_id, $id, $quality, $expected_version = 0 ) {
@@ -776,7 +780,8 @@ final class LSCH_Future18 {
 		global $wpdb;
 		$t = self::tables();
 		$limit = max( 1, min( 500, absint( $limit ) ) );
-		return $wpdb->get_results( $wpdb->prepare( "SELECT id,public_id,item_type,object_type,object_id,competency_key,data_json,visibility,version,created_at,updated_at FROM {$t['portfolio']} WHERE user_id=%d ORDER BY created_at DESC,id DESC LIMIT %d", $user_id, $limit ), ARRAY_A );
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id,public_id,item_type,object_type,object_id,competency_key,data_json,visibility,version,created_at,updated_at FROM {$t['portfolio']} WHERE user_id=%d ORDER BY created_at DESC,id DESC LIMIT %d", $user_id, $limit ), ARRAY_A );
+		return is_array( $rows ) ? $rows : new WP_Error( 'lsch_future18_portfolio_read_failed', __( 'Private learning portfolio could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 	}
 
 	public static function set_portfolio_visibility( $user_id, $id, $visibility, $expected_version ) {
@@ -885,7 +890,8 @@ final class LSCH_Future18 {
 		}
 		global $wpdb;
 		$t = self::tables();
-		return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['mentorship']} WHERE learner_id=%d OR mentor_id=%d ORDER BY updated_at DESC LIMIT 200", $user_id, $user_id ), ARRAY_A );
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['mentorship']} WHERE learner_id=%d OR mentor_id=%d ORDER BY updated_at DESC LIMIT 200", $user_id, $user_id ), ARRAY_A );
+		return is_array( $rows ) ? $rows : new WP_Error( 'lsch_future18_mentorship_read_failed', __( 'Private mentoring records could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 	}
 
 	public static function record_cpd( $user_id, array $data ) {
@@ -946,7 +952,8 @@ final class LSCH_Future18 {
 		}
 		global $wpdb;
 		$t = self::tables();
-		return $wpdb->get_results( $wpdb->prepare( "SELECT id,public_id,activity_type,object_type,object_id,competency_key,minutes,status,verified_by,completed_at,version FROM {$t['cpd']} WHERE user_id=%d ORDER BY completed_at DESC LIMIT 500", $user_id ), ARRAY_A );
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id,public_id,activity_type,object_type,object_id,competency_key,minutes,status,verified_by,completed_at,version FROM {$t['cpd']} WHERE user_id=%d ORDER BY completed_at DESC LIMIT 500", $user_id ), ARRAY_A );
+		return is_array( $rows ) ? $rows : new WP_Error( 'lsch_future18_cpd_read_failed', __( 'Private CPD records could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 	}
 
 	public static function socratic_tutor( $user_id, $lesson_id, $question, $stage = 'question' ) {
@@ -1111,10 +1118,10 @@ final class LSCH_Future18 {
 		$status = sanitize_key( $status );
 		global $wpdb;
 		$t = self::tables();
-		if ( $status ) {
-			return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['impacts']} WHERE user_id=%d AND status=%s ORDER BY created_at DESC LIMIT 500", $user_id, $status ), ARRAY_A );
-		}
-		return $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['impacts']} WHERE user_id=%d ORDER BY created_at DESC LIMIT 500", $user_id ), ARRAY_A );
+		$rows = $status
+			? $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['impacts']} WHERE user_id=%d AND status=%s ORDER BY created_at DESC LIMIT 500", $user_id, $status ), ARRAY_A )
+			: $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['impacts']} WHERE user_id=%d ORDER BY created_at DESC LIMIT 500", $user_id ), ARRAY_A );
+		return is_array( $rows ) ? $rows : new WP_Error( 'lsch_future18_impact_read_failed', __( 'Knowledge-change impact records could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 	}
 
 	public static function resolve_impact( $user_id, $id ) {
