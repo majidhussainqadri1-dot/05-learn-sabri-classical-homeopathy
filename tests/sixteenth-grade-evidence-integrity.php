@@ -34,7 +34,7 @@ class DB {
  }
  public function insert($table,$values,$format){
   $this->portfolioWrites++;
-  return $this->mode==='portfolio_fail'?false:1;
+  return $this->mode==='portfolio_fail' && strpos($table,'f18_portfolio')!==false?false:1;
  }
 }
 $GLOBALS['wpdb']=new DB();
