@@ -2,7 +2,7 @@
 /** Cycle O: knowledge-change batch is retriable after each authoritative database failure. */
 define('ABSPATH','/unit-wp/');define('ARRAY_A','ARRAY_A');
 class WP_Error {public $code;function __construct($c,$msg='',$data=array()){$this->code=$c;}}
-class LSCH_Policy {public static function can_use_learning_actions($u=0){return true;}}
+class LSCH_Policy {public static function can_use_learning_actions($u=0){return true;}public static function sanitize_json($value,$max=10000){return json_encode($value);}}
 class LSCH_Database {public static function tables(){return array('progress'=>'wp_progress');}public static function uuid(){return 'cycle-o-uuid';}}
 class LSCH_Events {
  public static $published=array(),$audits=array();
