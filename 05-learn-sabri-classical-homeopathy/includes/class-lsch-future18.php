@@ -428,7 +428,9 @@ final class LSCH_Future18 {
 				return new WP_Error( 'lsch_future18_mastery_write_failed', __( 'Mastery evidence could not be recorded.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
 			}
 		}
-		if ( $schedule_review ) { self::ensure_competency_review_item( $user_id, $competency, $next ); }
+		if ( $schedule_review && ! self::ensure_competency_review_item( $user_id, $competency, $next ) ) {
+			return new WP_Error( 'lsch_future18_mastery_review_unverified', __( 'Mastery was saved, but its spaced-review record could not be verified. Reconcile the existing evidence before retrying.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( $score < 60 ) {
 			self::add_mistake( $user_id, $competency, $source_type, $source_id, __( 'Review the reasoning behind this weak result.', 'learn-sabri-classical-homeopathy' ) );
 		}
@@ -440,16 +442,18 @@ final class LSCH_Future18 {
 		global $wpdb;
 		$t = self::tables();
 		$id = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['review']} WHERE user_id=%d AND item_type='spaced' AND competency_key=%s LIMIT 1", $user_id, $competency ) );
+		if ( false === $id || ( null === $id && ! empty( $wpdb->last_error ) ) ) { return false; }
 		$now = current_time( 'mysql', true );
 		if ( $id ) {
 			/* Once a spaced-review item exists, record_review_result owns its due schedule. */
-			return;
+			return true;
 		}
-		$wpdb->insert(
+		$saved = $wpdb->insert(
 			$t['review'],
 			array( 'public_id' => LSCH_Database::uuid(), 'user_id' => $user_id, 'item_type' => 'spaced', 'source_type' => 'competency', 'source_id' => $competency, 'competency_key' => $competency, 'prompt' => sprintf( __( 'Recall and explain competency: %s', 'learn-sabri-classical-homeopathy' ), $competency ), 'answer' => '', 'metadata_json' => '{}', 'interval_days' => 0, 'ease' => 2.50, 'due_at' => $due_at, 'last_result' => 0, 'version' => 1, 'created_at' => $now, 'updated_at' => $now ),
 			array( '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%f', '%s', '%d', '%d', '%s', '%s' )
 		);
+		return 1 === $saved;
 	}
 
 	public static function mastery_snapshot( $user_id ) {
@@ -527,6 +531,9 @@ final class LSCH_Future18 {
 		global $wpdb;
 		$t = self::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['review']} WHERE id=%d AND user_id=%d LIMIT 1", $id, $user_id ), ARRAY_A );
+		if ( ! $row && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_future18_review_history_read_failed', __( 'Existing spaced-review evidence could not be read safely.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $row || ! $expected_version || absint( $row['version'] ) !== absint( $expected_version ) ) {
 			return new WP_Error( 'lsch_future18_review_conflict', __( 'The current review-item version is required and must match before saving a result.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
@@ -703,6 +710,9 @@ final class LSCH_Future18 {
 		global $wpdb;
 		$t = self::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['practice']} WHERE id=%d LIMIT 1", $practice_id ), ARRAY_A );
+		if ( ! $row && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_future18_practice_history_read_failed', __( 'The assessed practice could not be read safely. Do not grade until recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $row || absint( $row['user_id'] ) === $assessor_id || 'awaiting_assessor' !== $row['status'] || absint( $row['version'] ) !== absint( $expected_version ) ) {
 			return new WP_Error( 'lsch_future18_practice_grade_conflict', __( 'Practice record is unavailable, stale, or cannot be self-assessed.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
@@ -1076,6 +1086,7 @@ final class LSCH_Future18 {
 		$t = self::tables();
 		$source_ref = substr( sanitize_text_field( $event_id ) . ':' . absint( $object_id ), 0, 64 );
 		$existing = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['review']} WHERE user_id=%d AND item_type='targeted_review' AND source_type='knowledge_change' AND source_id=%s AND competency_key=%s LIMIT 1", absint( $user_id ), $source_ref, self::competency_key( $competency ) ) );
+		if ( false === $existing || ( null === $existing && ! empty( $wpdb->last_error ) ) ) { return false; }
 		if ( $existing ) { return true; }
 		$metadata = self::encode_json( array( 'event_id' => sanitize_text_field( $event_id ), 'object_type' => sanitize_key( $object_type ), 'object_id' => absint( $object_id ) ), 10000 );
 		if ( is_wp_error( $metadata ) ) { return false; }
@@ -1100,11 +1111,18 @@ final class LSCH_Future18 {
 		$core = LSCH_Database::tables();
 		$t = self::tables();
 		$users = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT user_id FROM {$core['progress']} WHERE lesson_id=%d AND user_id>%d ORDER BY user_id ASC LIMIT 500", $object_id, $cursor ) );
+		if ( ! is_array( $users ) ) {
+			LSCH_Events::audit( 'future18_impact_users_read_failed', 'lesson', $object_id, array( 'event_id' => $event_id ), 'reliability' );
+			return false;
+		}
 		$now = current_time( 'mysql', true );
 		foreach ( $users as $user_id ) {
 			foreach ( $competencies as $competency ) {
-				$wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$t['impacts']} (event_id,user_id,object_type,object_id,previous_version,new_version,competency_key,change_summary,required_action,status,created_at) VALUES (%s,%d,%s,%d,%d,%d,%s,%s,'targeted_review','pending',%s)", $event_id, absint( $user_id ), $object_type, $object_id, $previous, $new, $competency, $summary, $now ) );
-				self::ensure_impact_review_item( absint( $user_id ), $event_id, $object_type, $object_id, $competency, $summary );
+				$inserted_impact = $wpdb->query( $wpdb->prepare( "INSERT IGNORE INTO {$t['impacts']} (event_id,user_id,object_type,object_id,previous_version,new_version,competency_key,change_summary,required_action,status,created_at) VALUES (%s,%d,%s,%d,%d,%d,%s,%s,'targeted_review','pending',%s)", $event_id, absint( $user_id ), $object_type, $object_id, $previous, $new, $competency, $summary, $now ) );
+				if ( false === $inserted_impact || ! self::ensure_impact_review_item( absint( $user_id ), $event_id, $object_type, $object_id, $competency, $summary ) ) {
+					LSCH_Events::audit( 'future18_impact_step_failed', 'lesson', $object_id, array( 'event_id' => $event_id, 'user_id' => absint( $user_id ) ), 'reliability' );
+					return false;
+				}
 			}
 		}
 		$total = absint( $payload['affected_user_count'] ?? 0 ) + count( $users );
@@ -1139,11 +1157,17 @@ final class LSCH_Future18 {
 		global $wpdb;
 		$t = self::tables();
 		$impact = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['impacts']} WHERE id=%d AND user_id=%d AND status='pending' LIMIT 1", $id, $user_id ), ARRAY_A );
+		if ( ! $impact && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_future18_impact_history_read_failed', __( 'Knowledge-change history could not be verified. Retry after database recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $impact ) {
 			return new WP_Error( 'lsch_future18_impact_conflict', __( 'Impact item was not pending or was already changed.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
 		$source_ref = substr( sanitize_text_field( $impact['event_id'] ) . ':' . absint( $impact['object_id'] ), 0, 64 );
 		$reviewed = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$t['review']} WHERE user_id=%d AND item_type='targeted_review' AND source_type='knowledge_change' AND source_id=%s AND competency_key=%s AND last_result>=3 LIMIT 1", $user_id, $source_ref, self::competency_key( $impact['competency_key'] ) ) );
+		if ( false === $reviewed || ( null === $reviewed && ! empty( $wpdb->last_error ) ) ) {
+			return new WP_Error( 'lsch_future18_impact_review_read_failed', __( 'The required re-study evidence could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $reviewed ) {
 			return new WP_Error( 'lsch_future18_restudy_required', __( 'Complete the targeted re-study review before resolving this knowledge-change item.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
