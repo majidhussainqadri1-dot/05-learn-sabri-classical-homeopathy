@@ -182,3 +182,13 @@ Source-only corrective IDs:
 - L08, F05-FUT-01/02/11 and File16 educational recommendations: learning path and center require successful child data reads, never fake empty due-review or embed WP_Error inside a successful object. tests/twelfth-future18-private-projections.php.
 - L09, File05-Future18 REST and Files20/25/26: nine REST private handlers propagate WP_Error before Cache-Control method invocation; healthy replies remain private/no-store. tests/twelfth-future18-private-projections.php.
 - Full twenty-round table: REVIEW-20-CYCLE-L-2026-10-12.md. All three new PHP suites wired into mandatory tests/source-invariants.sh. Source-level QA ≠ deployed, migrated or live-tested evidence.
+
+## 2026-10-12 — Thirteenth independent twenty-focus source audit (Cycle M)
+- **M01** / F05 assessed attempt, File00 access, File19 idempotency: failed original attempt SELECT must return 503 before allocating another attempt; source test `tests/ninth-private-note-assessment-read.php`.
+- **M02** / File19 inbox/outbox deduplication, central atomic reliable-event law: a failed event inbox history SELECT must not invoke a potentially already-processed event handler. Return false, audit and release named lock; test `tests/thirteenth-inbox-consumer-db.php`.
+- **M03** / Future18 mastery truth, File16 learning evidence: previous competency mastery read failure cannot be treated as nonexistent/zero or written over; test `tests/thirteenth-mastery-replay-db.php`.
+- **M04** / Future18 spaced review, File26 educational discovery: failed prior due-date read cannot be masked by a newly computed due date; test `tests/thirteenth-mastery-replay-db.php`.
+- **M05** / File05 required lesson completion, File00 identity: course enrollment ledger read failure does not silently short-circuit academic completion; test `tests/current-competency-evidence.php`.
+- **M06** / File05 earned/revoked completion evidence, File24 academic retention: current course-version award/revocation history must be read successfully before any completion upsert changes a snapshot/version; test `tests/current-competency-evidence.php`.
+- **M07** / File05 assessor/appeal workflow, File09 doctor assurance and File12 governed assignment: assignment SQL read failure is actionable 503, not a phantom stale-grade or invalid-appeal 409; test `tests/thirteenth-assessor-appeal-db.php`.
+- Three new PHP suites and two extended suites in required `tests/source-invariants.sh`; numbered 20-focus evidence `REVIEW-20-CYCLE-M-2026-10-12.md`. These are source tests only, not live/staging acceptance. Full patient historical re-consent, DB+outbox transaction integration, source deployment parity and rollback still pending.
