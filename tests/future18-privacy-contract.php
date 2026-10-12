@@ -23,6 +23,7 @@ final class File05TestDB {
     public $prepared = array();
     public $failRead = false;
     public $failDelete = false;
+    public $deletedTables = array();
     public function prepare( $sql, ...$params ) {
         $this->prepared[] = $sql;
         return vsprintf( $sql, $params );
@@ -40,7 +41,7 @@ final class File05TestDB {
         }
         return array();
     }
-    public function delete( $table, $where, $formats = array() ) { return $this->failDelete && false !== strpos( $table, 'lsch_f18_mastery' ) ? false : 0; }
+    public function delete( $table, $where, $formats = array() ) { $this->deletedTables[]=$table; return $this->failDelete && false !== strpos( $table, 'lsch_f18_mastery' ) ? false : 0; }
     public function query( $sql ) {
         $this->queries[] = $sql;
         return ( false !== strpos( $sql, 'SET assessor_id=0' ) || false !== strpos( $sql, 'SET verified_by=0' ) ) ? 1 : 0;
@@ -78,8 +79,10 @@ check_file05( false !== strpos( $sql, 'UPDATE wp_lsch_f18_cpd SET verified_by=0'
 
 $GLOBALS['file05_hold'] = true;
 $wpdb->queries = array();
+$wpdb->deletedTables = array();
 $hold_result = LSCH_Future18::privacy_erase( 'learner@example.test', 1 );
 check_file05( $hold_result['items_retained'], 'legal hold reported' );
+check_file05( ! $hold_result['items_removed'] && count( $wpdb->deletedTables )===0, 'legal hold protects every Future18 owned evidence table from deletion' );
 $sql = implode( "\n", $wpdb->queries );
 check_file05( false === strpos( $sql, 'SET assessor_id=0' ) && false === strpos( $sql, 'SET verified_by=0' ), 'legal hold preserves audit identities' );
 // Export must fail closed if a private table cannot be read.
