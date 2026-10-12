@@ -39,6 +39,8 @@ php tests/twelfth-future18-private-projections.php
 php tests/thirteenth-inbox-consumer-db.php
 php tests/thirteenth-mastery-replay-db.php
 php tests/thirteenth-assessor-appeal-db.php
+php tests/fifteenth-future18-impact-batch.php
+php tests/fifteenth-future18-evidence-reads.php
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
 
 find 05-learn-sabri-classical-homeopathy -type f -name '*.php' -print0 \
