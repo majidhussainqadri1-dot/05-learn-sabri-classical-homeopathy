@@ -26,11 +26,12 @@ class DBH {
 	public function get_var($q){
 		if(strpos($q,'GET_LOCK(')!==false || strpos($q,'RELEASE_LOCK(')!==false)return 1;
 		if(strpos($q,'MAX(attempt_number)')!==false)return $this->maxFailure?false:0;
+		if(strpos($q,'MAX(score)')!==false)return false;
 		return null;
 	}
 	public function insert($table,$row,$types){$this->writes++;return 1;}
 }
-$GLOBALS['wpdb']=new DBH();$GLOBALS['required_components']='["content","bogus"]';
+$GLOBALS['wpdb']=new DBH();$GLOBALS['required_components']='["content","bogus"]';$GLOBALS['evidence']='';
 function absint($v){return abs((int)$v);}
 function get_post_type($id){if($id==7)return LSCH_Content::LESSON;if($id==9)return LSCH_Content::COURSE;return LSCH_Content::ASSESSMENT;}
 function get_post_meta($id,$key,$single=true){
@@ -40,7 +41,7 @@ function get_post_meta($id,$key,$single=true){
 	if($key==='_lsch_max_attempts')return 3;
 	return '';
 }
-function get_posts($args){return array();}
+function get_posts($args){if($GLOBALS['evidence']==='assessment'&&$args['post_type']===LSCH_Content::ASSESSMENT)return array(22);if($GLOBALS['evidence']==='assignment'&&$args['post_type']===LSCH_Content::ASSIGNMENT)return array(23);return array();}
 function is_wp_error($obj){return $obj instanceof WP_Error;}
 function wp_json_encode($value,$flags=0){return json_encode($value,$flags);}
 function __($s,$domain=''){return $s;}
@@ -55,4 +56,11 @@ check_h($GLOBALS['wpdb']->writes===0,'invalid requirements must cause no learnin
 $result=LSCH_Services::start_assessment(22,42,'request-key');
 check_h($result instanceof WP_Error && $result->code==='lsch_assessment_attempt_count_unverified','attempt allocation denied if MAX history read fails');
 check_h($GLOBALS['wpdb']->writes===0,'DB failure must not allocate an attempt');
-echo "PASS: cycle H invalid lesson completion configuration and missing assessment attempt count.\n";
+$GLOBALS['wpdb']->maxFailure=false;
+foreach(array('assessment','assignment') as $kind){
+	$GLOBALS['evidence']=$kind;$GLOBALS['required_components']='["content","'.$kind.'"]';
+	$res=LSCH_Services::progress(7,42,array('complete'=>true));
+	check_h($res instanceof WP_Error&&$res->code==='lsch_progress_evidence_unverified','failed '.$kind.' grade read must not award learning credit');
+}
+check_h($GLOBALS['wpdb']->writes===0,'no progress writes from unverified assessment or assignment evidence');
+echo "PASS: cycle H/J invalid lesson requirements, failed assessment/assignment scores and attempt count.\n";
