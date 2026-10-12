@@ -1232,9 +1232,16 @@ final class LSCH_Future18 {
 
 	public static function privacy_erase( $email, $page = 1 ) {
 		$user=get_user_by('email',$email); if(!$user||1!==absint($page)){return array('items_removed'=>false,'items_retained' => false,'messages'=>array(),'done'=>true);} $user_id=absint($user->ID); global $wpdb; $t=self::tables(); $hold=(bool)apply_filters('lsch_user_legal_hold',false,$user_id); $removed=false; $retained=false; $messages=array(); $failures=array();
-		foreach(array('mastery','review','pathways','portfolio') as $key){$d=$wpdb->delete($t[$key],array('user_id'=>$user_id),array('%d')); if(false===$d){$failures[]=$key;} elseif($d>0){$removed=true;}}
-		if($hold){$retained=true; $messages[]=__('Practice, CPD, knowledge-change and mentorship records were retained under an active legal hold.','learn-sabri-classical-homeopathy');}
-		else { foreach(array('practice','cpd','impacts') as $key){$d=$wpdb->delete($t[$key],array('user_id'=>$user_id),array('%d')); if(false===$d){$failures[]=$key;} elseif($d>0){$removed=true;}}
+		// File24 legal hold covers every File05 Future18 learning-evidence class.
+		// Do not erase mastery, review, pathways or portfolio before checking it.
+		if ( $hold ) {
+			$retained = true;
+			$messages[] = __( 'All Future Learning evidence is retained under an active legal hold pending governed review.', 'learn-sabri-classical-homeopathy' );
+		} else {
+			foreach ( array( 'mastery', 'review', 'pathways', 'portfolio', 'practice', 'cpd', 'impacts' ) as $key ) {
+				$d = $wpdb->delete( $t[ $key ], array( 'user_id' => $user_id ), array( '%d' ) );
+				if ( false === $d ) { $failures[] = $key; } elseif ( $d > 0 ) { $removed = true; }
+			}
 			$m=$wpdb->query($wpdb->prepare("UPDATE {$t['mentorship']} SET mentor_id=0,status='ended',goals_json='{}',feedback_json='{}',version=version+1,updated_at=UTC_TIMESTAMP() WHERE mentor_id=%d",$user_id)); if(false===$m){$failures[]='mentorship-mentor';} elseif($m>0){$removed=true;$retained=true;}
 			$l=$wpdb->query($wpdb->prepare("UPDATE {$t['mentorship']} SET learner_id=0,status='ended',goals_json='{}',feedback_json='{}',version=version+1,updated_at=UTC_TIMESTAMP() WHERE learner_id=%d",$user_id)); if(false===$l){$failures[]='mentorship-learner';} elseif($l>0){$removed=true;$retained=true;} if($retained){$messages[]=__('Counterpart mentorship records were de-identified and ended rather than deleted.','learn-sabri-classical-homeopathy');}}
 		// A reviewer can appear in OTHER learners' rows without being the learner. Remove those actor identifiers too.
