@@ -171,3 +171,14 @@ Source-only corrective IDs:
 - K06 / File05 reminder preferences, File19 notification event: verify stored enabled/cadence after upsert before publishing preference-changed event; tests/eleventh-postwrite-verified.php.
 - K07 / File05 competency certificate readiness, File00 identification and File26 public claim safety: failed or invalid current-score query returns error rather than a fabricated zero value; tests/eleventh-private-read-guards.php.
 - Twenty focused source inspections, 7 new defects, all source corrections and remaining live/staging integration requirements: REVIEW-20-CYCLE-K-2026-10-12.md. These are NOT twenty real WordPress end-to-end tests.
+
+## 2026-10-12 — Twelfth fresh 20-focus source audit (Cycle L)
+- L01–L02, File05 course enrollment / File00 current account / File19 event truth: existing active/enrolled row SQL read errors are explicit 503, never false absence, spurious INSERT or misleading stale permission; tested by tests/twelfth-owner-ledger-failures.php.
+- L03, File05 completion/readiness / File00 identity / File26 projection: completion and enrollment certificate ledger failures return 503, not fraudulent “not earned/not completed”; tests/twelfth-owner-ledger-failures.php.
+- L04, File05 case-lesson patient consent / File24 retention: existing-policy consent-history SQL read error blocks creation of competing consent evidence; same-policy withdrawn records still require governed append-only renewal design; tests/twelfth-owner-ledger-failures.php.
+- L05, File05 correction/retrospective reviewer review / File22 publisher: correction decision, resubmit and withdrawal read DB errors now distinct 503 from true 404, fail closed with no correction mutation; tests/twelfth-corrections-idempotency-db.php.
+- L06, File05 durable replay protection / File19 jobs/events: failed original idempotency request ledger lookup returns 503, releases named lock, and cannot insert a second key; tests/twelfth-corrections-idempotency-db.php.
+- L07, F05-FUT-01/02/14/15/16/18 and File06 change impact: private mastery/review/portfolio/mentorship/CPD/impact database get_results failures fail closed; not empty legitimate records. tests/twelfth-future18-private-projections.php.
+- L08, F05-FUT-01/02/11 and File16 educational recommendations: learning path and center require successful child data reads, never fake empty due-review or embed WP_Error inside a successful object. tests/twelfth-future18-private-projections.php.
+- L09, File05-Future18 REST and Files20/25/26: nine REST private handlers propagate WP_Error before Cache-Control method invocation; healthy replies remain private/no-store. tests/twelfth-future18-private-projections.php.
+- Full twenty-round table: REVIEW-20-CYCLE-L-2026-10-12.md. All three new PHP suites wired into mandatory tests/source-invariants.sh. Source-level QA ≠ deployed, migrated or live-tested evidence.
