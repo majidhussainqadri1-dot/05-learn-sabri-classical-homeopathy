@@ -1,6 +1,6 @@
 <?php
 /** Cycle M: Future18 competency history and due-review schedule must be authoritative, never guessed. */
-define('ABSPATH','/unit-wp/');define('ARRAY_A','ARRAY_A');
+define('ABSPATH','/unit-wp/');define('ARRAY_A','ARRAY_A');define('DAY_IN_SECONDS',86400);
 class WP_Error {public $code;function __construct($code,$message='',$data=array()){$this->code=$code;}}
 class LSCH_Policy {public static function can_use_learning_actions($u=0){return true;}}
 class LSCH_Database {public static function uuid(){return 'cycle-m';}}
