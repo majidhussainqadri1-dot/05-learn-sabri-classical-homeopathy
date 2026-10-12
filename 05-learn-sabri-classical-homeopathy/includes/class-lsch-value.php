@@ -265,6 +265,9 @@ final class LSCH_Value {
 			"SELECT event_name,COUNT(*) AS event_count,MAX(created_at) AS latest_at FROM {$t['value_events']} GROUP BY event_name ORDER BY event_count DESC LIMIT 100",
 			ARRAY_A
 		);
+		if ( ! is_array( $rows ) ) {
+			return new WP_Error( 'lsch_value_summary_read_failed', __( 'Aggregate learning events could not be checked. Retry after database recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		return rest_ensure_response( array( 'privacy' => 'aggregate-only', 'events' => $rows ) );
 	}
 }
