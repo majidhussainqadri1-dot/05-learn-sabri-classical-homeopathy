@@ -147,7 +147,11 @@ final class LSCH_Services {
 			foreach ( $assessment_ids as $assessment_id ) {
 				$pass = max( 0, min( 100, absint( get_post_meta( $assessment_id, '_lsch_pass_mark', true ) ?: 50 ) ) );
 				$item_version = LSCH_Content::version( $assessment_id );
-				$best = (float) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(score),-1) FROM {$t['attempts']} WHERE user_id=%d AND assessment_id=%d AND item_version=%d AND status='graded' AND integrity_status='clear'", $user_id, absint( $assessment_id ), $item_version ) );
+				$best_value = $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(score),-1) FROM {$t['attempts']} WHERE user_id=%d AND assessment_id=%d AND item_version=%d AND status='graded' AND integrity_status='clear'", $user_id, absint( $assessment_id ), $item_version ) );
+				if ( null === $best_value || false === $best_value || ! is_numeric( $best_value ) ) {
+					return new WP_Error( 'lsch_progress_evidence_unverified', __( 'Required learning evidence could not be verified. Retry once the database is available.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+				}
+				$best = (float) $best_value;
 				if ( $best < $pass ) { $components['assessment'] = false; break; }
 			}
 		}
@@ -158,7 +162,11 @@ final class LSCH_Services {
 			foreach ( $assignment_ids as $assignment_id ) {
 				$pass = max( 0, min( 100, absint( get_post_meta( $assignment_id, '_lsch_pass_mark', true ) ?: 50 ) ) );
 				$rubric_version = LSCH_Content::version( $assignment_id );
-				$best = (float) $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(score),-1) FROM {$t['submissions']} WHERE user_id=%d AND assignment_id=%d AND rubric_version=%d AND status='graded'", $user_id, absint( $assignment_id ), $rubric_version ) );
+				$best_value = $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(score),-1) FROM {$t['submissions']} WHERE user_id=%d AND assignment_id=%d AND rubric_version=%d AND status='graded'", $user_id, absint( $assignment_id ), $rubric_version ) );
+				if ( null === $best_value || false === $best_value || ! is_numeric( $best_value ) ) {
+					return new WP_Error( 'lsch_progress_evidence_unverified', __( 'Required learning evidence could not be verified. Retry once the database is available.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+				}
+				$best = (float) $best_value;
 				if ( $best < $pass ) { $components['assignment'] = false; break; }
 			}
 		}
@@ -358,10 +366,23 @@ final class LSCH_Services {
 			if ( 1 !== $expired ) { return new WP_Error( 'lsch_assessment_conflict', __( 'Assessment state changed while expiring the attempt.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
 			return new WP_Error( 'lsch_assessment_expired', __( 'The assessment time limit has expired.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
-		$questions = json_decode( (string) get_post_meta( $assessment_id, '_lsch_questions', true ), true ); $questions = is_array( $questions ) ? $questions : array();
+		$questions = json_decode( (string) get_post_meta( $assessment_id, '_lsch_questions', true ), true );
+		if ( ! is_array( $questions ) || ! $questions || count( $questions ) > 200 || array_values( $questions ) !== $questions ) {
+			return new WP_Error( 'lsch_assessment_invalid', __( 'Assessment blueprint must contain a valid numbered question list.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		// Invalid entries must never disappear from the scoring denominator.
+		foreach ( $questions as $question ) {
+			if ( ! is_array( $question ) || ! array_key_exists( 'correct', $question ) || ! is_scalar( $question['correct'] ) || '' === trim( (string) $question['correct'] ) || ( isset( $question['explanation'] ) && ! is_scalar( $question['explanation'] ) ) ) {
+				return new WP_Error( 'lsch_assessment_invalid', __( 'Assessment blueprint contains an invalid or ungradable question.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+			}
+		}
 		$correct = 0; $total = 0; $review = array();
-		foreach ( $questions as $index => $question ) { if ( ! isset( $question['correct'] ) ) { continue; } $given = isset( $answers[ $index ] ) ? (string) $answers[ $index ] : ''; $ok = hash_equals( (string) $question['correct'], $given ); $total++; if ( $ok ) { $correct++; } $review[] = array( 'index' => $index, 'correct' => $ok, 'explanation' => isset( $question['explanation'] ) ? sanitize_text_field( $question['explanation'] ) : '' ); }
-		if ( ! $total ) { return new WP_Error( 'lsch_assessment_invalid', __( 'Assessment blueprint has no valid items.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) ); }
+		foreach ( $questions as $index => $question ) {
+			$given = isset( $answers[ $index ] ) ? (string) $answers[ $index ] : '';
+			$ok = hash_equals( (string) $question['correct'], $given );
+			$total++; if ( $ok ) { $correct++; }
+			$review[] = array( 'index' => $index, 'correct' => $ok, 'explanation' => isset( $question['explanation'] ) ? sanitize_text_field( $question['explanation'] ) : '' );
+		}
 		$score = round( 100 * $correct / $total, 2 ); $now = LSCH_Database::now(); global $wpdb; $t = LSCH_Database::tables();
 		$updated = $wpdb->update( $t['attempts'], array( 'answers_json' => $answers_json, 'result_json' => wp_json_encode( $review ), 'score' => $score, 'status' => 'graded', 'version' => absint( $attempt['version'] ) + 1, 'submitted_at' => $now, 'graded_at' => $now ), array( 'id' => absint( $attempt['id'] ), 'version' => absint( $attempt['version'] ), 'status' => 'started' ), array( '%s', '%s', '%f', '%s', '%d', '%s', '%s' ), array( '%d', '%d', '%s' ) );
 		if ( 1 !== $updated ) { return new WP_Error( 'lsch_assessment_conflict', __( 'The assessment changed while being submitted.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
@@ -706,6 +727,11 @@ final class LSCH_Services {
 		$submissions = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,assignment_id,status,score,appeal_status,version,updated_at FROM {$t['submissions']} WHERE user_id=%d ORDER BY updated_at DESC LIMIT 100", absint( $user_id ) ), ARRAY_A );
 		$reminders = $wpdb->get_results( $wpdb->prepare( "SELECT course_id,enabled,cadence,quiet_hours_json,version,updated_at FROM {$t['reminders']} WHERE user_id=%d ORDER BY updated_at DESC LIMIT 100", absint( $user_id ) ), ARRAY_A );
 		$completions = $wpdb->get_results( $wpdb->prepare( "SELECT public_id,course_id,course_version,status,identity_assurance,integrity_status,earned_at,revoked_at FROM {$t['completions']} WHERE user_id=%d ORDER BY earned_at DESC LIMIT 100", absint( $user_id ) ), ARRAY_A );
+		foreach ( array( $enrollments, $progress, $bookmarks, $attempts, $submissions, $reminders, $completions ) as $dataset ) {
+			if ( ! is_array( $dataset ) ) {
+				return new WP_Error( 'lsch_dashboard_read_failed', __( 'Private learning dashboard records could not be verified. Retry after database recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			}
+		}
 		return array( 'access_model' => LSCH_Policy::access_model(), 'enrollments' => $enrollments, 'progress' => $progress, 'bookmarks' => $bookmarks, 'attempts' => $attempts, 'submissions' => $submissions, 'reminders' => $reminders, 'completions' => $completions );
 	}
 }
