@@ -32,6 +32,7 @@ class CycleDB {
 		}
 		if(strpos($sql,'wp_enroll')!==false)return array('status'=>'active','course_version'=>2,'terms_version'=>'single-free-tier-v2');
 		if(strpos($sql,'wp_attempts')!==false){
+			if($this->stage==='replay_db_error'){$this->last_error='assessment ledger SQL outage';return null;}
 			if($this->stage==='submit_read_error'&&strpos($sql,'idempotency_key')!==false){
 				return array('id'=>5,'assessment_id'=>30,'user_id'=>2,'item_version'=>2,'status'=>'started','expires_at'=>'','version'=>1,'attempt_number'=>1,'public_id'=>'attempt-one');
 			}
@@ -75,4 +76,10 @@ foreach(array('[{"correct":"a"},{"prompt":"no grading key"}]','[{"correct":"a"},
 	check_i($result instanceof WP_Error&&$result->code==='lsch_assessment_invalid','malformed quiz cannot silently drop a required question');
 }
 check_i($GLOBALS['wpdb']->writes===$oldWrites,'malformed question list cannot write false academic grade');
-echo "PASS: Cycle I/J private note, postwrite verification and malformed-quiz grading regressions.\n";
+$GLOBALS['wpdb']->last_error='';
+$GLOBALS['wpdb']->stage='replay_db_error';
+$beforeReplay=$GLOBALS['wpdb']->writes;
+$replayResult=LSCH_Services::start_assessment(30,2,'same-original-attempt-key');
+check_i($replayResult instanceof WP_Error&&$replayResult->code==='lsch_assessment_replay_read_failed','failed existing idempotent assessment attempt read fails closed');
+check_i($beforeReplay===$GLOBALS['wpdb']->writes,'failed original attempt read does not insert a second assessment attempt');
+echo "PASS: Cycle I/J/M private note, postwrite, malformed quiz and existing assessment replay DB outage.\n";
