@@ -17,7 +17,7 @@ function get_current_user_id(){return 12;}
 function __($s,$domain=''){return $s;}
 function check_search($ok,$msg){if(!$ok){fwrite(STDERR,"FAIL: $msg\n");exit(1);}}
 function rest_ensure_response($d){return new WP_REST_Response($d);}
-class WP_REST_Request implements ArrayAccess {public function offsetExists($k):bool{return true;}public function offsetGet($k):mixed{return 13;}public function offsetSet($k,$v):void{}public function offsetUnset($k):void{}}
+class WP_REST_Request implements ArrayAccess {public function offsetExists($k):bool{return true;}public function offsetGet($k){return 13;}public function offsetSet($k,$v):void{}public function offsetUnset($k):void{}}
 require __DIR__.'/../05-learn-sabri-classical-homeopathy/includes/class-lsch-state.php';
 $bad=LSCH_State::rest_saved_searches();
 check_search($bad instanceof WP_Error && $bad->code==='lsch_saved_search_read_failed','failed database read returns explicit WP_Error');
