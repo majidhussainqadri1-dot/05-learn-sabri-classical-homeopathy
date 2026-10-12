@@ -161,3 +161,13 @@ Source-only corrective IDs:
 - J06 F05-FR-011 / F05-NFR-003 / File26: distinguish SQL DELETE failure (503), no matching saved search (404), success (204). Regression: tests/saved-search-read-failure.php.
 - J07 F05-NFR-003/006 / Files19/26: failed learning event aggregate query cannot appear as healthy metrics. Regression: tests/tenth-dashboard-projection-db.php.
 - All new/expanded tests are part of tests/source-invariants.sh. Twenty-point source evidence, source ownership and deferred staging/live gates: REVIEW-20-CYCLE-J-2026-10-12.md. No assertion of deployed parity or complete patient re-consent implementation.
+
+## 2026-10-12 — Eleventh independent twenty-focus source review (Cycle K)
+- K01 / File05 enrollment lifecycle / File00 member-state and File19 event contract: require persisted transition row matching new status and exact next version before emitting the event or reporting success; tests/eleventh-postwrite-verified.php.
+- K02 / File05 progress, File24 privacy/versioning: failed prewrite progress-row DB query must not be confused with missing first-row progress; tests/eleventh-private-read-guards.php.
+- K03 / File05 bookmarks, Files20/25 profile UX: failed existence query must not toggle bookmarks or make a new insert; tests/eleventh-private-read-guards.php.
+- K04 / File05 independent AES-GCM private notes, File24 retention: failed current note/version query must not take the first-insert path; tests/eleventh-private-read-guards.php.
+- K05 / File05 graded assignments, File12 secure attachments and File19 audit: verify persisted submission ID, owner, assignment and state before success audit/return; tests/eleventh-postwrite-verified.php.
+- K06 / File05 reminder preferences, File19 notification event: verify stored enabled/cadence after upsert before publishing preference-changed event; tests/eleventh-postwrite-verified.php.
+- K07 / File05 competency certificate readiness, File00 identification and File26 public claim safety: failed or invalid current-score query returns error rather than a fabricated zero value; tests/eleventh-private-read-guards.php.
+- Twenty focused source inspections, 7 new defects, all source corrections and remaining live/staging integration requirements: REVIEW-20-CYCLE-K-2026-10-12.md. These are NOT twenty real WordPress end-to-end tests.
