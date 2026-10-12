@@ -43,6 +43,7 @@ php tests/fifteenth-future18-impact-batch.php
 php tests/fifteenth-future18-evidence-reads.php
 php tests/sixteenth-mentor-cpd-history.php
 php tests/sixteenth-grade-evidence-integrity.php
+php tests/seventeenth-job-worker-recovery.php
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
 
 find 05-learn-sabri-classical-homeopathy -type f -name '*.php' -print0 \
