@@ -120,3 +120,9 @@
 - Completed twenty distinct focus reviews and implemented seven confirmed fail-closed fixes: prerequisite DB/grandfather exception, progress MAX(score) DB outages, mixed invalid quiz blueprint, private dashboard/REST/export DB failures, all Future18 legal-hold evidence classes, saved search SQL DELETE failure, aggregate learning metrics false-query result.
 - Extended five existing regression fixtures, added tests/tenth-dashboard-projection-db.php and required runner entry. CI feedback corrected missing mock absint and assignment table, plus an incorrect JSON object fixture assumption, without changing source business rules.
 - Report REVIEW-20-CYCLE-J-2026-10-12.md. History-preserving patient re-consent workflow/schema and staged/live parity remain unresolved and must not be misrepresented as completed.
+
+## 2026-10-12 — Eleventh File05 twenty-focus audit (Cycle K)
+- Read all nineteen native PHP source classes at immutable PR HEAD d08f28949d73ecf54077d0cc8622ac7c08eeb4bc against the actual File05 v1.1 Future18, consolidated Three Central Plans, and companion File06/File12 canonical boundaries. Completed 20 scoped source inspections.
+- Corrected seven new source defects K01–K07: unverified enrollment state postwrite, failed progress prewrite read, bookmark existence failed lookup, private note prewrite read error, unverified assignment postwrite, unverified reminder postwrite, and false-zero current certificate assessment DB result.
+- Added tests/eleventh-postwrite-verified.php and tests/eleventh-private-read-guards.php to mandatory source-invariants.sh. Corrected two harness deficiencies surfaced by first CI: assignment test active enrollment stage and missing sanitize_key stub.
+- Full evidence REVIEW-20-CYCLE-K-2026-10-12.md. No live deployment/merge or schema migration attempted; full patient re-consent and staging/live parity are pending.
