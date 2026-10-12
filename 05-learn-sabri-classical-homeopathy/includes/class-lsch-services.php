@@ -321,7 +321,11 @@ final class LSCH_Services {
 			return new WP_Error( 'lsch_assessment_busy', __( 'Another assessment attempt is being allocated. Please retry.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
 		try {
-			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['attempts']} WHERE idempotency_key=%s", $key ), ARRAY_A ); if ( $existing ) { return $existing; }
+			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['attempts']} WHERE idempotency_key=%s", $key ), ARRAY_A );
+			if ( ! $existing && ! empty( $wpdb->last_error ) ) {
+				return new WP_Error( 'lsch_assessment_replay_read_failed', __( 'The original attempt could not be checked. Retry using the same idempotency key after database recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			}
+			if ( $existing ) { return $existing; }
 			$max_previous = $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(attempt_number),0) FROM {$t['attempts']} WHERE assessment_id=%d AND user_id=%d", $assessment_id, $user_id ) );
 			if ( false === $max_previous || null === $max_previous || ! is_numeric( $max_previous ) || (int) $max_previous < 0 ) {
 				return new WP_Error( 'lsch_assessment_attempt_count_unverified', __( 'Assessment attempt history could not be verified. Retry after the database recovers.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
@@ -456,6 +460,9 @@ final class LSCH_Services {
 		}
 		global $wpdb; $t = LSCH_Database::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['submissions']} WHERE id=%d", $submission_id ), ARRAY_A );
+		if ( ! $row && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_grade_submission_read_failed', __( 'The assignment could not be verified before grading.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( $row && ! user_can( $assessor_id, LSCH_Capabilities::MANAGE_CURRICULUM ) && ! self::staff_scope_allows( $assessor_id, 'assignment', absint( $row['assignment_id'] ), 'assessor' ) ) {
 			return new WP_Error( 'lsch_grade_scope', __( 'An active, conflict-cleared assessor assignment is required.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
@@ -477,6 +484,9 @@ final class LSCH_Services {
 		if ( ! LSCH_Policy::can_use_learning_actions( $user_id ) ) { return new WP_Error( 'lsch_appeal_forbidden', __( 'Appeal is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) ); }
 		global $wpdb; $t = LSCH_Database::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['submissions']} WHERE id=%d AND user_id=%d", absint( $submission_id ), absint( $user_id ) ), ARRAY_A );
+		if ( ! $row && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_appeal_submission_read_failed', __( 'Your graded assignment could not be verified before an appeal.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $row || 'graded' !== $row['status'] || absint( $row['version'] ) !== absint( $expected_version ) ) {
 			return new WP_Error( 'lsch_appeal_invalid', __( 'This submission cannot be appealed in its current state.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
@@ -679,6 +689,9 @@ final class LSCH_Services {
 		$claims = LSCH_Dependencies::claims( $user_id );
 		if ( empty( $claims['identity_verified'] ) ) { return true; }
 		$enrollment = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $course_id ), ARRAY_A );
+		if ( ! $enrollment && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_completion_enrollment_read_failed', __( 'Course completion could not verify the active enrollment ledger.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $enrollment ) { return true; }
 		if ( 'completed' === $enrollment['status'] ) { return true; }
 		if ( 'active' !== $enrollment['status'] ) { return new WP_Error( 'lsch_completion_enrollment_state', __( 'Only an active enrollment may transition to course completion.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
@@ -689,6 +702,9 @@ final class LSCH_Services {
 		$snapshot = wp_json_encode( array( 'competencies' => $competencies, 'course_version' => LSCH_Content::version( $course_id ), 'required_lessons' => array_map( 'absint', $required ), 'completed_at' => gmdate( 'c' ) ) );
 		$now = LSCH_Database::now();
 		$existing_completion = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['completions']} WHERE user_id=%d AND course_id=%d AND course_version=%d LIMIT 1", $user_id, $course_id, LSCH_Content::version( $course_id ) ), ARRAY_A );
+		if ( ! $existing_completion && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_completion_history_read_failed', __( 'Previous course award or revocation could not be checked. No new award may be written.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( $existing_completion && 'revoked' === $existing_completion['status'] ) { return new WP_Error( 'lsch_completion_revoked', __( 'A revoked completion record cannot be silently re-earned for the same course version.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
 		$sql = $wpdb->prepare( "INSERT INTO {$t['completions']} (public_id,user_id,course_id,course_version,competency_snapshot_json,status,identity_assurance,integrity_status,version,earned_at,revoked_reason) VALUES (%s,%d,%d,%d,%s,'earned','verified','clear',1,%s,'') ON DUPLICATE KEY UPDATE competency_snapshot_json=VALUES(competency_snapshot_json),version=version+1", LSCH_Database::uuid(), $user_id, $course_id, LSCH_Content::version( $course_id ), $snapshot, $now );
 		if ( false === $wpdb->query( $sql ) ) { return new WP_Error( 'lsch_completion_write_failed', __( 'Completion evidence could not be persisted.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) ); }
