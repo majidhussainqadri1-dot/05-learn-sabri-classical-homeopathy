@@ -2,7 +2,7 @@
 /** Cycle L: private Future18 DB failures are errors, not bogus empty profiles or HTTP success objects. */
 define('ABSPATH','/unit-wp/');define('ARRAY_A','ARRAY_A');
 class WP_Error {public $code;function __construct($c,$m='',$data=array()){$this->code=$c;}}
-class WP_REST_Request {public function get_param($k){return $k==='limit'?15:($k==='status'?'pending':'');}}
+class WP_REST_Request {public function get_param($k){return $k==='limit'?15:($k==='status'?'pending':'');}public function get_method(){return 'GET';}}
 class WP_REST_Response {public $data,$headers=array();function __construct($data){$this->data=$data;}function header($k,$v){$this->headers[$k]=$v;}}
 class LSCH_Policy {
 	public static function can_use_learning_actions($id=0){return true;}
