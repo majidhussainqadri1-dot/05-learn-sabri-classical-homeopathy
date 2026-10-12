@@ -31,6 +31,8 @@ php tests/ninth-private-note-assessment-read.php
 php tests/ninth-correction-completion-db.php
 php tests/ninth-reconcile-failclosed.php
 php tests/tenth-dashboard-projection-db.php
+php tests/eleventh-postwrite-verified.php
+php tests/eleventh-private-read-guards.php
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
 
 find 05-learn-sabri-classical-homeopathy -type f -name '*.php' -print0 \
