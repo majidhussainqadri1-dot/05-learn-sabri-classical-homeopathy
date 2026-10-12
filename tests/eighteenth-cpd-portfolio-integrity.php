@@ -2,7 +2,7 @@
 /** Cycle R: CPD canonical ID, portfolio privacy and supervised academic projection failures. */
 define('ABSPATH','/unit/');define('ARRAY_A','ARRAY_A');
 class WP_Error {public $code;function __construct($c,$m='',$d=array()){$this->code=$c;}}
-class LSCH_Policy {static function can_use_learning_actions($u=0){return true;}}
+class LSCH_Policy {static function can_use_learning_actions($u=0){return true;}static function sanitize_json($v,$max=30000){return json_encode($v);}}
 class LSCH_Capabilities {
  const TEACH='teach';const MANAGE_CURRICULUM='manage';
  static function verified_doctor($u){return true;}static function is_founder($u){return false;}
