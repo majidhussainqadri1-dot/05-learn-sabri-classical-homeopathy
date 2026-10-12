@@ -151,3 +151,13 @@ Source-only corrective IDs:
 - I06 / File05 operational reconciliation, Files19/24: database cleanup, correction queue reads/writes and value-event retention purge must succeed before lsch_last_reconcile records success. Consent histories are explicitly excluded from automatic deletion.
 - Executable focused regressions: tests/ninth-private-note-assessment-read.php, tests/ninth-correction-completion-db.php, tests/ninth-reconcile-failclosed.php; all registered in tests/source-invariants.sh. Full numbered source audit: REVIEW-20-CYCLE-I-2026-10-11.md.
 - Real WordPress staging with current File00/06/12/16/17/19/20/22/24/25/26 partner versions, DB schema versions and live parity are NOT verified. Full append-only case re-consent remains separately pending approval and migration.
+
+## 2026-10-12 — Tenth new File05 twenty-focus source audit (Cycle J)
+- J01 F05-FR-005 / F05-NFR-001/003 / File00: unverified prerequisite ledger queries now prohibit even a grandfather exception. Regression: tests/prerequisite-integrity.php (healthy explicit grant; false/null+error deny).
+- J02 F05-FR-006/008/009 / F05-NFR-003 / Files06/12: failed assessment or assignment score queries cannot count as evidence or write progress. Regression: tests/learning-requirement-failclosed.php.
+- J03 F05-FR-008 / F05-NFR-003: malformed mixed quiz questions cannot silently fall out of scoring denominator and create academic grade. Regression: tests/ninth-private-note-assessment-read.php.
+- J04 F05-FR-006/007/011 / F05-NFR-001/002/003 / Files20/24/25: private dashboard DB outage must propagate through REST, frontend and learning export without false empty records or invalid WP_Error response headers. Regression: tests/tenth-dashboard-projection-db.php.
+- J05 F05-NFR-002/007 / File24 and Future18: active legal hold blocks deletion of ALL Future18 owned user evidence classes. Regression: tests/future18-privacy-contract.php.
+- J06 F05-FR-011 / F05-NFR-003 / File26: distinguish SQL DELETE failure (503), no matching saved search (404), success (204). Regression: tests/saved-search-read-failure.php.
+- J07 F05-NFR-003/006 / Files19/26: failed learning event aggregate query cannot appear as healthy metrics. Regression: tests/tenth-dashboard-projection-db.php.
+- All new/expanded tests are part of tests/source-invariants.sh. Twenty-point source evidence, source ownership and deferred staging/live gates: REVIEW-20-CYCLE-J-2026-10-12.md. No assertion of deployed parity or complete patient re-consent implementation.
