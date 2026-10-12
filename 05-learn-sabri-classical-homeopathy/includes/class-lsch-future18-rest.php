@@ -66,13 +66,17 @@ final class LSCH_Future18_REST {
 	public function assessor_or_teacher() { return $this->assessor() || $this->teacher(); }
 
 	public function center() {
-		$response = rest_ensure_response( LSCH_Future18::center_snapshot( get_current_user_id() ) );
+		$data = LSCH_Future18::center_snapshot( get_current_user_id() );
+		if ( is_wp_error( $data ) ) { return $data; }
+		$response = rest_ensure_response( $data );
 		$response->header( 'Cache-Control', 'private, no-store' );
 		return $response;
 	}
 
 	public function mastery() {
-		$response = rest_ensure_response( LSCH_Future18::mastery_snapshot( get_current_user_id() ) );
+		$data = LSCH_Future18::mastery_snapshot( get_current_user_id() );
+		if ( is_wp_error( $data ) ) { return $data; }
+		$response = rest_ensure_response( $data );
 		$response->header( 'Cache-Control', 'private, no-store' );
 		return $response;
 	}
@@ -83,7 +87,9 @@ final class LSCH_Future18_REST {
 	}
 
 	public function review_queue( WP_REST_Request $request ) {
-		$response = rest_ensure_response( LSCH_Future18::review_queue( get_current_user_id(), $request->get_param( 'type' ), $request->get_param( 'limit' ) ?: 100 ) );
+		$data = LSCH_Future18::review_queue( get_current_user_id(), $request->get_param( 'type' ), $request->get_param( 'limit' ) ?: 100 );
+		if ( is_wp_error( $data ) ) { return $data; }
+		$response = rest_ensure_response( $data );
 		$response->header( 'Cache-Control', 'private, no-store' );
 		return $response;
 	}
@@ -97,7 +103,9 @@ final class LSCH_Future18_REST {
 	}
 
 	public function mistakes( WP_REST_Request $request ) {
-		$response = rest_ensure_response( LSCH_Future18::mistakes( get_current_user_id(), $request->get_param( 'limit' ) ?: 100 ) );
+		$data = LSCH_Future18::mistakes( get_current_user_id(), $request->get_param( 'limit' ) ?: 100 );
+		if ( is_wp_error( $data ) ) { return $data; }
+		$response = rest_ensure_response( $data );
 		$response->header( 'Cache-Control', 'private, no-store' );
 		return $response;
 	}
@@ -118,13 +126,17 @@ final class LSCH_Future18_REST {
 	public function learning_path( WP_REST_Request $request ) {
 		$goal = sanitize_key( (string) $request->get_param( 'goal' ) );
 		$persist = ! in_array( strtoupper( (string) $request->get_method() ), array( 'GET', 'HEAD' ), true );
-		$response = rest_ensure_response( LSCH_Future18::build_learning_path( get_current_user_id(), $goal ?: 'balanced_mastery', $persist ) );
+		$data = LSCH_Future18::build_learning_path( get_current_user_id(), $goal ?: 'balanced_mastery', $persist );
+		if ( is_wp_error( $data ) ) { return $data; }
+		$response = rest_ensure_response( $data );
 		$response->header( 'Cache-Control', 'private, no-store' );
 		return $response;
 	}
 
 	public function portfolio( WP_REST_Request $request ) {
-		$response = rest_ensure_response( LSCH_Future18::portfolio( get_current_user_id(), $request->get_param( 'limit' ) ?: 200 ) );
+		$data = LSCH_Future18::portfolio( get_current_user_id(), $request->get_param( 'limit' ) ?: 200 );
+		if ( is_wp_error( $data ) ) { return $data; }
+		$response = rest_ensure_response( $data );
 		$response->header( 'Cache-Control', 'private, no-store' );
 		return $response;
 	}
@@ -146,7 +158,9 @@ final class LSCH_Future18_REST {
 	}
 
 	public function mentorships() {
-		$response = rest_ensure_response( LSCH_Future18::mentorships( get_current_user_id() ) );
+		$data = LSCH_Future18::mentorships( get_current_user_id() );
+		if ( is_wp_error( $data ) ) { return $data; }
+		$response = rest_ensure_response( $data );
 		$response->header( 'Cache-Control', 'private, no-store' );
 		return $response;
 	}
@@ -156,7 +170,9 @@ final class LSCH_Future18_REST {
 	}
 
 	public function cpd_get() {
-		$response = rest_ensure_response( LSCH_Future18::cpd_records( get_current_user_id() ) );
+		$data = LSCH_Future18::cpd_records( get_current_user_id() );
+		if ( is_wp_error( $data ) ) { return $data; }
+		$response = rest_ensure_response( $data );
 		$response->header( 'Cache-Control', 'private, no-store' );
 		return $response;
 	}
@@ -171,7 +187,9 @@ final class LSCH_Future18_REST {
 	}
 
 	public function change_impacts( WP_REST_Request $request ) {
-		$response = rest_ensure_response( LSCH_Future18::impacts( get_current_user_id(), $request->get_param( 'status' ) ?: 'pending' ) );
+		$data = LSCH_Future18::impacts( get_current_user_id(), $request->get_param( 'status' ) ?: 'pending' );
+		if ( is_wp_error( $data ) ) { return $data; }
+		$response = rest_ensure_response( $data );
 		$response->header( 'Cache-Control', 'private, no-store' );
 		return $response;
 	}
