@@ -955,13 +955,14 @@ final class LSCH_Future18 {
 		if ( 1 !== $ok ) {
 			return new WP_Error( 'lsch_future18_cpd_write_failed', __( 'CPD activity could not be recorded.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
 		}
+		$cpd_id = absint( $wpdb->insert_id );
 		$portfolio = self::add_portfolio_item( $user_id, 'cpd', 'cpd', $public_id, $competency, array( 'minutes' => $minutes, 'activity_type' => sanitize_key( (string) ( $data['activity_type'] ?? 'learning' ) ) ) );
 		if ( is_wp_error( $portfolio ) || false === $portfolio ) {
 			LSCH_Events::audit( 'future18_cpd_portfolio_pending', 'cpd', $public_id, array( 'user_id' => $user_id ), 'reliability' );
 			return new WP_Error( 'lsch_future18_cpd_portfolio_pending', __( 'CPD was recorded but the portfolio evidence requires reconciliation. Do not duplicate this activity.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
 		LSCH_Events::publish( 'LearningCPDRecorded.v1', 'cpd', $public_id, array( 'user_id' => $user_id, 'minutes' => $minutes, 'status' => 'self_recorded' ) );
-		return array( 'id' => (int) $wpdb->insert_id, 'public_id' => $public_id, 'status' => 'self_recorded' );
+		return array( 'id' => $cpd_id, 'public_id' => $public_id, 'status' => 'self_recorded' );
 	}
 
 
