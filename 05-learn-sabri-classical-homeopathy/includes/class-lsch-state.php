@@ -254,7 +254,10 @@ final class LSCH_State {
 			array( 'id' => $id, 'user_id' => get_current_user_id() ),
 			array( '%d', '%d' )
 		);
-		if ( ! $deleted ) {
+		if ( false === $deleted ) {
+			return new WP_Error( 'lsch_saved_search_delete_failed', __( 'Saved learning search could not be deleted. Retry after database recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
+		if ( 0 === $deleted ) {
 			return new WP_Error( 'lsch_saved_search_not_found', __( 'Saved learning search not found.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 404 ) );
 		}
 		return new WP_REST_Response( null, 204 );
