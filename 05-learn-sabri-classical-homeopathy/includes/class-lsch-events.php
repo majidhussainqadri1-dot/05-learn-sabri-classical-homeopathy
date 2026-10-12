@@ -55,6 +55,10 @@ final class LSCH_Events {
 		if ( 1 !== (int) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s,3)', $lock_name ) ) ) { return false; }
 		try {
 			$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['inbox']} WHERE event_id=%s LIMIT 1", $event_id ), ARRAY_A );
+			if ( ! $row && ! empty( $wpdb->last_error ) ) {
+				self::audit( 'inbox_history_read_failed', 'event', $event_id, array( 'event_name' => $event_name ), 'reliability' );
+				return false;
+			}
 			if ( $row && ! hash_equals( (string) $row['payload_hash'], $payload_hash ) ) { self::audit( 'inbox_payload_conflict', 'event', $event_id, array( 'event_name' => $event_name ), 'reliability' ); return false; }
 			if ( $row && 'processed' === $row['status'] ) { return true; }
 			$now = LSCH_Database::now();
