@@ -388,6 +388,9 @@ final class LSCH_Future18 {
 		global $wpdb;
 		$t = self::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['mastery']} WHERE user_id=%d AND competency_key=%s LIMIT 1", $user_id, $competency ), ARRAY_A );
+		if ( ! $row && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_future18_mastery_history_read_failed', __( 'Existing competency evidence could not be verified. No new mastery score may be saved.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		$old_score = $row ? (float) $row['mastery_score'] : 0.0;
 		$old_confidence = $row ? (float) $row['confidence'] : 0.0;
 		$alpha = min( 0.65, 0.20 + ( $weight * 0.10 ) );
@@ -398,6 +401,9 @@ final class LSCH_Future18 {
 		$next = gmdate( 'Y-m-d H:i:s', time() + DAY_IN_SECONDS * $review_days );
 		if ( $schedule_review ) {
 			$scheduled_due = $wpdb->get_var( $wpdb->prepare( "SELECT due_at FROM {$t['review']} WHERE user_id=%d AND item_type='spaced' AND competency_key=%s LIMIT 1", $user_id, $competency ) );
+			if ( false === $scheduled_due || ( null === $scheduled_due && ! empty( $wpdb->last_error ) ) ) {
+				return new WP_Error( 'lsch_future18_mastery_schedule_read_failed', __( 'Existing spaced-review schedule could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			}
 			if ( is_string( $scheduled_due ) && '' !== $scheduled_due ) {
 				$next = $scheduled_due;
 			}
