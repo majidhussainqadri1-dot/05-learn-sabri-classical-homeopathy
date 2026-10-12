@@ -250,12 +250,27 @@ final class LSCH_Operations {
 					ARRAY_A
 				);
 				if ( ! $row ) {
+					if ( ! empty( $wpdb->last_error ) ) {
+						LSCH_Events::audit( 'outbox_item_read_failed', 'outbox', $id, array(), 'reliability' );
+						return new WP_Error( 'lsch_outbox_item_read_failed', __( 'The pending event could not be verified; retry after database recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+					}
 					continue;
 				}
-				$payload = json_decode( $row['payload_json'], true );
-				$delivered = apply_filters( 'lsch_dispatch_event', null, $row['event_name'], $payload, $row['event_id'] );
-				if ( true === $delivered ) {
-					$wpdb->update(
+				$payload = json_decode( (string) $row['payload_json'], true );
+				$failure_code = '';
+				$delivered = false;
+				if ( ! is_array( $payload ) ) {
+					$failure_code = 'invalid_payload';
+				} else {
+					try {
+						$delivered = apply_filters( 'lsch_dispatch_event', null, $row['event_name'], $payload, $row['event_id'] );
+					} catch ( Throwable $error ) {
+						$failure_code = 'consumer_exception';
+						LSCH_Events::audit( 'outbox_consumer_exception', 'outbox', $id, array( 'event_name' => sanitize_key( $row['event_name'] ) ), 'reliability' );
+					}
+				}
+				if ( true === $delivered && '' === $failure_code ) {
+					$persisted = $wpdb->update(
 						$t['outbox'],
 						array( 'status' => 'processed', 'processed_at' => LSCH_Database::now(), 'attempts' => absint( $row['attempts'] ) + 1 ),
 						array( 'id' => $id, 'status' => $row['status'] ),
@@ -266,13 +281,17 @@ final class LSCH_Operations {
 					$attempts = absint( $row['attempts'] ) + 1;
 					$status = $attempts >= 5 ? 'dead' : 'retry';
 					$next = gmdate( 'Y-m-d H:i:s', time() + min( DAY_IN_SECONDS, 60 * ( 2 ** min( 10, $attempts ) ) ) );
-					$wpdb->update(
+					$persisted = $wpdb->update(
 						$t['outbox'],
-						array( 'status' => $status, 'attempts' => $attempts, 'next_attempt_at' => $next, 'last_error_code' => null === $delivered ? 'consumer_unavailable' : 'consumer_rejected' ),
+						array( 'status' => $status, 'attempts' => $attempts, 'next_attempt_at' => $next, 'last_error_code' => $failure_code ? $failure_code : ( null === $delivered ? 'consumer_unavailable' : 'consumer_rejected' ) ),
 						array( 'id' => $id, 'status' => $row['status'] ),
 						array( '%s', '%d', '%s', '%s' ),
 						array( '%d', '%s' )
 					);
+				}
+				if ( 1 !== $persisted ) {
+					LSCH_Events::audit( 'outbox_terminal_state_unverified', 'outbox', $id, array( 'dispatch_acknowledged' => true === $delivered && '' === $failure_code ), 'reliability' );
+					return new WP_Error( 'lsch_outbox_terminal_state_unverified', __( 'Event delivery status could not be persisted. Operator reconciliation is required.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 				}
 			} finally {
 				self::mysql_unlock( $lock );
