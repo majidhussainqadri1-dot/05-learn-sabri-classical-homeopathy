@@ -129,6 +129,10 @@ final class LSCH_Idempotency {
 		self::$lock_name = $lock_name;
 		self::gc();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['request_keys']} WHERE key_hash=%s LIMIT 1", $key_hash ), ARRAY_A );
+		if ( ! $row && ! empty( $wpdb->last_error ) ) {
+			self::release();
+			return new WP_Error( 'lsch_idempotency_ledger_read_failed', __( 'The original request state could not be verified. Retry the same request key after recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( $row ) {
 			if ( ! hash_equals( (string) $row['request_hash'], $request_hash ) ) {
 				self::release();
