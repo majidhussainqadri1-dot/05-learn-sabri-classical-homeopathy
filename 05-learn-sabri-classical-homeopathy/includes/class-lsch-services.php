@@ -10,6 +10,9 @@ final class LSCH_Services {
 		}
 		global $wpdb; $t = LSCH_Database::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT id,status,version,course_version,terms_version FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $course_id ), ARRAY_A );
+		if ( ! $row && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_enrollment_gate_read_failed', __( 'Enrollment authorization could not be verified. Retry after database recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $row || 'active' !== $row['status'] ) {
 			return new WP_Error( 'lsch_active_enrollment_required', __( 'Activate this course enrollment before recording assessed learning activity.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
@@ -44,6 +47,9 @@ final class LSCH_Services {
 		global $wpdb;
 		$t = LSCH_Database::tables();
 		$current = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $course_id ), ARRAY_A );
+		if ( ! $current && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_enrollment_prewrite_read_failed', __( 'Existing enrollment could not be checked; no new enrollment may be created until recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( $current && 'withdrawn' !== $current['status'] ) {
 			return $current;
 		}
@@ -538,6 +544,9 @@ final class LSCH_Services {
 		// New authorization evidence requires a separately governed, versioned
 		// re-consent lifecycle rather than replacing the historical audit row.
 		$existing = $wpdb->get_row( $wpdb->prepare( "SELECT id,withdrawn_at FROM {$t['consents']} WHERE lesson_id=%d AND policy_version=%s LIMIT 1", $lesson_id, $policy ), ARRAY_A );
+		if ( ! $existing && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_consent_history_read_failed', __( 'Consent history could not be verified. Do not create a new patient-case authorization record.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( $existing ) {
 			return new WP_Error( 'lsch_consent_record_exists', __( 'A consent record already exists for this policy. Renewals require the governed re-consent process.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
@@ -703,9 +712,15 @@ final class LSCH_Services {
 		$t = LSCH_Database::tables();
 		$course_version = LSCH_Content::version( $course_id );
 		$completion = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['completions']} WHERE user_id=%d AND course_id=%d AND course_version=%d LIMIT 1", $user_id, $course_id, $course_version ), ARRAY_A );
+		if ( ! $completion && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_certificate_ledger_read_failed', __( 'Certificate completion ledger could not be verified. Retry after database recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $completion || 'earned' !== $completion['status'] ) { $blockers[] = $completion && 'revoked' === $completion['status'] ? 'completion_revoked' : 'completion_not_earned'; }
 		if ( $completion && ( 'verified' !== $completion['identity_assurance'] || 'clear' !== $completion['integrity_status'] ) ) { $blockers[] = 'completion_integrity'; }
 		$enrollment = $wpdb->get_row( $wpdb->prepare( "SELECT status FROM {$t['enrollments']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $course_id ), ARRAY_A );
+		if ( ! $enrollment && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_certificate_enrollment_read_failed', __( 'Certificate enrollment state could not be verified. Retry after database recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $enrollment || 'completed' !== $enrollment['status'] ) { $blockers[] = 'enrollment_not_completed'; }
 
 		$lesson_ids = get_posts( array( 'post_type' => LSCH_Content::LESSON, 'post_status' => 'publish', 'posts_per_page' => 501, 'fields' => 'ids', 'meta_key' => '_lsch_course_id', 'meta_value' => $course_id, 'no_found_rows' => true ) );
