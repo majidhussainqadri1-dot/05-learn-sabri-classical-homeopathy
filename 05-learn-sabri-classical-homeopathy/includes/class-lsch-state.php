@@ -340,6 +340,9 @@ final class LSCH_State {
 			return new WP_Error( 'lsch_correction_decision_invalid', __( 'A valid correction decision and reason are required.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
 		}
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['corrections']} WHERE id=%d LIMIT 1", $id ), ARRAY_A );
+		if ( ! $row && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_correction_read_failed', __( 'Correction record could not be verified. Retry without changing its review state.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $row ) {
 			return new WP_Error( 'lsch_correction_not_found', __( 'Correction proposal not found.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 404 ) );
 		}
@@ -431,6 +434,9 @@ final class LSCH_State {
 		$t = self::tables();
 		$id = absint( $request['id'] );
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['corrections']} WHERE id=%d AND proposer_id=%d LIMIT 1", $id, get_current_user_id() ), ARRAY_A );
+		if ( ! $row && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_correction_read_failed', __( 'Correction record could not be verified. Retry without changing its review state.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $row ) {
 			return new WP_Error( 'lsch_correction_not_found', __( 'Correction proposal not found.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 404 ) );
 		}
@@ -465,6 +471,9 @@ final class LSCH_State {
 		$t = self::tables();
 		$id = absint( $request['id'] );
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['corrections']} WHERE id=%d AND proposer_id=%d LIMIT 1", $id, get_current_user_id() ), ARRAY_A );
+		if ( ! $row && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_correction_read_failed', __( 'Correction record could not be verified. Retry without changing its review state.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $row ) {
 			return new WP_Error( 'lsch_correction_not_found', __( 'Correction proposal not found.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 404 ) );
 		}
