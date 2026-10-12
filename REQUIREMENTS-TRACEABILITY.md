@@ -192,3 +192,13 @@ Source-only corrective IDs:
 - **M06** / File05 earned/revoked completion evidence, File24 academic retention: current course-version award/revocation history must be read successfully before any completion upsert changes a snapshot/version; test `tests/current-competency-evidence.php`.
 - **M07** / File05 assessor/appeal workflow, File09 doctor assurance and File12 governed assignment: assignment SQL read failure is actionable 503, not a phantom stale-grade or invalid-appeal 409; test `tests/thirteenth-assessor-appeal-db.php`.
 - Three new PHP suites and two extended suites in required `tests/source-invariants.sh`; numbered 20-focus evidence `REVIEW-20-CYCLE-M-2026-10-12.md`. These are source tests only, not live/staging acceptance. Full patient historical re-consent, DB+outbox transaction integration, source deployment parity and rollback still pending.
+
+## 2026-10-12 — Fourteenth File05 Twenty-Focus Review, Cycle N
+- **N01** / F05 assessed attempts, File19 replay: original attempt idempotency-key SELECT failure must not allocate another attempt; `lsch_assessment_replay_read_failed` 503. Test `tests/ninth-private-note-assessment-read.php`.
+- **N02** / File19 inbox deduplication, central reliable-event law: failed prior inbox-event SELECT must prevent duplicate handler invocation; bounded audit and MySQL named lock release. Test `tests/thirteenth-inbox-consumer-db.php`.
+- **N03** / Future18 mastery, File16 educational evidence: failed prior mastery read cannot insert/overwrite first competency history. Test `tests/thirteenth-mastery-replay-db.php`.
+- **N04** / Future18 spaced review, File26 educational recommendations: failed prior due-at SELECT must not regenerate a fabricated reviewed due date. Test `tests/thirteenth-mastery-replay-db.php`.
+- **N05** / File05 earned course completion, File00 claims: failed current enrollment SELECT must return 503 rather than silently skip completion reconciliation. Test `tests/current-competency-evidence.php`.
+- **N06** / File05 current course-version award/revocation history, File24 retention: failed completion history SELECT prevents subsequent UPSERT of an unverified prior credential row. Test `tests/current-competency-evidence.php`.
+- **N07** / File05 assignment review/appeal, File09 doctor verification and File12 owner attachments: failed submission read yields 503 for assessor or learner, never fictitious 409 status/score conflict. Test `tests/thirteenth-assessor-appeal-db.php`.
+- Source-based twenty-focus review and explicit uncovered integration/re-consent/deployment gates: `REVIEW-20-CYCLE-N-2026-10-12.md`. All tests are in `tests/source-invariants.sh`; staged/live feature completeness and exact installed DB/schema have not been verified.
