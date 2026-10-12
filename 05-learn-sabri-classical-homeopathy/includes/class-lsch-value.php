@@ -247,12 +247,14 @@ final class LSCH_Value {
 		if ( ! $user_id || $user_id !== get_current_user_id() || ! LSCH_Policy::can_use_learning_actions( $user_id ) ) {
 			return new WP_Error( 'lsch_export_forbidden', __( 'Learning record export is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
+		$records = LSCH_Services::dashboard( $user_id );
+		if ( is_wp_error( $records ) ) { return $records; }
 		return array(
 			'schema'       => 'file05-learning-record.v2',
 			'generated_at' => gmdate( 'c' ),
 			'user_id'      => $user_id,
 			'access_model' => LSCH_Policy::access_model(),
-			'records'      => LSCH_Services::dashboard( $user_id ),
+			'records'      => $records,
 		);
 	}
 
