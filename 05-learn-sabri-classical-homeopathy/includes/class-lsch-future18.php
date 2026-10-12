@@ -732,7 +732,7 @@ final class LSCH_Future18 {
 		$snapshot = self::mastery_snapshot( $user_id );
 		if ( is_wp_error( $snapshot ) ) { return $snapshot; }
 		$due = self::review_queue( $user_id, '', 25 );
-		if ( is_wp_error( $due ) ) { $due = array(); }
+		if ( is_wp_error( $due ) ) { return $due; }
 		$recommendations = array();
 		foreach ( (array) $snapshot['competencies'] as $row ) {
 			if ( count( $recommendations ) >= 10 ) { break; }
@@ -1150,17 +1150,23 @@ final class LSCH_Future18 {
 		$mastery = self::mastery_snapshot( $user_id );
 		if ( is_wp_error( $mastery ) ) { return $mastery; }
 		$path = self::build_learning_path( $user_id, 'balanced_mastery', false );
-		return array(
-			'mastery' => $mastery,
+		if ( is_wp_error( $path ) ) { return $path; }
+		$sections = array(
 			'due_reviews' => self::review_queue( $user_id, '', 20 ),
 			'mistakes' => self::mistakes( $user_id, 20 ),
-			'learning_path' => is_wp_error( $path ) ? array() : $path,
 			'portfolio' => self::portfolio( $user_id, 20 ),
 			'mentorships' => self::mentorships( $user_id ),
 			'cpd' => self::cpd_records( $user_id ),
 			'change_impacts' => self::impacts( $user_id, 'pending' ),
-			'features' => self::feature_ids(),
 		);
+		foreach ( $sections as $section ) {
+			if ( is_wp_error( $section ) ) { return $section; }
+		}
+		return array_merge( array(
+			'mastery' => $mastery,
+			'learning_path' => $path,
+			'features' => self::feature_ids(),
+		), $sections );
 	}
 
 	public static function shortcode() {
