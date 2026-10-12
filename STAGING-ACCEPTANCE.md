@@ -145,3 +145,12 @@ Before Future-18 may be called staging-accepted, test all 18 IDs with real Membe
 - Saved searches: SQL failure => 503, missing or other-user ID => 404, valid delete => 204. Audit File26 discovery and privacy.
 - Learning value metrics: fail actual aggregate event query, require explicit non-success with no false zero metrics. Test appropriate access/aggregation privacy threshold.
 - Real WordPress staging and rollback/restore acceptance remain REQUIRED. Following approved deployment, run live retest and verify source/package/database parity.
+
+## 2026-10-12 — Cycle K: File05 persisted-state and private academic evidence acceptance
+- Freeze active File05 and counterpart File00/06/12/16/17/19/20/22/24/25/26 packages, versions/checksums and schema/migrations before staging. Current GitHub PR and source CI alone do not establish deployed parity.
+- Course transition: allow versioned enrolled->active update then force post-update SELECT to fail or return wrong status/version. Return retryable verification error, no activated event, and reconcile DB row/idempotency before replay; healthy confirmed transition should succeed once.
+- Private progress, bookmarks and encrypted notes: independently cause prewrite SELECT to fail. Refuse inserts/toggles/edits; do not mistake unknown existing record for empty. Revalidate actual row once DB recovers, preserve encrypted note ciphertext and optimistic lock.
+- File12 protected assignment: allow successful submission insert but fail subsequent row read; never return confirmed success/audit or duplicate a submission. Verify owner and File12 attachment authorization during a real concurrent retry; prove audit and source link remain scoped.
+- Reminder preference: commit upsert but fail final read or return wrong enabled/cadence; no premature File19 notification event. Repeat with successful read and event.
+- Certificate readiness: fail current-version graded assessment MAX(score), show explicit error rather than misleading zero and verify previous-version scores remain excluded; crosscheck File00 identity assurance, File09 doctors and approved jurisdictional wording.
+- Post deployment: WordPress real-role E2E, File24 rights/export/legal hold, actual schema migration/backup restore, cache/replay/queue, rollback, live reread and exact checksum parity. Patient case append-only re-consent remains a separate change needing Founder-approved migration and release process.
