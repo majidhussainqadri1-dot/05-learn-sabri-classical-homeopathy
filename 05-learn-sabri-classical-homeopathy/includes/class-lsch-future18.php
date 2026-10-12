@@ -822,6 +822,9 @@ final class LSCH_Future18 {
 		global $wpdb;
 		$t = self::tables();
 		$row = $wpdb->get_row( $wpdb->prepare( "SELECT id,public_id,user_id,visibility,version FROM {$t['portfolio']} WHERE id=%d AND user_id=%d LIMIT 1", $id, $user_id ), ARRAY_A );
+		if ( ! $row && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_future18_portfolio_visibility_read_failed', __( 'Portfolio sharing history could not be verified. Retry after database recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		if ( ! $row || absint( $row['version'] ) !== absint( $expected_version ) ) {
 			return new WP_Error( 'lsch_future18_portfolio_visibility_conflict', __( 'Portfolio item changed or was not found.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
@@ -886,7 +889,11 @@ final class LSCH_Future18 {
 		if ( 1 !== $updated ) {
 			return new WP_Error( 'lsch_future18_mentorship_conflict', __( 'Mentorship record changed while saving.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
-		self::add_portfolio_item( absint( $row['learner_id'] ), 'mentor_feedback', 'mentorship', $mentorship_id, '', array( 'mentor_id' => $mentor_id, 'course_id' => absint( $row['course_id'] ) ) );
+		$portfolio = self::add_portfolio_item( absint( $row['learner_id'] ), 'mentor_feedback', 'mentorship', $mentorship_id, '', array( 'mentor_id' => $mentor_id, 'course_id' => absint( $row['course_id'] ) ) );
+		if ( is_wp_error( $portfolio ) || false === $portfolio ) {
+			LSCH_Events::audit( 'future18_mentor_portfolio_pending', 'mentorship', $mentorship_id, array( 'learner_id' => absint( $row['learner_id'] ) ), 'reliability' );
+			return new WP_Error( 'lsch_future18_mentor_portfolio_pending', __( 'Feedback was saved but its portfolio record requires reconciliation. Do not repeat the old version.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		return true;
 	}
 
@@ -948,7 +955,11 @@ final class LSCH_Future18 {
 		if ( 1 !== $ok ) {
 			return new WP_Error( 'lsch_future18_cpd_write_failed', __( 'CPD activity could not be recorded.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
 		}
-		self::add_portfolio_item( $user_id, 'cpd', 'cpd', $public_id, $competency, array( 'minutes' => $minutes, 'activity_type' => sanitize_key( (string) ( $data['activity_type'] ?? 'learning' ) ) ) );
+		$portfolio = self::add_portfolio_item( $user_id, 'cpd', 'cpd', $public_id, $competency, array( 'minutes' => $minutes, 'activity_type' => sanitize_key( (string) ( $data['activity_type'] ?? 'learning' ) ) ) );
+		if ( is_wp_error( $portfolio ) || false === $portfolio ) {
+			LSCH_Events::audit( 'future18_cpd_portfolio_pending', 'cpd', $public_id, array( 'user_id' => $user_id ), 'reliability' );
+			return new WP_Error( 'lsch_future18_cpd_portfolio_pending', __( 'CPD was recorded but the portfolio evidence requires reconciliation. Do not duplicate this activity.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		LSCH_Events::publish( 'LearningCPDRecorded.v1', 'cpd', $public_id, array( 'user_id' => $user_id, 'minutes' => $minutes, 'status' => 'self_recorded' ) );
 		return array( 'id' => (int) $wpdb->insert_id, 'public_id' => $public_id, 'status' => 'self_recorded' );
 	}
@@ -976,8 +987,18 @@ final class LSCH_Future18 {
 		if ( 1 !== $updated ) {
 			return new WP_Error( 'lsch_future18_cpd_verify_conflict', __( 'CPD record changed while verifying.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
-		self::add_portfolio_item( absint( $row['user_id'] ), 'verified_cpd', 'cpd', $row['public_id'], $row['competency_key'], array( 'minutes' => absint( $row['minutes'] ), 'verified_by' => $verifier_id ) );
-		if ( ! empty( $row['competency_key'] ) ) { self::record_mastery_evidence( absint( $row['user_id'] ), $row['competency_key'], 75, min( 0.5, absint( $row['minutes'] ) / 240 ), 'verified_cpd', $row['public_id'] ); }
+		$portfolio = self::add_portfolio_item( absint( $row['user_id'] ), 'verified_cpd', 'cpd', $row['public_id'], $row['competency_key'], array( 'minutes' => absint( $row['minutes'] ), 'verified_by' => $verifier_id ) );
+		if ( is_wp_error( $portfolio ) || false === $portfolio ) {
+			LSCH_Events::audit( 'future18_verified_cpd_portfolio_pending', 'cpd', $id, array( 'user_id' => absint( $row['user_id'] ) ), 'reliability' );
+			return new WP_Error( 'lsch_future18_verified_cpd_portfolio_pending', __( 'CPD verification was saved, but portfolio evidence requires reconciliation.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
+		if ( ! empty( $row['competency_key'] ) ) {
+			$mastery = self::record_mastery_evidence( absint( $row['user_id'] ), $row['competency_key'], 75, min( 0.5, absint( $row['minutes'] ) / 240 ), 'verified_cpd', $row['public_id'] );
+			if ( is_wp_error( $mastery ) || false === $mastery ) {
+				LSCH_Events::audit( 'future18_verified_cpd_mastery_pending', 'cpd', $id, array( 'user_id' => absint( $row['user_id'] ) ), 'reliability' );
+				return new WP_Error( 'lsch_future18_verified_cpd_mastery_pending', __( 'CPD verification was saved, but competency evidence requires reconciliation.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			}
+		}
 		LSCH_Events::publish( 'LearningCPDVerified.v1', 'cpd', $row['public_id'], array( 'user_id' => absint( $row['user_id'] ), 'verified_by' => $verifier_id ) );
 		return true;
 	}
