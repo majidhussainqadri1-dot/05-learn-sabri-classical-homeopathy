@@ -854,9 +854,16 @@ final class LSCH_Future18 {
 		global $wpdb;
 		$t = self::tables();
 		$now = current_time( 'mysql', true );
-		$sql = $wpdb->prepare( "INSERT INTO {$t['mentorship']} (mentor_id,learner_id,course_id,status,goals_json,feedback_json,version,created_at,updated_at) VALUES (%d,%d,%d,'active',%s,'[]',1,%s,%s) ON DUPLICATE KEY UPDATE status='active',goals_json=VALUES(goals_json),version=version+1,updated_at=VALUES(updated_at)", $mentor_id, $learner_id, $course_id, $json, $now, $now );
-		if ( false === $wpdb->query( $sql ) ) {
-			return new WP_Error( 'lsch_future18_mentorship_write_failed', __( 'Mentorship assignment could not be saved.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) );
+		$existing = $wpdb->get_row( $wpdb->prepare( "SELECT id,status,version FROM {$t['mentorship']} WHERE mentor_id=%d AND learner_id=%d AND course_id=%d LIMIT 1", $mentor_id, $learner_id, $course_id ), ARRAY_A );
+		if ( ! $existing && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_future18_mentorship_history_read_failed', __( 'Previous mentorship status could not be verified. No new assignment may be created.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
+		if ( $existing ) {
+			return new WP_Error( 'lsch_future18_mentorship_reassignment_required', __( 'A previous mentorship already exists. Reassignment requires a separately approved, history-preserving workflow.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
+		$ok = $wpdb->insert( $t['mentorship'], array( 'mentor_id' => $mentor_id, 'learner_id' => $learner_id, 'course_id' => $course_id, 'status' => 'active', 'goals_json' => $json, 'feedback_json' => '[]', 'version' => 1, 'created_at' => $now, 'updated_at' => $now ), array( '%d', '%d', '%d', '%s', '%s', '%s', '%d', '%s', '%s' ) );
+		if ( 1 !== $ok ) {
+			return new WP_Error( 'lsch_future18_mentorship_write_failed', __( 'Mentorship assignment could not be saved. A concurrent assignment may already exist.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
 		LSCH_Events::publish( 'LearningMentorshipAssigned.v1', 'mentorship', $learner_id . ':' . $mentor_id, array( 'mentor_id' => $mentor_id, 'learner_id' => $learner_id, 'course_id' => $course_id ) );
 		return true;
