@@ -1,7 +1,7 @@
 <?php
 define('ABSPATH','/unit/');define('ARRAY_A','ARRAY_A');
 class WP_Error{public $code;function __construct($c,$m='',$d=array()){$this->code=$c;}}
-class LSCH_Policy{static function can_use_learning_actions(){return true;}}
+class LSCH_Policy{static function can_use_learning_actions(){return true;}static function sanitize_json($value,$max=65535){return json_encode($value);}}
 class LSCH_Capabilities{const MANAGE_CURRICULUM='manage';const TEACH='teach';}
 class LSCH_Database{static function uuid(){return 'id';}}
 class LSCH_Events{static $events=array();static function publish($n,$t,$id,$data){self::$events[]=$n;}}
