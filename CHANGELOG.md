@@ -173,3 +173,9 @@
 - Compared immutable Draft PR#4 HEAD 2796e988ea853d7516a843989c421143115c9989 with the attached File05 Future18 and consolidated three governing central master plans, and File05-owned cross-file boundaries. Twenty distinct topic scopes checked, one new source defect R01 confirmed.
 - Removed unsafe mentorship ON DUPLICATE KEY UPDATE status='active' which could silently resurrect ended academic mentorship. Existing or unreadable prior relation fails closed; only a verified absent relation receives INSERT and event. Approved append-only regrant/reassignment remains future work.
 - New tests/eighteenth-mentorship-reassignment.php in mandatory source-invariants.sh, testing ended, active, unknown-DB and first-time states. Full evidence REVIEW-20-CYCLE-R-2026-10-13.md. No live merge or deployment; actual schema/parity and WordPress E2E unverified.
+
+## 2026-10-14 — File05 eighteenth 20-focus source audit (Cycle R)
+- Froze Draft PR#4 at 8663f5d087a6237f67561f4c80c7fa8cc46830e5 and checked twenty separate File05/central-plan/cross-owner source domains, with File06/08 master plan boundaries and current PHP owner sources.
+- Found and corrected R01: LSCH_Future18::mentor_feedback previously transformed invalid or object-shaped stored historical feedback JSON to empty array, permitting loss of academic evidence on the next feedback write. Now fails closed with typed 503 and bounded audit, preserving existing DB row/version.
+- Added tests/eighteenth-mentor-feedback-history.php to required tests/source-invariants.sh; new code and tests passed all four GitHub CI jobs on 79a127d951cef6cc345124de12f66419d2555b40 (run 38527982251). Full report REVIEW-20-CYCLE-R-2026-10-14.md.
+- No source merge, staging/live deploy, DB/schema migration or plugin-owner parity proof. Governed append-only re-consent and real MySQL state/outbox transactions remain open.
