@@ -885,7 +885,10 @@ final class LSCH_Future18 {
 			return new WP_Error( 'lsch_future18_mentorship_conflict', __( 'Mentorship record changed or was not found.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
 		$existing = json_decode( (string) $row['feedback_json'], true );
-		$existing = is_array( $existing ) ? $existing : array();
+		if ( ! is_array( $existing ) || array_values( $existing ) !== $existing ) {
+			LSCH_Events::audit( 'future18_mentor_feedback_history_invalid', 'mentorship', $mentorship_id, array( 'mentor_id' => $mentor_id ), 'reliability' );
+			return new WP_Error( 'lsch_future18_mentor_feedback_history_invalid', __( 'Previous mentor feedback cannot be verified. Its history must be reconciled before adding feedback.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		$feedback['at'] = gmdate( 'c' );
 		$feedback['mentor_id'] = $mentor_id;
 		$existing[] = $feedback;
