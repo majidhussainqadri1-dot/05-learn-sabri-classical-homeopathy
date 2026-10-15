@@ -884,8 +884,11 @@ final class LSCH_Future18 {
 		if ( ! $row || absint( $row['version'] ) !== absint( $expected_version ) ) {
 			return new WP_Error( 'lsch_future18_mentorship_conflict', __( 'Mentorship record changed or was not found.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
-		$existing = json_decode( (string) $row['feedback_json'], true );
-		if ( ! is_array( $existing ) || array_values( $existing ) !== $existing ) {
+		$raw_feedback = (string) $row['feedback_json'];
+		$existing = json_decode( $raw_feedback, true );
+		// JSON objects with numeric keys also decode to PHP list-shaped arrays.
+		// Require a literal JSON array root to preserve the canonical history type.
+		if ( '[' !== substr( ltrim( $raw_feedback ), 0, 1 ) || ! is_array( $existing ) || array_values( $existing ) !== $existing ) {
 			LSCH_Events::audit( 'future18_mentor_feedback_history_invalid', 'mentorship', $mentorship_id, array( 'mentor_id' => $mentor_id ), 'reliability' );
 			return new WP_Error( 'lsch_future18_mentor_feedback_history_invalid', __( 'Previous mentor feedback cannot be verified. Its history must be reconciled before adding feedback.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
