@@ -105,7 +105,12 @@ final class LSCH_Admin {
 			else { $value = sanitize_textarea_field( $value ); }
 			$current_value = get_post_meta( $post_id, $key, true );
 			if ( (string) $current_value === (string) $value ) { continue; }
-			update_post_meta( $post_id, $key, $value );
+			$meta_saved = update_post_meta( $post_id, $key, $value );
+			if ( false === $meta_saved && (string) get_post_meta( $post_id, $key, true ) !== (string) $value ) {
+				// A denied database write is not a successful academic policy change.
+				LSCH_Events::audit( 'learning_governance_meta_write_failed', LSCH_Content::object_type( $post_id ), $post_id, array( 'field' => $key ), 'reliability' );
+				continue;
+			}
 			$changed = true;
 		}
 		if ( $changed ) { LSCH_Content::bump_version( $post_id, 'governance_meta' ); }
