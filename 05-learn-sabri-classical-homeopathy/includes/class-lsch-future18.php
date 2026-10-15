@@ -889,10 +889,15 @@ final class LSCH_Future18 {
 			LSCH_Events::audit( 'future18_mentor_feedback_history_invalid', 'mentorship', $mentorship_id, array( 'mentor_id' => $mentor_id ), 'reliability' );
 			return new WP_Error( 'lsch_future18_mentor_feedback_history_invalid', __( 'Previous mentor feedback cannot be verified. Its history must be reconciled before adding feedback.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
+		// Do not silently discard the earliest historical academic feedback.
+		// A larger append-only store needs a separately approved schema and migration.
+		if ( count( $existing ) >= 100 ) {
+			LSCH_Events::audit( 'future18_mentor_feedback_history_capacity_reached', 'mentorship', $mentorship_id, array( 'mentor_id' => $mentor_id ), 'reliability' );
+			return new WP_Error( 'lsch_future18_mentor_feedback_history_full', __( 'Mentor feedback history is full. A governed archival extension is required before additional entries can be recorded.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+		}
 		$feedback['at'] = gmdate( 'c' );
 		$feedback['mentor_id'] = $mentor_id;
 		$existing[] = $feedback;
-		if ( count( $existing ) > 100 ) { $existing = array_slice( $existing, -100 ); }
 		$json = self::encode_json( $existing, 50000 );
 		if ( is_wp_error( $json ) ) { return $json; }
 		$updated = $wpdb->update( $t['mentorship'], array( 'feedback_json' => $json, 'version' => absint( $row['version'] ) + 1, 'updated_at' => current_time( 'mysql', true ) ), array( 'id' => $mentorship_id, 'mentor_id' => $mentor_id, 'version' => absint( $row['version'] ) ), array( '%s', '%d', '%s' ), array( '%d', '%d', '%d' ) );
