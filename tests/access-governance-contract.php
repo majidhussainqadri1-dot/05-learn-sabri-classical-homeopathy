@@ -3,10 +3,12 @@
 define( 'ABSPATH', '/unit-wordpress/' );
 $GLOBALS['test_meta'] = array( '_lsch_access'=>'restricted', '_lsch_version'=>1 );
 $GLOBALS['test_actions']=array();
+$GLOBALS['meta_fail_key']='';
+class LSCH_Events { public static $audits=array(); public static function audit($name,$type,$id,$context,$purpose){self::$audits[]=$name;} }
 class LSCH_Policy { public static function can_use_learning_actions( $id=0 ) { return true; } }
 function get_post_type( $id ) { return 11===(int)$id ? 'lsch_lesson' : null; }
 function get_post_meta( $id, $name, $single=true ) { return $GLOBALS['test_meta'][$name] ?? ''; }
-function update_post_meta( $id, $name, $value ) { $GLOBALS['test_meta'][$name]=$value; return true; }
+function update_post_meta( $id, $name, $value ) { if($name===$GLOBALS['meta_fail_key'])return false; $GLOBALS['test_meta'][$name]=$value; return true; }
 function wp_is_post_revision( $id ) { return false; }
 function wp_is_post_autosave( $id ) { return false; }
 function wp_verify_nonce( $nonce, $action ) { return $nonce === 'valid'; }
@@ -34,4 +36,11 @@ $_POST['lsch_meta']['_lsch_access']='account';
 $admin->save_governance_meta(11,(object)array('ID'=>11));
 test_guard('account'===$GLOBALS['test_meta']['_lsch_access'],'valid access transition persists');
 test_guard(2===$GLOBALS['test_meta']['_lsch_version'],'valid access transition versions content once');
-echo "PASS: File 05 administrative access allowlist and no-declassification.\n";
+$GLOBALS['meta_fail_key']='_lsch_access';
+$_POST['lsch_meta']['_lsch_access']='public';
+$admin->save_governance_meta(11,(object)array('ID'=>11));
+test_guard('account'===$GLOBALS['test_meta']['_lsch_access'],'Failed access write must not declassify the lesson');
+test_guard(2===$GLOBALS['test_meta']['_lsch_version'],'Failed access write must not spuriously increment the version');
+test_guard(in_array('learning_governance_meta_write_failed',LSCH_Events::$audits,true),'Failed governance write must leave an auditable reliability record');
+$GLOBALS['meta_fail_key']='';
+echo "PASS: File 05 administrative access allowlist, persistence and failure-state evidence.\n";
