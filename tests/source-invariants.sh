@@ -21,6 +21,8 @@ php tests/prerequisite-integrity.php
 php tests/lesson-rest-cache.php
 php tests/note-rotation-db-errors.php
 php tests/consent-history-protection.php
+php tests/case-consent-withdrawal-private-state.php
+php tests/correction-nested-transaction-atomicity.php
 php tests/enrollment-postwrite-verification.php
 php tests/catalog-taxonomy-failure.php
 php tests/saved-search-read-failure.php
