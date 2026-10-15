@@ -140,19 +140,19 @@ final class LSCH_Dependencies {
 			! class_exists( 'SMC_Contracts' ) ||
 			! is_callable( array( 'SMC_Contracts', 'assertions' ) )
 		) {
-			return (array) apply_filters( 'lsch_user_claims', $closed, $user_id );
+			return $closed;
 		}
 
 		try {
 			$source = (array) SMC_Contracts::assertions( $user_id );
 		} catch ( Throwable $error ) {
 			self::audit( 'file00_assertions_failed', array( 'user_id' => $user_id, 'error_class' => get_class( $error ) ) );
-			return (array) apply_filters( 'lsch_user_claims', $closed, $user_id );
+			return $closed;
 		}
 
 		$contract = isset( $source['contract_version'] ) ? (string) $source['contract_version'] : '';
 		if ( '' === $contract || version_compare( $contract, self::MIN_SMC_CONTRACT, '<' ) ) {
-			return (array) apply_filters( 'lsch_user_claims', $closed, $user_id );
+			return $closed;
 		}
 
 		$types = array_values( array_filter( array_map( 'sanitize_key', (array) ( $source['approved_membership_types'] ?? array() ) ) ) );
@@ -181,7 +181,7 @@ final class LSCH_Dependencies {
 			'publishing'                => (array) ( $source['publishing'] ?? array() ),
 		);
 
-		return (array) apply_filters( 'lsch_user_claims', $claims, $user_id );
+		return $claims;
 	}
 
 	public static function register_admin_notice() {
