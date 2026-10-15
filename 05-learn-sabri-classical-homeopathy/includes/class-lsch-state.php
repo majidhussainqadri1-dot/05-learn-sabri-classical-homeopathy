@@ -528,7 +528,9 @@ final class LSCH_State {
 				return new WP_Error( 'lsch_correction_stale', __( 'The learning object changed before the correction could be applied.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 			}
 			$new_version = $current_version + 1;
-			$wpdb->query( 'START TRANSACTION' );
+			// The REST idempotency middleware owns one transaction for the whole
+			// correction decision, post metadata, learner evidence and outbox.
+			// A nested MySQL START TRANSACTION would implicitly commit its caller.
 			try {
 				update_post_meta( $object_id, '_lsch_correction_note', sanitize_textarea_field( $reason ) );
 				if ( false === update_post_meta( $object_id, '_lsch_version', $new_version ) ) {
@@ -541,13 +543,11 @@ final class LSCH_State {
 						throw new RuntimeException( 'learner_review_mark_failed' );
 					}
 				}
-				if ( false === $wpdb->query( 'COMMIT' ) ) {
-					throw new RuntimeException( 'correction_commit_failed' );
-				}
 			} catch ( Throwable $error ) {
-				$wpdb->query( 'ROLLBACK' );
+				// Return an error: rest_request_after_callbacks performs the
+				// sole rollback of the enclosing REST request transaction.
 				clean_post_cache( $object_id );
-				return new WP_Error( 'lsch_correction_apply_failed', __( 'The correction could not be applied atomically. No partial correction was accepted.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500, 'reason_code' => sanitize_key( $error->getMessage() ) ) );
+				return new WP_Error( 'lsch_correction_apply_failed', __( 'The correction failed; its enclosing request must be rolled back.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500, 'reason_code' => sanitize_key( $error->getMessage() ) ) );
 			}
 			clean_post_cache( $object_id );
 			LSCH_Events::publish( 'LearningContentCorrected.v1', $type, $object_id, array( 'previous_version' => $current_version, 'new_version' => $new_version ) );
