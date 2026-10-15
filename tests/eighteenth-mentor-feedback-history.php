@@ -18,7 +18,7 @@ function is_wp_error($x){return $x instanceof WP_Error;}
 function sanitize_key($v){return strtolower((string)$v);}
 function check_r($truth,$why){if(!$truth){fwrite(STDERR,"FAIL: ".$why."\n");exit(1);}}
 require __DIR__.'/../05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php';
-foreach(array('corrupt','{"unexpected":"object"}','null','[1,') as $corrupt){
+foreach(array('corrupt','{"unexpected":"object"}','{"0":{"feedback":"historic"}}','{"0":{},"1":{}}','null','[1,') as $corrupt){
  $GLOBALS['wpdb']->feedback=$corrupt;
  $result=LSCH_Future18::mentor_feedback(25,15,array('feedback'=>'academic mentoring quality'),1);
  check_r($result instanceof WP_Error&&$result->code==='lsch_future18_mentor_feedback_history_invalid','invalid old feedback JSON is typed failure');
