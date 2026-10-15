@@ -11,6 +11,7 @@ php tests/future18-score-safety.php
 php tests/future18-privacy-contract.php
 php tests/public-visibility-version.php
 php tests/access-governance-contract.php
+php tests/content-version-persistence.php
 php tests/file00-claims-failclosed.php
 php tests/core-privacy-erasure.php
 php tests/core-privacy-projection.php
