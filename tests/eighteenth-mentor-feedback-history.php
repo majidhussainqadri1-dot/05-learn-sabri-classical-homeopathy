@@ -25,4 +25,9 @@ foreach(array('corrupt','{"unexpected":"object"}','null','[1,') as $corrupt){
  check_r($GLOBALS['wpdb']->writes===0,'malformed prior feedback cannot be overwritten');
 }
 check_r(in_array('future18_mentor_feedback_history_invalid',LSCH_Events::$actions,true),'historical evidence failure is audited');
-echo "PASS: Mentor feedback corrupt historical JSON is not silently erased.\n";
+$GLOBALS['wpdb']->feedback=json_encode(array_fill(0,100,array('feedback'=>'historic')));
+$result=LSCH_Future18::mentor_feedback(25,15,array('feedback'=>'newest'),1);
+check_r($result instanceof WP_Error&&$result->code==='lsch_future18_mentor_feedback_history_full','bounded mentor history must fail closed rather than truncate old evidence');
+check_r($GLOBALS['wpdb']->writes===0,'at-capacity feedback never rewrites or truncates history');
+check_r(in_array('future18_mentor_feedback_history_capacity_reached',LSCH_Events::$actions,true),'capacity conflict is audited');
+echo "PASS: Corrupt and at-capacity mentor feedback history is never silently erased.\n";
