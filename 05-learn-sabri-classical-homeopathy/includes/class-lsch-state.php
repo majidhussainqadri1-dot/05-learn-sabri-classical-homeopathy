@@ -532,7 +532,11 @@ final class LSCH_State {
 			// correction decision, post metadata, learner evidence and outbox.
 			// A nested MySQL START TRANSACTION would implicitly commit its caller.
 			try {
-				update_post_meta( $object_id, '_lsch_correction_note', sanitize_textarea_field( $reason ) );
+				$correction_note = sanitize_textarea_field( $reason );
+				$note_saved = update_post_meta( $object_id, '_lsch_correction_note', $correction_note );
+				if ( false === $note_saved && $correction_note !== (string) get_post_meta( $object_id, '_lsch_correction_note', true ) ) {
+					throw new RuntimeException( 'correction_note_write_failed' );
+				}
 				if ( false === update_post_meta( $object_id, '_lsch_version', $new_version ) ) {
 					throw new RuntimeException( 'content_version_write_failed' );
 				}
