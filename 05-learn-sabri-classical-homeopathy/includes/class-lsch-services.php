@@ -573,8 +573,17 @@ final class LSCH_Services {
 		$withdrawn = $wpdb->query( $wpdb->prepare( "UPDATE {$t['consents']} SET withdrawn_at=COALESCE(withdrawn_at,%s),withdrawn_by=%d,version=version+1 WHERE lesson_id=%d AND withdrawn_at IS NULL", LSCH_Database::now(), absint( $actor_id ), absint( $lesson_id ) ) );
 		if ( false === $withdrawn ) { return new WP_Error( 'lsch_consent_write_failed', __( 'Case consent could not be withdrawn.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 500 ) ); }
 		if ( 0 === $withdrawn ) { return new WP_Error( 'lsch_consent_not_active', __( 'No active case consent was available to withdraw.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) ); }
-		if ( 'publish' === get_post_status( $lesson_id ) ) { wp_update_post( array( 'ID' => absint( $lesson_id ), 'post_status' => 'private' ) ); }
-		update_post_meta( $lesson_id, '_lsch_consent_withdrawal_reason', $reason );
+		if ( 'publish' === get_post_status( $lesson_id ) ) {
+			$private_id = wp_update_post( array( 'ID' => absint( $lesson_id ), 'post_status' => 'private' ), true );
+			if ( is_wp_error( $private_id ) || absint( $private_id ) !== $lesson_id || 'private' !== get_post_status( $lesson_id ) ) {
+				LSCH_Events::audit( 'case_consent_privacy_transition_failed', 'lesson', $lesson_id, array( 'actor_id' => $actor_id ), 'patient_privacy' );
+				return new WP_Error( 'lsch_consent_privacy_transition_failed', __( 'The lesson could not be made private. The protected consent withdrawal must be rolled back.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			}
+		}
+		$note_updated = update_post_meta( $lesson_id, '_lsch_consent_withdrawal_reason', $reason );
+		if ( false === $note_updated && $reason !== (string) get_post_meta( $lesson_id, '_lsch_consent_withdrawal_reason', true ) ) {
+			return new WP_Error( 'lsch_consent_withdrawal_reason_unverified', __( 'The withdrawal reason could not be verified; the protected request must be rolled back.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		LSCH_Events::publish( 'LearningCaseConsentWithdrawn.v1', 'lesson', $lesson_id, array( 'actor_id' => absint( $actor_id ) ) );
 		LSCH_Events::audit( 'case_consent_withdrawn', 'lesson', $lesson_id, array( 'actor_id' => absint( $actor_id ), 'reason' => $reason ), 'patient_privacy' );
 		return true;
