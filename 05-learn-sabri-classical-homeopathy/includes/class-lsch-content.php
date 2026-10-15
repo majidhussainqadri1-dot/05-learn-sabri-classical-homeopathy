@@ -239,7 +239,12 @@ final class LSCH_Content {
 		if ( isset( self::$version_bumped[ $post_id ] ) ) { return self::$version_bumped[ $post_id ]; }
 		$raw = get_post_meta( $post_id, '_lsch_version', true );
 		$next = '' === (string) $raw ? 1 : max( 1, absint( $raw ) ) + 1;
-		update_post_meta( $post_id, '_lsch_version', $next );
+		$version_saved = update_post_meta( $post_id, '_lsch_version', $next );
+		if ( false === $version_saved || $next !== absint( get_post_meta( $post_id, '_lsch_version', true ) ) ) {
+			// Never advertise a version that the canonical WordPress metadata did not persist.
+			LSCH_Events::audit( 'learning_content_version_write_failed', 'learning_object', $post_id, array( 'attempted_version' => $next ), 'reliability' );
+			return 0;
+		}
 		self::$version_bumped[ $post_id ] = $next;
 		do_action( 'lsch_content_version_bumped', $post_id, $next, sanitize_key( $reason ) );
 		return $next;
