@@ -189,10 +189,22 @@ final class LSCH_Plugin {
 	}
 
 	private function block_publication( $post_id, $reason ) {
+		$post_id = absint( $post_id );
 		remove_action( 'save_post_' . LSCH_Content::LESSON, array( $this, 'lesson_saved' ), 20 );
-		wp_update_post( array( 'ID' => absint( $post_id ), 'post_status' => 'pending' ) );
-		add_action( 'save_post_' . LSCH_Content::LESSON, array( $this, 'lesson_saved' ), 20, 3 );
+		try {
+			$result = wp_update_post( array( 'ID' => $post_id, 'post_status' => 'pending' ), true );
+		} finally {
+			add_action( 'save_post_' . LSCH_Content::LESSON, array( $this, 'lesson_saved' ), 20, 3 );
+		}
+		$status = get_post_status( $post_id );
+		if ( is_wp_error( $result ) || $post_id !== absint( $result ) || 'pending' !== $status ) {
+			// A failed WordPress transition must never be audited as a successful block.
+			// Staging must prove the pre-publication hook and cache containment path.
+			LSCH_Events::audit( 'lesson_publication_block_persist_failed', 'lesson', $post_id, array( 'reason' => sanitize_key( $reason ), 'observed_status' => sanitize_key( (string) $status ) ), 'editorial_governance' );
+			return new WP_Error( 'lsch_publication_block_persist_failed', __( 'Lesson publication could not be blocked in WordPress. Immediate operator containment is required.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		LSCH_Events::audit( 'lesson_publication_blocked', 'lesson', $post_id, array( 'reason' => sanitize_key( $reason ) ), 'editorial_governance' );
+		return true;
 	}
 
 	public function status_transition( $new, $old, $post ) {
