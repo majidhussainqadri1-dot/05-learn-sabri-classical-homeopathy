@@ -134,8 +134,45 @@ final class LSCH_Plugin {
 		$id = absint( $postarr['ID'] ?? 0 );
 		$stored = $id ? get_post( $id ) : null;
 		$author = absint( $data['post_author'] ?? ( $stored ? $stored->post_author : 0 ) );
+		// WordPress saves tax_input, tags_input and meta_input AFTER this filter.
+		// Using the previously stored governance evidence would approve a different
+		// revision/consent classification from the one committed by this request.
+		$uncommitted_governance = false;
+		if ( array_key_exists( 'tax_input', $postarr ) ) {
+			$tax_input = $postarr['tax_input'];
+			$uncommitted_governance = ! is_array( $tax_input ) || array_key_exists( LSCH_Content::TOPIC, $tax_input );
+		}
+		if ( array_key_exists( 'tags_input', $postarr ) ) {
+			$uncommitted_governance = true;
+		}
+		if ( isset( $postarr['meta_input'] ) ) {
+			if ( ! is_array( $postarr['meta_input'] ) ) {
+				$uncommitted_governance = true;
+			} else {
+				foreach ( $postarr['meta_input'] as $key => $value ) {
+					if ( 0 === strpos( (string) $key, '_lsch_' ) && ( ! is_scalar( $value ) || (string) get_post_meta( $id, $key, true ) !== (string) $value ) ) {
+						$uncommitted_governance = true;
+						break;
+					}
+				}
+			}
+		}
+		// Admin governance metabox changes are persisted in save_post (also later).
+		if ( isset( $_POST['lsch_meta'] ) ) {
+			if ( ! is_array( $_POST['lsch_meta'] ) ) {
+				$uncommitted_governance = true;
+			} else {
+				foreach ( $_POST['lsch_meta'] as $key => $value ) {
+					if ( 0 === strpos( (string) $key, '_lsch_' ) && ( ! is_scalar( $value ) || (string) get_post_meta( $id, $key, true ) !== (string) $value ) ) {
+						$uncommitted_governance = true;
+						break;
+					}
+				}
+			}
+		}
 		$reason = '';
 		if ( ! $id || ! $stored ) { $reason = 'unpersisted_lesson_evidence'; }
+		elseif ( $uncommitted_governance ) { $reason = 'uncommitted_lesson_governance'; }
 		elseif ( ! LSCH_Policy::central_policy_ready() ) { $reason = 'central_policy_unavailable'; }
 		elseif ( ! LSCH_Capabilities::is_founder( $author ) && ! current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) && !( LSCH_Capabilities::can_author( $author ) && user_can( $author, LSCH_Capabilities::PUBLISH_LESSONS ) ) ) {
 			$reason = 'unauthorized_publication_actor';
