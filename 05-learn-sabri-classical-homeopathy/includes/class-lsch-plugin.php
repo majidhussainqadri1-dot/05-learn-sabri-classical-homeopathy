@@ -144,7 +144,7 @@ final class LSCH_Plugin {
 				$uncommitted_governance = true;
 			} elseif ( array_key_exists( LSCH_Content::TOPIC, $tax_input ) ) {
 				$requested_topics = $tax_input[ LSCH_Content::TOPIC ];
-				$requested_topics = is_array( $requested_topics ) ? $requested_topics : explode( ',', (string) $requested_topics );
+				$requested_topics = is_array( $requested_topics ) ? $requested_topics : ( is_scalar( $requested_topics ) ? explode( ',', (string) $requested_topics ) : array( null ) );
 				$stored_topics = $id ? wp_get_object_terms( $id, LSCH_Content::TOPIC, array( 'fields' => 'ids' ) ) : false;
 				if ( ! is_array( $stored_topics ) || ! is_array( $requested_topics ) || array_filter( $requested_topics, static function( $topic ) { return ! is_scalar( $topic ) || ( '' !== trim( (string) $topic ) && ! ctype_digit( (string) $topic ) ); } ) ) {
 					$uncommitted_governance = true;
@@ -159,7 +159,7 @@ final class LSCH_Plugin {
 		}
 		if ( array_key_exists( 'tags_input', $postarr ) ) {
 			$tags = $postarr['tags_input'];
-			if ( ! ( is_string( $tags ) || is_array( $tags ) ) || '' !== trim( is_array( $tags ) ? implode( ',', array_map( 'strval', $tags ) ) : $tags ) || ( $id && has_term( 'کامیاب کیس', 'post_tag', $id ) ) ) {
+			if ( ! ( is_string( $tags ) || is_array( $tags ) ) || ( is_array( $tags ) && array_filter( $tags, static function( $tag ) { return ! is_scalar( $tag ); } ) ) || ( is_string( $tags ) && '' !== trim( $tags ) ) || ( is_array( $tags ) && array_filter( $tags, static function( $tag ) { return '' !== trim( (string) $tag ); } ) ) || ( $id && has_term( 'کامیاب کیس', 'post_tag', $id ) ) ) {
 				$uncommitted_governance = true;
 			}
 		}
