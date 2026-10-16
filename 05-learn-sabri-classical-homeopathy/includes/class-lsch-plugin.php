@@ -209,7 +209,7 @@ final class LSCH_Plugin {
 			}
 			if ( '' === $reason ) {
 				$topics = wp_get_object_terms( $id, LSCH_Content::TOPIC, array( 'fields' => 'slugs' ) );
-				if ( is_wp_error( $topics ) || ! is_array( $topics ) ) { $reason = 'patient_case_taxonomy_unavailable'; }
+				if ( is_wp_error( $topics ) || ! is_array( $topics ) || array_filter( $topics, static function( $topic ) { return ! is_string( $topic ) || '' === trim( $topic ); } ) ) { $reason = 'patient_case_taxonomy_unavailable'; }
 				elseif ( in_array( 'patient-case-learning', $topics, true ) ) {
 					if ( ! LSCH_Policy::valid_case_consent( $id ) ) { $reason = 'patient_case_consent_required'; }
 					elseif ( ! has_term( 'کامیاب کیس', 'post_tag', $id ) ) {
