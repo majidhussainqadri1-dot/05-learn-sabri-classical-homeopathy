@@ -62,6 +62,7 @@ function get_post_meta( $id, $key, $single = true ) {
 function update_post_meta( $id, $key, $value ) { $GLOBALS['metadata'][$id][$key] = $value; return true; }
 function do_action( $name, ...$args ) { $GLOBALS['actions_log'][] = array($name,$args); }
 function wp_get_object_terms( $id, $taxonomy, $args ) {
+    if ( array_key_exists( 'bad_taxonomy_response', $GLOBALS ) ) { return $GLOBALS['bad_taxonomy_response']; }
     return 7 === $id ? array('patient-case-learning') : array('foundations');
 }
 function is_wp_error( $object ) { return $object instanceof WP_Error; }
@@ -104,6 +105,12 @@ assert_file05( !LSCH_Policy::publicly_visible(8), 'malformed explicit access not
 assert_file05( LSCH_Content::access(9)==='public', 'missing legacy access retains approved public default' );
 $GLOBALS['consent_ok']=true;
 assert_file05( LSCH_Policy::publicly_visible(7), 'verified public case consent accepted' );
+foreach ( array( null, false, 'patient-case-learning', (object) array( 'name' => 'patient-case-learning' ) ) as $malformed ) {
+    $GLOBALS['bad_taxonomy_response'] = $malformed;
+    assert_file05( ! LSCH_Policy::publicly_visible(7), 'unexpected topic response must not classify patient-case content as public' );
+}
+unset( $GLOBALS['bad_taxonomy_response'] );
+assert_file05( LSCH_Policy::publicly_visible(7), 'healthy term and active consent restore only correct public visibility' );
 
 $books=LSCH_Frontend::public_catalog_posts(LSCH_Content::BOOK,8);
 assert_file05(count($books)===1 && $books[0]->ID===2, 'catalog filters account-only book even if WordPress query is overbroad');
