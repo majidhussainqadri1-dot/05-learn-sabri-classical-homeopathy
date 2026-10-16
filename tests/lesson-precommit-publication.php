@@ -50,6 +50,7 @@ LSCH_Value::$valid_sources=false;check_case($base,'pending','source_record_requi
 $GLOBALS['meta']['_lsch_reviewer_id']=2;check_case($base,'pending','independent_reviewer_required');$GLOBALS['meta']['_lsch_reviewer_id']=10;
 $GLOBALS['topics']=new WP_Error('read_failed');check_case($base,'pending','patient_case_taxonomy_unavailable');
 $GLOBALS['topics']=null;check_case($base,'pending','patient_case_taxonomy_unavailable');
+$GLOBALS['topics']=array((object)array('slug'=>'patient-case-learning'));check_case($base,'pending','patient_case_taxonomy_unavailable');
 $GLOBALS['topics']=array('patient-case-learning');LSCH_Policy::$consent=false;check_case($base,'pending','patient_case_consent_required');LSCH_Policy::$consent=true;
 $GLOBALS['tag_error']=true;check_case($base,'pending','patient_case_tag_unverified');$GLOBALS['tag_error']=false;
 check_case($base,'publish');must($GLOBALS['tag_present'],'Mandatory case tag present before status publish');
