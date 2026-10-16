@@ -537,8 +537,10 @@ final class LSCH_State {
 				if ( false === $note_saved && $correction_note !== (string) get_post_meta( $object_id, '_lsch_correction_note', true ) ) {
 					throw new RuntimeException( 'correction_note_write_failed' );
 				}
-				if ( false === update_post_meta( $object_id, '_lsch_version', $new_version ) ) {
-					throw new RuntimeException( 'content_version_write_failed' );
+				$version_saved = update_post_meta( $object_id, '_lsch_version', $new_version );
+				clean_post_cache( $object_id );
+				if ( false === $version_saved || $new_version !== absint( get_post_meta( $object_id, '_lsch_version', true ) ) ) {
+					throw new RuntimeException( 'content_version_write_unverified' );
 				}
 				if ( LSCH_Content::LESSON === $type ) {
 					$t = LSCH_Database::tables();
