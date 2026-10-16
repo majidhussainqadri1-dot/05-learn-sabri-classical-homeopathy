@@ -26,7 +26,7 @@ function absint($x){return abs((int)$x);}
 function sanitize_key($v){return strtolower((string)$v);}
 function get_post($id){return $GLOBALS['post_exists']?(object)array('ID'=>$id,'post_author'=>2):null;}
 function get_post_meta($id,$key,$single=true){return $GLOBALS['meta'][$key]??'';}
-function wp_get_object_terms($id,$taxonomy,$opts){return $GLOBALS['topics'];}
+function wp_get_object_terms($id,$taxonomy,$opts){if(($opts['fields']??'')==='ids')return $GLOBALS['topic_ids']??array(31);return $GLOBALS['topics'];}
 function has_term($tag,$tax,$id){return $GLOBALS['tag_present'];}
 function wp_set_post_tags($id,$tags,$append){if($GLOBALS['tag_error'])return new WP_Error('tags_failed');$GLOBALS['tag_present']=true;return array(12);}
 function wp_strip_all_tags($v){return strip_tags($v);}
@@ -57,6 +57,12 @@ $GLOBALS['topics']=array('foundations');check_case($base,'publish');
 // Adversarial same-save mutations must not be approved using stale saved evidence.
 check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tax_input'=>array(LSCH_Content::TOPIC=>array('patient-case-learning'))));
 check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tax_input'=>'invalid-tax-input'));
+check_case($base,'publish','',array('ID'=>13,'tax_input'=>array(LSCH_Content::TOPIC=>array(31))));
+check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tax_input'=>array(LSCH_Content::TOPIC=>array(32))));
+check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tax_input'=>array(LSCH_Content::TOPIC=>(object)array('slug'=>'patient-case-learning'))));
+check_case($base,'publish','',array('ID'=>13,'tags_input'=>''));
+check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tags_input'=>array((object)array('tag'=>'other'))));
+
 check_case($base,'publish','',array('ID'=>13,'tax_input'=>array('unrelated_taxonomy'=>array('existing'))));
 check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tags_input'=>array('remove-case-tag')));
 check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'meta_input'=>array('_lsch_safety'=>'')));
