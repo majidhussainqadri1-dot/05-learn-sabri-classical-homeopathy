@@ -42,7 +42,7 @@ function get_post_type($id){$p=get_post($id);return $p?$p->post_type:false;}
 function get_post_meta($id,$key,$single=true){return $GLOBALS['meta'][$id][$key]??'';}
 function get_current_user_id(){return 0;}
 function user_can($uid,$cap,$post=0){return (int)$uid===77 && in_array($cap,array('manage_lsch_curriculum','edit_post'),true);}
-function wp_get_object_terms($id,$tax,$args){return $GLOBALS['topic_failure'] && 50===(int)$id?new WP_Error():array('foundation');}
+function wp_get_object_terms($id,$tax,$args){if(array_key_exists('malformed_topic_response',$GLOBALS)&&50===(int)$id)return $GLOBALS['malformed_topic_response'];return $GLOBALS['topic_failure'] && 50===(int)$id?new WP_Error():array('foundation');}
 function is_wp_error($x){return $x instanceof WP_Error;}
 function apply_filters($name,$default,...$args){return $default;}
 function __( $msg,$d=''){return $msg;}
@@ -68,4 +68,12 @@ fail_if(!LSCH_Policy::can_read_post(50,0),'topic lookup WP_Error fails closed fo
 fail_if(LSCH_Policy::can_read_post(50,77),'editor retains legitimate draft/case review access');
 $GLOBALS['topic_failure']=false;
 fail_if(LSCH_Policy::publicly_visible(50),'healthy standalone public lesson still readable');
-echo "PASS: File05 governed parent access inheritance and fail-closed lesson taxonomy reads.\n";
+foreach(array(null,false,'not-an-array',array((object)array('slug'=>'patient-case-learning')),array('')) as $malformed) {
+    $GLOBALS['malformed_topic_response']=$malformed;
+    fail_if(!LSCH_Policy::publicly_visible(50),'Malformed lesson topics cannot become guest-public');
+    fail_if(!LSCH_Policy::can_read_post(50,0),'Malformed lesson topics cannot authorize guest read');
+    fail_if(LSCH_Policy::can_read_post(50,77),'Authorized editor retains governed repair access');
+}
+unset($GLOBALS['malformed_topic_response']);
+fail_if(LSCH_Policy::publicly_visible(50),'Valid topics restore public read');
+echo "PASS: File05 governed parent access inheritance, malformed taxonomy reads and editorial repair access.\n";
