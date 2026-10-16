@@ -20,9 +20,10 @@ class LSCH_Policy {
 }
 class LSCH_Value {public static function sources($id){return array(array('source'=>'verified'));}}
 class LSCH_Events {
-    public static $blocked=array();
+    public static $blocked=array(),$failed=array();
     public static function audit($action,$kind,$id,$context,$purpose){
         if('lesson_publication_blocked'===$action)self::$blocked[]=$context['reason'];
+        if('lesson_publication_block_persist_failed'===$action)self::$failed[]=$context['reason'];
     }
 }
 $GLOBALS['terms']=array('foundations');
@@ -33,6 +34,7 @@ $GLOBALS['reviewer_write_fail']=false;
 $GLOBALS['tag_write_fail']=false;
 $GLOBALS['tag_present']=false;
 $GLOBALS['post_status']='publish';
+$GLOBALS['wp_update_fail']=false;
 function wp_is_post_revision($id){return false;}
 function wp_is_post_autosave($id){return false;}
 function current_user_can($cap){return false;}
@@ -52,7 +54,8 @@ function wp_set_post_tags($id,$tags,$append){
 function has_term($tag,$taxonomy,$post_id){return $GLOBALS['tag_present'];}
 function remove_action(...$args){}
 function add_action(...$args){}
-function wp_update_post($row){$GLOBALS['post_status']=$row['post_status'];return (int)$row['ID'];}
+function wp_update_post($row,$wp_error=false){if($GLOBALS['wp_update_fail'])return new WP_Error('post_update_db_error');$GLOBALS['post_status']=$row['post_status'];return (int)$row['ID'];}
+function get_post_status($id){return $GLOBALS['post_status'];}
 function __( $msg,$domain=''){return $msg;}
 function require_true($ok,$label){if(!$ok){fwrite(STDERR,"FAIL: ".$label."\n");exit(1);}}
 require __DIR__.'/../05-learn-sabri-classical-homeopathy/includes/class-lsch-plugin.php';
@@ -62,6 +65,8 @@ function reset_pub(){
     $GLOBALS['post_status']='publish';
     $GLOBALS['tag_present']=false;
     LSCH_Events::$blocked=array();
+    LSCH_Events::$failed=array();
+    $GLOBALS['wp_update_fail']=false;
     LSCH_Content::$version_ok=true;
     LSCH_Policy::$consent=true;
     $GLOBALS['reviewer_write_fail']=false;
@@ -101,4 +106,9 @@ reset_pub();$GLOBALS['terms']=array('patient-case-learning');
 $plugin->lesson_saved(71,$post,false);
 require_true($GLOBALS['post_status']==='publish'&&$GLOBALS['tag_present'],'Valid consent + tag remain publishable');
 require_true(!LSCH_Events::$blocked,'Healthy case does not trigger false rejection');
-echo "PASS: File05 publication halts on unverified version, reviewer, case taxonomy, consent and required case tag.\n";
+reset_pub();$GLOBALS['wp_update_fail']=true;LSCH_Content::$version_ok=false;
+$plugin->lesson_saved(71,$post,true);
+require_true($GLOBALS['post_status']==='publish','WordPress write failure remains visibly uncontained and needs operator action');
+require_true(in_array('content_version_unverified',LSCH_Events::$failed,true),'Uncontained publishing failure is separately audited');
+require_true(!LSCH_Events::$blocked,'Uncontained failure must not be falsely logged as successfully blocked');
+echo "PASS: File05 publishing validates evidence and separately detects failed WordPress containment.\n";
