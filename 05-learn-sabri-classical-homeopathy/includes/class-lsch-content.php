@@ -89,7 +89,7 @@ final class LSCH_Content {
 	public static function filter_native_results( $posts, $query ) {
 		if ( is_admin() || ! $query instanceof WP_Query || ! $query->is_main_query() || ! is_array( $posts ) ) { return $posts; }
 		return array_values( array_filter( $posts, static function( $post ) {
-			return ! $post instanceof WP_Post || ! in_array( $post->post_type, self::native_public_types(), true ) || LSCH_Policy::can_read_post( $post->ID );
+			return ! $post instanceof WP_Post || ! in_array( $post->post_type, self::native_public_types(), true ) || LSCH_Policy::publicly_visible( $post->ID );
 		} ) );
 	}
 
