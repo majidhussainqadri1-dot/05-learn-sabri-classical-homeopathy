@@ -63,6 +63,7 @@ function update_post_meta( $id, $key, $value ) { $GLOBALS['metadata'][$id][$key]
 function do_action( $name, ...$args ) { $GLOBALS['actions_log'][] = array($name,$args); }
 function wp_get_object_terms( $id, $taxonomy, $args ) {
     if ( array_key_exists( 'bad_taxonomy_response', $GLOBALS ) ) { return $GLOBALS['bad_taxonomy_response']; }
+    if ( array_key_exists( 'malformed_topic_members', $GLOBALS ) ) { return $GLOBALS['malformed_topic_members']; }
     return 7 === $id ? array('patient-case-learning') : array('foundations');
 }
 function is_wp_error( $object ) { return $object instanceof WP_Error; }
@@ -110,6 +111,11 @@ foreach ( array( null, false, 'patient-case-learning', (object) array( 'name' =>
     assert_file05( ! LSCH_Policy::publicly_visible(7), 'unexpected topic response must not classify patient-case content as public' );
 }
 unset( $GLOBALS['bad_taxonomy_response'] );
+foreach ( array( array( (object) array( 'slug'=>'foundations' ) ), array( null ), array( '' ) ) as $invalid_members ) {
+    $GLOBALS['malformed_topic_members'] = $invalid_members;
+    assert_file05( ! LSCH_Policy::publicly_visible(7), 'Malformed taxonomy array members cannot bypass patient consent' );
+}
+unset( $GLOBALS['malformed_topic_members'] );
 assert_file05( LSCH_Policy::publicly_visible(7), 'healthy term and active consent restore only correct public visibility' );
 
 $books=LSCH_Frontend::public_catalog_posts(LSCH_Content::BOOK,8);
