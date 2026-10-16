@@ -10,6 +10,8 @@ php tests/security-invariants.php
 php tests/future18-score-safety.php
 php tests/future18-privacy-contract.php
 php tests/public-visibility-version.php
+php tests/native-public-archive-scope.php
+php tests/lesson-precommit-publication.php
 php tests/lesson-publication-evidence-failclosed.php
 php tests/access-governance-contract.php
 php tests/content-version-persistence.php
