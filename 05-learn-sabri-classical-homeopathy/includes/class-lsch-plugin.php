@@ -21,6 +21,7 @@ final class LSCH_Plugin {
 		add_filter( 'sabri_composer_content_adapters', array( $this, 'composer_adapter' ) );
 		add_filter( 'sabri_search_connectors', array( $this, 'search_connector' ) );
 		add_filter( 'sabri_network_context_providers', array( $this, 'community_context_provider' ) );
+		add_filter( 'wp_insert_post_data', array( $this, 'prepublish_lesson' ), 20, 2 );
 		add_action( 'save_post_' . LSCH_Content::LESSON, array( $this, 'lesson_saved' ), 20, 3 );
 		add_action( 'transition_post_status', array( $this, 'status_transition' ), 20, 3 );
 	}
@@ -124,6 +125,50 @@ final class LSCH_Plugin {
 			'version'           => LSCH_Content::version( $object_id ),
 			'discussion_policy' => 'moderated-educational-context',
 		);
+	}
+
+	/** Pre-commit publishing gate: never rely on a later save_post status rollback. */
+	public function prepublish_lesson( $data, $postarr ) {
+		if ( ! is_array( $data ) || LSCH_Content::LESSON !== ( $data['post_type'] ?? '' ) || 'publish' !== ( $data['post_status'] ?? '' ) ) { return $data; }
+		$postarr = is_array( $postarr ) ? $postarr : array();
+		$id = absint( $postarr['ID'] ?? 0 );
+		$stored = $id ? get_post( $id ) : null;
+		$author = absint( $data['post_author'] ?? ( $stored ? $stored->post_author : 0 ) );
+		$reason = '';
+		if ( ! $id || ! $stored ) { $reason = 'unpersisted_lesson_evidence'; }
+		elseif ( ! LSCH_Policy::central_policy_ready() ) { $reason = 'central_policy_unavailable'; }
+		elseif ( ! LSCH_Capabilities::is_founder( $author ) && ! current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ) && !( LSCH_Capabilities::can_author( $author ) && user_can( $author, LSCH_Capabilities::PUBLISH_LESSONS ) ) ) {
+			$reason = 'unauthorized_publication_actor';
+		}
+		elseif ( '' === trim( (string) ( $data['post_title'] ?? '' ) ) || '' === trim( wp_strip_all_tags( (string) ( $data['post_content'] ?? '' ) ) ) ) {
+			$reason = 'lesson_body_or_title_missing';
+		}
+		else {
+			foreach ( array( '_lsch_objectives', '_lsch_sources', '_lsch_accessibility', '_lsch_safety' ) as $key ) {
+				if ( '' === trim( (string) get_post_meta( $id, $key, true ) ) ) { $reason = 'missing_' . $key; break; }
+			}
+			if ( '' === $reason && ! LSCH_Value::sources( $id ) ) { $reason = 'source_record_required'; }
+			if ( '' === $reason && ! LSCH_Capabilities::is_founder( $author ) ) {
+				$reviewer = absint( get_post_meta( $id, '_lsch_reviewer_id', true ) );
+				if ( ! $reviewer || $reviewer === $author || ! LSCH_Capabilities::can_review( $reviewer ) ) { $reason = 'independent_reviewer_required'; }
+			}
+			if ( '' === $reason ) {
+				$topics = wp_get_object_terms( $id, LSCH_Content::TOPIC, array( 'fields' => 'slugs' ) );
+				if ( is_wp_error( $topics ) || ! is_array( $topics ) ) { $reason = 'patient_case_taxonomy_unavailable'; }
+				elseif ( in_array( 'patient-case-learning', $topics, true ) ) {
+					if ( ! LSCH_Policy::valid_case_consent( $id ) ) { $reason = 'patient_case_consent_required'; }
+					elseif ( ! has_term( 'کامیاب کیس', 'post_tag', $id ) ) {
+						$tagged = wp_set_post_tags( $id, array( 'کامیاب کیس' ), true );
+						if ( is_wp_error( $tagged ) || ! has_term( 'کامیاب کیس', 'post_tag', $id ) ) { $reason = 'patient_case_tag_unverified'; }
+					}
+				}
+			}
+		}
+		if ( '' !== $reason ) {
+			$data['post_status'] = 'pending';
+			LSCH_Events::audit( 'lesson_prepublication_deferred', 'lesson', $id, array( 'reason' => sanitize_key( $reason ) ), 'editorial_governance' );
+		}
+		return $data;
 	}
 
 	public function lesson_saved( $post_id, $post, $update ) {
