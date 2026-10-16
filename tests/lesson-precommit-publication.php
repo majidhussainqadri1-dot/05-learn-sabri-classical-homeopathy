@@ -38,7 +38,7 @@ function must($v,$message){if(!$v){fwrite(STDERR,"FAIL: $message\n");exit(1);}}
 require __DIR__.'/../05-learn-sabri-classical-homeopathy/includes/class-lsch-plugin.php';
 $p=new LSCH_Plugin();
 $base=array('post_type'=>'lsch_lesson','post_status'=>'publish','post_author'=>2,'post_title'=>'A source-linked lesson','post_content'=>'Learning goals with full source context');
-function check_case($data,$expected,$reason=''){global $p;$r=$p->prepublish_lesson($data,array('ID'=>13));must($r['post_status']===$expected,'Unexpected pre-commit status: '.$reason);if($reason){$last=end(LSCH_Events::$audits);must($last[1]===$reason,'Expected pre-commit reason: '.$reason);}}
+function check_case($data,$expected,$reason='',$postarr=array('ID'=>13)){global $p;$r=$p->prepublish_lesson($data,$postarr);must($r['post_status']===$expected,'Unexpected pre-commit status: '.$reason);if($reason){$last=end(LSCH_Events::$audits);must($last[1]===$reason,'Expected pre-commit reason: '.$reason);}}
 must($p->prepublish_lesson($base,array())['post_status']==='pending','New unsaved lesson cannot publish before persisted review');
 check_case(array_merge($base,array('post_type'=>'post')),'publish');
 check_case(array_merge($base,array('post_status'=>'draft')),'draft');
@@ -54,4 +54,20 @@ $GLOBALS['topics']=array('patient-case-learning');LSCH_Policy::$consent=false;ch
 $GLOBALS['tag_error']=true;check_case($base,'pending','patient_case_tag_unverified');$GLOBALS['tag_error']=false;
 check_case($base,'publish');must($GLOBALS['tag_present'],'Mandatory case tag present before status publish');
 $GLOBALS['topics']=array('foundations');check_case($base,'publish');
-echo "PASS: WordPress precommit prevents unsafe lesson publication, permits verified course content.\n";
+// Adversarial same-save mutations must not be approved using stale saved evidence.
+check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tax_input'=>array(LSCH_Content::TOPIC=>array('patient-case-learning'))));
+check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tax_input'=>'invalid-tax-input'));
+check_case($base,'publish','',array('ID'=>13,'tax_input'=>array('unrelated_taxonomy'=>array('existing'))));
+check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tags_input'=>array('remove-case-tag')));
+check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'meta_input'=>array('_lsch_safety'=>'')));
+check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'meta_input'=>'malformed'));
+check_case($base,'publish','',array('ID'=>13,'meta_input'=>array('_lsch_safety'=>'Safety rules')));
+check_case($base,'publish','',array('ID'=>13,'meta_input'=>array('_other_unrelated_key'=>'safe')));
+$_POST['lsch_meta']=array('_lsch_sources'=>'Changed references');
+check_case($base,'pending','uncommitted_lesson_governance');
+$_POST['lsch_meta']=array('_lsch_sources'=>'Verified source');
+check_case($base,'publish');
+$_POST['lsch_meta']='malformed';
+check_case($base,'pending','uncommitted_lesson_governance');
+unset($_POST['lsch_meta']);
+echo "PASS: WordPress precommit blocks unsafe same-save topic, tags, metadata and editorial governance mutations.\n";echo "PASS: WordPress precommit prevents unsafe lesson publication, permits verified course content.\n";
