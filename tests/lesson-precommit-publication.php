@@ -60,6 +60,7 @@ check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tax_i
 check_case($base,'publish','',array('ID'=>13,'tax_input'=>array(LSCH_Content::TOPIC=>array(31))));
 check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tax_input'=>array(LSCH_Content::TOPIC=>array(32))));
 check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tax_input'=>array(LSCH_Content::TOPIC=>(object)array('slug'=>'patient-case-learning'))));
+$GLOBALS['tag_present']=false; // Ordinary lesson without a pre-existing patient-case tag.
 check_case($base,'publish','',array('ID'=>13,'tags_input'=>''));
 check_case($base,'pending','uncommitted_lesson_governance',array('ID'=>13,'tags_input'=>array((object)array('tag'=>'other'))));
 
