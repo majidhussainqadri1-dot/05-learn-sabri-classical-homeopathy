@@ -31,7 +31,7 @@ $GLOBALS['meta']=array();
 function absint($v){return abs((int)$v);}
 function sanitize_textarea_field($v){return trim((string)$v);}
 function sanitize_key($v){return strtolower((string)$v);}
-function update_post_meta($id,$name,$value){if($name==='_lsch_correction_note'&&!empty($GLOBALS['fail_note_write']))return false;$GLOBALS['meta'][$name]=$value;return true;}
+function update_post_meta($id,$name,$value){if($name==='_lsch_correction_note'&&!empty($GLOBALS['fail_note_write']))return false;if($name==='_lsch_version'&&!empty($GLOBALS['skip_version_persistence']))return true;$GLOBALS['meta'][$name]=$value;return true;}
 function get_post_meta($id,$name,$single=true){return $GLOBALS['meta'][$name]??'';}
 function clean_post_cache($id){}
 function __( $v,$domain=''){return $v;}
@@ -67,4 +67,14 @@ require_true($failed_note instanceof WP_Error&&$failed_note->code==='lsch_correc
 require_true(($GLOBALS['meta']['_lsch_version']??null)===$previous_version,'Failed correction note must not advance version');
 require_true(count(LSCH_Events::$events)===$events_before,'Failed correction note cannot emit correction event');
 require_true($GLOBALS['wpdb']->queries===array(),'Failed note must stop before dependent progress update');
-echo "PASS: Correction avoids nested transactions and refuses unverified note provenance.\n";
+$GLOBALS['fail_note_write']=false;
+$GLOBALS['meta']['_lsch_version']=3;
+$GLOBALS['skip_version_persistence']=true;
+$GLOBALS['wpdb']->queries=array();
+$events_before=count(LSCH_Events::$events);
+$failed_version=$method->invoke(null,19,'A corrected source version must persist',3);
+require_true($failed_version instanceof WP_Error&&$failed_version->code==='lsch_correction_apply_failed','Correction refuses false-success version metadata write');
+require_true(($GLOBALS['meta']['_lsch_version']??null)===3,'Version stays at previously verified value after failed write');
+require_true(count(LSCH_Events::$events)===$events_before,'Rejected version cannot emit a content-corrected event');
+require_true($GLOBALS['wpdb']->queries===array(),'Unpersisted version must not mark learner progress changed');
+echo "PASS: Correction avoids nested transactions, requires note provenance and verifies saved version.\n";
