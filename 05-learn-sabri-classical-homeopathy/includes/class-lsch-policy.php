@@ -54,7 +54,7 @@ final class LSCH_Policy {
 			}
 			if ( LSCH_Content::LESSON === $post->post_type ) {
 				$topics = wp_get_object_terms( $post_id, LSCH_Content::TOPIC, array( 'fields' => 'slugs' ) );
-				if ( is_wp_error( $topics ) || ! is_array( $topics ) ) { return false; }
+				if ( is_wp_error( $topics ) || ! is_array( $topics ) || array_filter( $topics, static function( $topic ) { return ! is_string( $topic ) || '' === trim( $topic ); } ) ) { return false; }
 				if ( in_array( 'patient-case-learning', $topics, true ) && ! self::valid_case_consent( $post_id ) ) { return false; }
 			}
 			return true;
