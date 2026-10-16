@@ -137,8 +137,9 @@ final class LSCH_Plugin {
 
 		// post_updated may already have advanced this content's version.
 		// Reuse the per-request guarded mutation to avoid a second bump on save_post_.
-		if ( $update ) {
-			LSCH_Content::bump_version( $post_id, 'lesson_save' );
+		if ( $update && ! LSCH_Content::bump_version( $post_id, 'lesson_save' ) ) {
+			$this->block_publication( $post_id, 'content_version_unverified' );
+			return;
 		}
 		if ( 'publish' !== $post->post_status ) {
 			return;
@@ -163,15 +164,27 @@ final class LSCH_Plugin {
 				$this->block_publication( $post_id, 'independent_reviewer_required' );
 				return;
 			}
-			update_post_meta( $post_id, '_lsch_reviewer', (string) $reviewer_id );
+			$reviewer_saved = update_post_meta( $post_id, '_lsch_reviewer', (string) $reviewer_id );
+			if ( false === $reviewer_saved && (string) get_post_meta( $post_id, '_lsch_reviewer', true ) !== (string) $reviewer_id ) {
+				$this->block_publication( $post_id, 'reviewer_evidence_unverified' );
+				return;
+			}
 		}
 		$topics = wp_get_object_terms( $post_id, LSCH_Content::TOPIC, array( 'fields' => 'slugs' ) );
-		if ( ! is_wp_error( $topics ) && in_array( 'patient-case-learning', (array) $topics, true ) ) {
+		if ( is_wp_error( $topics ) || ! is_array( $topics ) ) {
+			$this->block_publication( $post_id, 'patient_case_taxonomy_unavailable' );
+			return;
+		}
+		if ( in_array( 'patient-case-learning', $topics, true ) ) {
 			if ( ! LSCH_Policy::valid_case_consent( $post_id ) ) {
 				$this->block_publication( $post_id, 'patient_case_consent_required' );
 				return;
 			}
-			wp_set_post_tags( $post_id, array( 'کامیاب کیس' ), true );
+			$tags_saved = wp_set_post_tags( $post_id, array( 'کامیاب کیس' ), true );
+			if ( is_wp_error( $tags_saved ) || ! has_term( 'کامیاب کیس', 'post_tag', $post_id ) ) {
+				$this->block_publication( $post_id, 'patient_case_tag_unverified' );
+				return;
+			}
 		}
 	}
 
