@@ -44,6 +44,7 @@ php tests/twelfth-owner-ledger-failures.php
 php tests/twelfth-corrections-idempotency-db.php
 php tests/twelfth-future18-private-projections.php
 php tests/thirteenth-inbox-consumer-db.php
+php tests/inbox-event-name-identity.php
 php tests/thirteenth-mastery-replay-db.php
 php tests/thirteenth-assessor-appeal-db.php
 php tests/fifteenth-future18-impact-batch.php

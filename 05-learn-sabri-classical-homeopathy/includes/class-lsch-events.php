@@ -59,6 +59,7 @@ final class LSCH_Events {
 				self::audit( 'inbox_history_read_failed', 'event', $event_id, array( 'event_name' => $event_name ), 'reliability' );
 				return false;
 			}
+			if ( $row && ! hash_equals( (string) ( $row['event_name'] ?? '' ), sanitize_text_field( $event_name ) ) ) { self::audit( 'inbox_event_name_conflict', 'event', $event_id, array( 'event_name' => $event_name ), 'reliability' ); return false; }
 			if ( $row && ! hash_equals( (string) $row['payload_hash'], $payload_hash ) ) { self::audit( 'inbox_payload_conflict', 'event', $event_id, array( 'event_name' => $event_name ), 'reliability' ); return false; }
 			if ( $row && 'processed' === $row['status'] ) { return true; }
 			$now = LSCH_Database::now();
