@@ -16,7 +16,7 @@ class InboundDB {
 	public function get_row($sql,$style=null){
 		if($this->mode==='unavailable'){$this->last_error='database read error';return null;}
 		$this->last_error='';
-		return array('status'=>'processed','payload_hash'=>$GLOBALS['correctHash']);
+		return array('status'=>'processed','event_name'=>'CourseCompleted.v1','payload_hash'=>$GLOBALS['correctHash']);
 	}
 	public function insert($table,$row,$fmt){$this->inserts[]=$table;return 1;}
 	public function query($sql){throw new Exception('unexpected inbox mutation');}
