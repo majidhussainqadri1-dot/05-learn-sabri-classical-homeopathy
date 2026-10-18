@@ -119,7 +119,15 @@ final class LSCH_REST {
 	public function progress( WP_REST_Request $r ) { return LSCH_Services::progress( absint( $r['id'] ), get_current_user_id(), (array) $r->get_json_params() ); }
 	public function progress_reset( WP_REST_Request $r ) { return LSCH_Services::reset_progress( absint( $r['id'] ), get_current_user_id() ); }
 	public function bookmark( WP_REST_Request $r ) { return LSCH_Services::toggle_bookmark( sanitize_key( $r['type'] ), absint( $r['id'] ), get_current_user_id() ); }
-	public function note_get( WP_REST_Request $r ) { $response = rest_ensure_response( LSCH_Services::get_note( absint( $r['id'] ), get_current_user_id() ) ); $response->header( 'Cache-Control', 'private, no-store' ); return $response; }
+	public function note_get( WP_REST_Request $r ) {
+		$note = LSCH_Services::get_note( absint( $r['id'] ), get_current_user_id() );
+		// rest_ensure_response() deliberately preserves WP_Error; errors do not have header().
+		// Propagate the original error/status without turning private read failures into a fatal.
+		if ( is_wp_error( $note ) ) { return $note; }
+		$response = rest_ensure_response( $note );
+		$response->header( 'Cache-Control', 'private, no-store' );
+		return $response;
+	}
 	public function note_save( WP_REST_Request $r ) { return LSCH_Services::save_note( absint( $r['id'] ), get_current_user_id(), $r->get_param( 'note' ), absint( $r->get_param( 'version' ) ) ); }
 	public function consent_store( WP_REST_Request $r ) { return LSCH_Services::store_case_consent( absint( $r['id'] ), get_current_user_id(), (array) $r->get_json_params() ); }
 	public function consent_withdraw( WP_REST_Request $r ) { return LSCH_Services::withdraw_case_consent( absint( $r['id'] ), get_current_user_id(), $r->get_param( 'reason' ) ); }
