@@ -45,6 +45,13 @@ final class LSCH_Operations {
 			$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table;
 			$checks[ 'Future18 table: ' . $name ] = array( 'status' => $exists ? 'pass' : 'fail', 'detail' => $exists ? $table : 'Missing File 05 Future-18 learning table.' );
 		}
+		$mentor_history_table = LSCH_Mentor_History::table();
+		$mentor_table_ready = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $mentor_history_table ) ) === $mentor_history_table;
+		$mentor_schema = (int) get_option( LSCH_Mentor_History::OPTION, 0 );
+		$checks['Mentor feedback append-only schema'] = array(
+			'status' => $mentor_table_ready && LSCH_Mentor_History::SCHEMA === $mentor_schema ? 'pass' : 'fail',
+			'detail' => sprintf( 'installed=%d expected=%d table=%s verified=%s', $mentor_schema, LSCH_Mentor_History::SCHEMA, $mentor_history_table, $mentor_table_ready ? 'yes' : 'no' ),
+		);
 		$pages = (array) get_option( 'lsch_page_map', array() );
 		$core_schema=(int)get_option(LSCH_Database::OPTION,0); $state_schema=(int)get_option(LSCH_State::OPTION,0); $future_schema=(int)get_option(LSCH_Future18::OPTION,0);
 		$checks['Core schema version']=array('status'=>LSCH_SCHEMA_VERSION===$core_schema?'pass':'fail','detail'=>sprintf('installed=%d expected=%d',$core_schema,LSCH_SCHEMA_VERSION));
@@ -110,6 +117,7 @@ final class LSCH_Operations {
 			'schema'       => LSCH_SCHEMA_VERSION,
 			'state_schema' => LSCH_State::SCHEMA,
 			'future18_schema' => LSCH_Future18::SCHEMA,
+			'mentor_history_schema' => LSCH_Mentor_History::SCHEMA,
 			'safe_mode'    => self::safe_mode(),
 			'checks'       => $checks,
 			'generated_at' => gmdate( 'c' ),
@@ -117,12 +125,13 @@ final class LSCH_Operations {
 	}
 
 	public static function repair( $dry_run = true ) {
-		$plan = array( 'ensure_state_schema', 'ensure_future18_schema', 'seed_vocabularies', 'recreate_missing_pages', 'reschedule_cron', 'reconcile_orphans', 'requeue_stale_jobs', 'rotate_private_note_keys_bounded' );
+		$plan = array( 'ensure_state_schema', 'ensure_future18_schema', 'ensure_mentor_history_schema', 'seed_vocabularies', 'recreate_missing_pages', 'reschedule_cron', 'reconcile_orphans', 'requeue_stale_jobs', 'rotate_private_note_keys_bounded' );
 		if ( $dry_run ) {
 			return array( 'dry_run' => true, 'plan' => $plan );
 		}
 		LSCH_State::install();
 		LSCH_Future18::install();
+		LSCH_Mentor_History::maybe_upgrade();
 		LSCH_Content::seed_vocabularies();
 		LSCH_Activator::ensure_pages();
 		self::schedule();
