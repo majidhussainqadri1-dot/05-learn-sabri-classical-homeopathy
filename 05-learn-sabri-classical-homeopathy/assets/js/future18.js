@@ -26,6 +26,11 @@
       headers: { 'X-WP-Nonce': String(app.nonce || ''), 'Content-Type': 'application/json' }
     };
     if (body !== null) options.body = JSON.stringify(body);
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+      // REST idempotency is a mandatory cross-route server contract, not optional.
+      options.headers['Idempotency-Key'] = window.crypto?.randomUUID?.() ||
+        ('lsch-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    }
     const response = await fetch(base + path, options);
     let data = {};
     try { data = await response.json(); } catch (error) {
