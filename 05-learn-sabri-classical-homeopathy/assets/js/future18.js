@@ -327,7 +327,7 @@
               finally { openHistory.disabled = false; fetching = false; }
             };
             openHistory.addEventListener('click', () => {
-              if (!openHistory.hasAttribute || openHistory.getAttribute('aria-expanded') !== 'true') loadHistory();
+              if (!openHistory.hasAttribute || openHistory.getAttribute('aria-expanded') !== 'true') return loadHistory();
             });
           }
           // A learner must not be presented with a mentor-only submission form.
