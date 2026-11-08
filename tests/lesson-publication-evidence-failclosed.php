@@ -29,7 +29,7 @@ class LSCH_Events {
 $GLOBALS['terms']=array('foundations');
 $GLOBALS['meta']=array('_lsch_reviewer_id'=>'23','_lsch_reviewer'=>'',
     '_lsch_objectives'=>'Objectives', '_lsch_sources'=>'Verified refs',
-    '_lsch_accessibility'=>'Transcript', '_lsch_safety'=>'Limits');
+    '_lsch_accessibility'=>'Transcript', '_lsch_safety'=>'Limits', '_lsch_next_action'=>'Continue with approved learning');
 $GLOBALS['reviewer_write_fail']=false;
 $GLOBALS['tag_write_fail']=false;
 $GLOBALS['tag_present']=false;
