@@ -623,6 +623,39 @@ final class LSCH_Future18 {
 		return $blueprint;
 	}
 
+
+	/**
+	 * Public-to-the-learner projection of a governed practice blueprint.
+	 * Never transmit expected answers, solutions or grading feedback before submission.
+	 */
+	public static function learner_blueprint( $lesson_id, $mode, $user_id ) {
+		$lesson_id = absint( $lesson_id ); $user_id = absint( $user_id );
+		$mode = sanitize_key( $mode );
+		if ( ! self::approved_user( $user_id ) || LSCH_Content::LESSON !== get_post_type( $lesson_id ) || ! LSCH_Policy::can_read_post( $lesson_id, $user_id ) || ! in_array( $mode, self::practice_modes(), true ) ) {
+			return new WP_Error( 'lsch_future18_practice_forbidden', __( 'The practice blueprint is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
+		}
+		$blueprint = self::blueprint( 'lesson', $lesson_id, $mode, $user_id );
+		if ( is_wp_error( $blueprint ) ) { return $blueprint; }
+		$fields = array();
+		foreach ( (array) ( $blueprint['criteria'] ?? array() ) as $criterion ) {
+			if ( ! is_array( $criterion ) || empty( $criterion['key'] ) || ! is_scalar( $criterion['key'] ) ) { continue; }
+			$key = sanitize_key( $criterion['key'] );
+			if ( '' === $key ) { continue; }
+			$prompt = isset( $criterion['prompt'] ) && is_scalar( $criterion['prompt'] ) ? $criterion['prompt'] : ( isset( $criterion['label'] ) && is_scalar( $criterion['label'] ) ? $criterion['label'] : $key );
+			$fields[] = array( 'key' => $key, 'prompt' => sanitize_text_field( $prompt ) );
+			if ( count( $fields ) >= 15 ) { break; }
+		}
+		if ( ! $fields ) {
+			$fields[] = array( 'key' => 'reasoning', 'prompt' => __( 'Describe your stepwise educational reasoning.', 'learn-sabri-classical-homeopathy' ) );
+		}
+		$instructions = isset( $blueprint['instructions'] ) && is_scalar( $blueprint['instructions'] ) ? sanitize_textarea_field( $blueprint['instructions'] ) : '';
+		return array(
+			'mode' => $mode, 'lesson_id' => $lesson_id, 'version' => absint( $blueprint['version'] ?? 1 ),
+			'instructions' => $instructions, 'fields' => $fields,
+			'manual_assessment' => in_array( $mode, array( self::FEATURE_VIVA, self::FEATURE_OSCE ), true ),
+		);
+	}
+
 	private static function auto_score( array $blueprint, array $response ) {
 		$criteria = isset( $blueprint['criteria'] ) && is_array( $blueprint['criteria'] ) ? $blueprint['criteria'] : array();
 		$manual = array( 'manual' => true, 'score' => 0, 'feedback' => array() );
@@ -681,7 +714,10 @@ final class LSCH_Future18 {
 		if ( is_wp_error( $blueprint ) ) { return $blueprint; }
 		$response_json = self::encode_json( $response, 50000 );
 		if ( is_wp_error( $response_json ) ) { return $response_json; }
-		$scored = self::auto_score( $blueprint, $response );
+		// Oral viva and OSCE evidence must always be assessed by an independent human.
+		$scored = in_array( $mode, array( self::FEATURE_VIVA, self::FEATURE_OSCE ), true )
+			? array( 'manual' => true, 'score' => 0, 'feedback' => array() )
+			: self::auto_score( $blueprint, $response );
 		$feedback_json = self::encode_json( $scored['feedback'], 30000 );
 		if ( is_wp_error( $feedback_json ) ) { return $feedback_json; }
 		$status = $scored['manual'] ? 'awaiting_assessor' : 'graded';
