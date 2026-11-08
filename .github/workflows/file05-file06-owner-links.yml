@@ -1,0 +1,28 @@
+name: File05 File06 Reviewed Learning Links
+on:
+  push:
+    branches: [ 'fix/file05-file06-reviewed-lesson-links-20261108' ]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  owner-link:
+    strategy:
+      matrix:
+        php: ['7.4','8.3']
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint and exact source identity
+        run: |
+          set -euo pipefail
+          echo "SOURCE_HEAD=$(git rev-parse HEAD)"
+          find 05-learn-sabri-classical-homeopathy tests -name '*.php' -type f -print0 | sort -z | xargs -0 -n1 php -l >/dev/null
+      - name: Native approved-lesson source and rights tests
+        run: php tests/v12-file06-approved-links.php
+      - name: Existing File05 v12 source invariants
+        run: bash tests/source-invariants.sh
