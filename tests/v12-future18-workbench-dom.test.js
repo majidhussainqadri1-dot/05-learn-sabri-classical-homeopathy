@@ -82,6 +82,17 @@ async function fetch(url, options = {}) {
   if (path.startsWith('future18/learning-path')) return response({ goal: body?.goal || 'balanced_mastery', recommendations: [] });
   if (path === 'future18/cpd' && method === 'GET') return response([]);
   if (path === 'future18/mentorship') return response(mentorshipRecords);
+  if (path === 'future18/practice/pending?limit=10') return response([
+    { id: 42, public_id: 'simulated-learning-response-42', user_id: 9, mode: 'viva',
+      version: 3, blueprint_version: 2, response_json: '{"reasoning":"a simulated academic case"}',
+      status: 'awaiting_assessor' }
+  ]);
+  if (path === 'future18/practice/42/grade' && method === 'PUT') {
+    assert.strictEqual(body.version, 3, 'Human assessor must provide exact optimistic-lock revision');
+    assert.strictEqual(body.score, 75);
+    assert.strictEqual(body.feedback.text, 'Good reasoning with two learning gaps');
+    return response({ status: 'graded', version: 4 });
+  }
   if (path.includes('/history?limit=50')) {
     const older = path.includes('&before=51');
     const items = older
@@ -146,6 +157,27 @@ const click = async (node, event) => {
       assert.ok(endpoints.some(x => x.path.includes('&before=51')), 'Older history cursor was not applied');
     }
   }
+
+  // Assessor-only queue is not mounted for a learner; exercise the qualified
+  // role UI separately and prove that each grading request is revisioned.
+  window.LSCH_F18_APP.can_assess = true;
+  tool.value = 'F05-FUT-09';
+  await click(tool, 'change');
+  assert.ok(textContains(panel, 'Assigned assessor work queue'), 'Qualified viva assessor work area must be visible.');
+  const queueButton = panel.descendants().find(x => x.tagName === 'BUTTON' && x.textContent === 'Load my pending assigned assessments');
+  assert.ok(queueButton, 'Assessor requires an explicit private queue loading action');
+  await click(queueButton, 'click');
+  assert.ok(textContains(panel, 'Read the complete submitted educational response'), 'Private learning evidence must be accessible to the assigned assessor.');
+  const score = findInput(panel, 'score');
+  const feedback = findInput(panel, 'feedback');
+  assert.ok(score && feedback, 'Independent assessor score and evidence forms must exist.');
+  score.value = '75';
+  feedback.value = 'Good reasoning with two learning gaps';
+  const assessorForm = score.parent.parent;
+  await click(assessorForm, 'submit');
+  assert.ok(endpoints.some(x => x.method === 'PUT' && x.path === 'future18/practice/42/grade'),
+    'Human viva grading must use the authenticated REST endpoint, not local auto-scoring.');
+  window.LSCH_F18_APP.can_assess = false;
   assert.strictEqual(Object.keys(labSlug).length, 8, 'Expected eight governed educational labs');
   assert.strictEqual(endpoints.filter(x => x.method === 'POST' && x.path.startsWith('future18/lab/')).length, 8,
     'All eight lab submission buttons must reach their actual routes');
