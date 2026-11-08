@@ -24,7 +24,7 @@ function get_post_meta($id,$key,$single=true){return $GLOBALS['meta'][$key]??nul
 function get_posts($args){return array(9);}
 function get_permalink($id){return 'https://example.org/learn/lesson/9';}
 function get_the_title($id){return 'Reviewed educational lesson';}
-function wp_http_validate_url($v){return str_starts_with($v,'https://');}
+function wp_http_validate_url($v){return 0===strpos($v,'https://');}
 function user_can($uid,$cap){return $GLOBALS['reviewer_active']??true;}
 function get_current_user_id(){return 3;}
 function wp_verify_nonce($n,$v){return true;}
