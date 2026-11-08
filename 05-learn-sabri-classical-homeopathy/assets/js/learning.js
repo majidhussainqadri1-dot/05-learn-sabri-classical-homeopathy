@@ -17,14 +17,20 @@
     return false;
   };
   const api = async (path, options = {}) => {
+    const method = String(options.method || 'GET').toUpperCase();
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-WP-Nonce': app.nonce || '',
+      ...(options.headers || {}),
+    };
+    // File05's durable REST ledger requires an idempotency key on every mutation.
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && !headers['Idempotency-Key']) {
+      headers['Idempotency-Key'] = idempotency();
+    }
     const response = await fetch(`${app.root || ''}${path}`, {
       credentials: 'same-origin',
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-WP-Nonce': app.nonce || '',
-        ...(options.headers || {}),
-      },
+      headers,
     });
     let data = {};
     try { data = await response.json(); } catch (error) { data = {}; }
