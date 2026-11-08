@@ -21,6 +21,10 @@ let reminder = { version: 8, enabled: 1, cadence: 'weekly' };
 const calls = [];
 async function fetch(url, options = {}) {
   const method = options.method || 'GET';
+  if (!['GET','HEAD','OPTIONS'].includes(method.toUpperCase())) {
+    assert.ok(options.headers && /^[A-Za-z0-9._:-]{12,128}$/.test(options.headers['Idempotency-Key'] || ''),
+      'Every protected mutation must carry a well-formed idempotency key.');
+  }
   calls.push({ url, method, body: options.body ? JSON.parse(options.body) : null });
   let data;
   if (url.includes('/lesson/7/progress')) {
