@@ -29,6 +29,7 @@ $lsch_files = array(
 	'class-lsch-database.php',
 	'class-lsch-policy.php',
 	'class-lsch-events.php',
+	'class-lsch-quick-checks.php',
 	'class-lsch-services.php',
 	'class-lsch-rest.php',
 	'class-lsch-state.php',
