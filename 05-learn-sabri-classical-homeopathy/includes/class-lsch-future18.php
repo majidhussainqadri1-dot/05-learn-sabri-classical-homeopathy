@@ -978,7 +978,7 @@ final class LSCH_Future18 {
 		}
 		global $wpdb;
 		$t = self::tables();
-		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$t['mentorship']} WHERE learner_id=%d OR mentor_id=%d ORDER BY updated_at DESC LIMIT 200", $user_id, $user_id ), ARRAY_A );
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id,mentor_id,learner_id,course_id,status,goals_json,version,created_at,updated_at FROM {$t['mentorship']} WHERE learner_id=%d OR mentor_id=%d ORDER BY updated_at DESC LIMIT 200", $user_id, $user_id ), ARRAY_A );
 		return is_array( $rows ) ? $rows : new WP_Error( 'lsch_future18_mentorship_read_failed', __( 'Private mentoring records could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 	}
 
@@ -1304,6 +1304,7 @@ final class LSCH_Future18 {
 		wp_localize_script( 'lsch-future18-workbench', 'LSCH_F18_APP', array(
 			'root' => esc_url_raw( rest_url( LSCH_REST::NS . '/' ) ),
 			'nonce' => wp_create_nonce( 'wp_rest' ),
+			'viewer_id' => get_current_user_id(),
 			'errors' => array(
 				'unavailable' => __( 'This lesson or activity has not yet been approved for this mode.', 'learn-sabri-classical-homeopathy' ),
 				'pending' => __( 'An assessor must review this educational response.', 'learn-sabri-classical-homeopathy' ),
