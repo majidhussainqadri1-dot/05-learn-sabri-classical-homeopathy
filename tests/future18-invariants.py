@@ -81,9 +81,9 @@ for token in required:
     if token not in joined:
         errors.append(f'Missing Future-18 invariant token: {token}')
 
-if "LSCH_VERSION', '4.0.0'" not in m:
-    errors.append('Runtime version is not 4.0.0')
-if "LSCH_PLAN_VERSION', 'SSH-F05-PLAN-2026-v1.1-future18-current-central-2026-08-10'" not in m:
+if "LSCH_VERSION', '4.1.0'" not in m:
+    errors.append('Runtime version is not 4.1.0')
+if "LSCH_PLAN_VERSION', 'SSH-F05-MASTER-PLAN-v12-2026-10-22'" not in m:
     errors.append('Future-18 plan contract is not materialized in runtime identity')
 
 for bad in [
@@ -227,7 +227,7 @@ current_docs = [
 ]
 for doc in current_docs:
     value = doc.read_text(encoding='utf-8')
-    for stale in ['Future-18 learning-intelligence schema: `1`', 'Future-18 sub-schema 1 — runtime 4.0.0', 'lsch_future18_schema=1']:
+    for stale in ['Future-18 learning-intelligence schema: `1`', 'Future-18 sub-schema 1 — runtime 4.1.0', 'lsch_future18_schema=1']:
         if stale in value:
             errors.append(f'Stale Future18 schema-1 release identity remains in {doc.name}: {stale}')
 
