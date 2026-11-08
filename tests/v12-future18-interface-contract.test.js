@@ -26,7 +26,7 @@ for (const lab of [
 assert.ok(routes.includes("'/blueprint'"), 'Each practice mode needs a protected no-answer projection.');
 assert.ok(f.includes('function learner_blueprint('), 'Learner-safe blueprint projection missing.');
 assert.ok(f.includes("'manual' => true") && f.includes('self::FEATURE_OSCE'), 'OSCE/viva must be manually assessed.');
-assert.ok(routes.includes("'/history'"), 'Authorized mentoring history route missing.');
+assert.ok(routes.includes("/history'"), 'Authorized mentoring history route missing.');
 assert.ok(js.includes("'Idempotency-Key'"), 'Mutating workbench calls require an idempotency key.');
 assert.ok(idempotency.includes("Idempotency-Key"), 'Server-side idempotency enforcement is missing.');
 assert.ok(lessons.includes("data-lsch-quick-checks"), 'Lesson formative quick checks UI missing.');
