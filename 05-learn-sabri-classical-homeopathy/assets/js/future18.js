@@ -199,6 +199,50 @@
     async function lab(slug, sequence) {
       heading(panel, 'Governed practice — ' + slug.replace(/-/g, ' '));
       paragraph(panel, noClinicalRecords);
+      if (app.can_assess && (slug === 'viva' || slug === 'osce')) {
+        const assessment = append(panel, element('section', '', 'lsch-f18-assessor'));
+        heading(assessment, 'Assigned assessor work queue');
+        paragraph(assessment, 'Only pending, assigned, simulated learning evidence is assessable. Never self-grade or award a medical licence.');
+        const queueList = append(assessment, element('div', '', 'lsch-f18-assessor-items'));
+        const queueButton = button(assessment, 'Load my pending assigned assessments');
+        const loadQueue = async () => {
+          queueButton.disabled = true;
+          try {
+            const all = await api('future18/practice/pending?limit=10');
+            if (!Array.isArray(all)) throw new Error('The assessor queue is unavailable.');
+            clear(queueList);
+            const rows = all.filter((row) => row.mode === slug);
+            if (!rows.length) paragraph(queueList, 'No assigned ' + slug + ' responses are awaiting grading.');
+            rows.forEach((row) => {
+              if (!validId(row.id) || !validId(row.version)) return;
+              const item = append(queueList, element('section', '', 'lsch-f18-assessor-item'));
+              heading(item, slug.toUpperCase() + ' — approved learning response #' + validId(row.id));
+              paragraph(item, 'Blueprint version: ' + Number(row.blueprint_version || 0) +
+                '. Student code: ' + String(row.public_id || '').slice(0, 60));
+              const evidence = append(item, element('details'));
+              append(evidence, element('summary', 'Read the complete submitted educational response'));
+              const pre = append(evidence, element('pre', String(row.response_json || ''), 'lsch-f18-evidence'));
+              pre.setAttribute('dir', 'auto');
+              const form = append(item, element('form', '', 'lsch-f18-forms'));
+              const score = input(form, 'Assessment score (0–100)', 'score', 'number', true, 3);
+              score.min = '0'; score.max = '100'; score.step = '1';
+              const feedback = input(form, 'Specific teaching feedback', 'feedback', 'textarea', true, 8000);
+              button(form, 'Submit independent assessment', 'submit');
+              bindForm(form, async () => {
+                const numeric = Number(score.value);
+                if (!Number.isInteger(numeric) || numeric < 0 || numeric > 100) throw new Error('Assessment score must be an integer between 0 and 100.');
+                if (feedback.value.trim().length < 3) throw new Error('Specific teaching feedback is required.');
+                await api('future18/practice/' + validId(row.id) + '/grade', 'PUT', {
+                  score: numeric, feedback: { text: feedback.value }, version: Number(row.version)
+                });
+                await loadQueue();
+              }, status);
+            });
+          } catch (error) { status.textContent = error.message; }
+          finally { queueButton.disabled = false; }
+        };
+        queueButton.addEventListener('click', loadQueue);
+      }
       const loader = append(panel, element('form', '', 'lsch-f18-forms'));
       const lesson = input(loader, 'Approved lesson ID', 'lesson_id', 'number', true, 12);
       button(loader, 'Open approved educational blueprint', 'submit');
