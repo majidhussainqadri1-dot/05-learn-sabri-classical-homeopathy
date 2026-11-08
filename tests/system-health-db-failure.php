@@ -11,6 +11,7 @@ class LSCH_State {const SCHEMA=3;const OPTION='lsch_state_schema_version';
 class LSCH_Future18 {const SCHEMA=2;const OPTION='lsch_future18_schema_version';
 	public static function tables(){return array('mastery'=>'wp_lsch_mastery');}
 }
+class LSCH_Mentor_History {const SCHEMA=1;const OPTION='lsch_mentor_history_schema';public static function table(){return 'wp_lsch_f18_mentor_feedback';}}
 class LSCH_Dependencies {public static function missing(){return array();}}
 class LSCH_Policy {
 	const NOTE_KEY_VERSION=2;
@@ -32,7 +33,7 @@ class HealthDB {
 }
 $GLOBALS['wpdb']=new HealthDB();
 function get_option($key,$default=false){
-	$map=array('lsch_schema_version'=>18,'lsch_state_schema_version'=>3,'lsch_future18_schema_version'=>2,'lsch_page_map'=>array('home'=>10,'dashboard'=>11,'mastery'=>12),'lsch_safe_mode'=>false);
+	$map=array('lsch_schema_version'=>18,'lsch_state_schema_version'=>3,'lsch_future18_schema_version'=>2,'lsch_mentor_history_schema'=>1,'lsch_page_map'=>array('home'=>10,'dashboard'=>11,'mastery'=>12),'lsch_safe_mode'=>false);
 	return isset($map[$key])?$map[$key]:$default;
 }
 function apply_filters($name,$default,...$args){return $default;}
