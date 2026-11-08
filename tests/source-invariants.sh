@@ -55,6 +55,7 @@ php tests/sixteenth-grade-evidence-integrity.php
 php tests/seventeenth-job-worker-recovery.php
 php tests/eighteenth-mentor-feedback-history.php
 php tests/v12-mentor-erasure-tombstone.php
+php tests/v12-assessor-queue.php
 php tests/eighteenth-mentorship-reassignment.php
 php tests/eighteenth-outbox-delivery-failures.php
 php tests/eighteenth-cpd-portfolio-integrity.php
