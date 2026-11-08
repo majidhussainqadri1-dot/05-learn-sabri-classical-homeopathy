@@ -290,6 +290,20 @@
         const data = await api('future18/mentorship');
         heading(panel, 'Active and historical mentorship');
         listRecords(panel, data, 'status', (parent, record) => {
+          if (validId(record.id)) {
+            const openHistory = button(parent, 'View normalized feedback history');
+            openHistory.setAttribute('aria-expanded', 'false');
+            const history = append(parent, element('div', '', 'lsch-f18-history'));
+            openHistory.addEventListener('click', async () => {
+              openHistory.disabled = true;
+              try {
+                const records = await api('future18/mentorship/' + validId(record.id) + '/history?limit=50');
+                clear(history);
+                listRecords(history, records, 'recorded_at');
+                openHistory.setAttribute('aria-expanded', 'true');
+              } catch (error) { status.textContent = error.message; } finally { openHistory.disabled = false; }
+            });
+          }
           if (record.status !== 'active' || !validId(record.id) || !validId(record.version)) return;
           const form = append(parent, element('form', '', 'lsch-f18-inline-form'));
           const feedback = input(form, 'Mentor feedback (authorized mentors only)', 'feedback', 'textarea', true, 4000);
