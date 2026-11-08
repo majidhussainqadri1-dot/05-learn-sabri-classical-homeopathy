@@ -1340,6 +1340,7 @@ final class LSCH_Future18 {
 			'root' => esc_url_raw( rest_url( LSCH_REST::NS . '/' ) ),
 			'nonce' => wp_create_nonce( 'wp_rest' ),
 			'viewer_id' => get_current_user_id(),
+			'can_assess' => current_user_can( LSCH_Capabilities::ASSESS ) || current_user_can( LSCH_Capabilities::MANAGE_CURRICULUM ),
 			'errors' => array(
 				'unavailable' => __( 'This lesson or activity has not yet been approved for this mode.', 'learn-sabri-classical-homeopathy' ),
 				'pending' => __( 'An assessor must review this educational response.', 'learn-sabri-classical-homeopathy' ),
