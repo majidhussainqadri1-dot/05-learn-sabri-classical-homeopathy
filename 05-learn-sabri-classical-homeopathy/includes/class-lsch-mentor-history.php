@@ -201,14 +201,20 @@ final class LSCH_Mentor_History {
 			return new WP_Error( 'lsch_mentor_history_unavailable', __( 'Mentor feedback history is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
 		global $wpdb; $t = self::table(); $m = LSCH_Future18::tables()['mentorship'];
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT id,mentor_id,learner_id,created_at,feedback_json FROM {$m} WHERE id=%d AND (mentor_id=%d OR learner_id=%d) LIMIT 1", $mentorship_id, $viewer_id, $viewer_id ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT id,mentor_id,learner_id,status,created_at,feedback_json FROM {$m} WHERE id=%d AND (mentor_id=%d OR learner_id=%d) LIMIT 1", $mentorship_id, $viewer_id, $viewer_id ), ARRAY_A );
 		if ( ! $row && ! empty( $wpdb->last_error ) ) {
 			return new WP_Error( 'lsch_mentor_history_authorization_unverified', __( 'Mentorship participants could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
 		if ( ! $row ) {
 			return new WP_Error( 'lsch_mentor_history_forbidden', __( 'This mentoring record is not available to this account.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
-		$legacy = self::legacy_entries( (string) ( $row['feedback_json'] ?? '' ) );
+		// File24's governed erasure ends and de-identifies counterpart mentorships.
+		// In that exact state the old JSON is a redacted '{}' tombstone, not a
+		// malformed active history to be reconstructed or disclosed.
+		$redacted_parent = 'ended' === (string) ( $row['status'] ?? '' )
+			&& ( 0 === absint( $row['mentor_id'] ?? 0 ) || 0 === absint( $row['learner_id'] ?? 0 ) )
+			&& '{}' === trim( (string) ( $row['feedback_json'] ?? '' ) );
+		$legacy = $redacted_parent ? array() : self::legacy_entries( (string) ( $row['feedback_json'] ?? '' ) );
 		if ( is_wp_error( $legacy ) ) { return $legacy; }
 		$count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t} WHERE mentorship_id=%d", $mentorship_id ) );
 		if ( false === $count || null === $count || ! is_numeric( $count ) ) {
