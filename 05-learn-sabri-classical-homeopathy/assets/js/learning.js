@@ -163,4 +163,72 @@
       body.disabled = true; button.disabled = true;
     } catch (error) { show(form, error.message, false); button.disabled = false; }
   }));
+
+  // Five formative checks belong to the lesson, not the graded assessment ledger.
+  // Only the question and choice projection is fetched: answer keys stay server-side.
+  all('[data-lsch-quick-checks]').forEach(async (section) => {
+    const id = Number(section.dataset.lschQuickChecks || 0);
+    const host = one('[data-lsch-quick-checks-body]', section);
+    const status = one('[data-lsch-quick-checks-status]', section);
+    if (!id || !host || !status) return;
+    try {
+      const data = await api('lesson/' + id + '/quick-checks');
+      const questions = Array.isArray(data.questions) ? data.questions.slice(0, 5) : [];
+      if (!questions.length) { status.textContent = 'No approved quick checks are attached to this lesson.'; return; }
+      const form = document.createElement('form');
+      form.className = 'lsch-quick-checks-form';
+      questions.forEach((question) => {
+        const fieldset = document.createElement('fieldset');
+        const legend = document.createElement('legend');
+        legend.textContent = String(Number(question.index) + 1) + '. ' + String(question.question || '');
+        fieldset.appendChild(legend);
+        (Array.isArray(question.options) ? question.options : []).forEach((option) => {
+          const label = document.createElement('label');
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = 'lsch_quick_' + id + '_' + String(question.index);
+          radio.value = String(option.key);
+          radio.required = true;
+          label.appendChild(radio);
+          label.appendChild(document.createTextNode(' ' + String(option.label || '')));
+          fieldset.appendChild(label);
+        });
+        form.appendChild(fieldset);
+      });
+      const submit = document.createElement('button');
+      submit.type = 'submit';
+      submit.className = 'lsch-button';
+      submit.textContent = 'Check my understanding';
+      form.appendChild(submit);
+      host.appendChild(form);
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!requireLogin()) return;
+        submit.disabled = true;
+        status.textContent = 'Checking…';
+        try {
+          const answers = {};
+          questions.forEach((question) => {
+            const name = 'lsch_quick_' + id + '_' + String(question.index);
+            const selected = Array.from(form.querySelectorAll('input[type="radio"]')).find((radio) => radio.name === name && radio.checked);
+            if (selected) answers[String(question.index)] = selected.value;
+          });
+          const result = await api('lesson/' + id + '/quick-checks', {
+            method: 'POST',
+            body: JSON.stringify({ answers })
+          });
+          status.textContent = Number(result.correct || 0) + ' of ' + Number(result.total || 0) + ' correct. Formative feedback only.';
+          const feedback = document.createElement('ol');
+          (Array.isArray(result.review) ? result.review : []).forEach((item) => {
+            const line = document.createElement('li');
+            line.textContent = (item.correct ? 'Correct' : 'Review this concept') + (item.explanation ? ': ' + String(item.explanation) : '');
+            feedback.appendChild(line);
+          });
+          host.appendChild(feedback);
+          form.querySelectorAll('input,button').forEach((control) => { control.disabled = true; });
+        } catch (error) { status.textContent = error.message; submit.disabled = false; }
+      });
+    } catch (error) { status.textContent = error.message; }
+  });
+
 })();
