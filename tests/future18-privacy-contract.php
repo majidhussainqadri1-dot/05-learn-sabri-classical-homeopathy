@@ -5,6 +5,8 @@
  */
 define( 'ABSPATH', '/unit-wordpress/' );
 $GLOBALS['file05_hold'] = false;
+$GLOBALS['file05_hold_provider'] = true;
+function has_filter( $name ) { return 'lsch_user_legal_hold' === $name && $GLOBALS['file05_hold_provider']; }
 function absint( $v ) { return abs( (int) $v ); }
 function __( $v, $domain = '' ) { return $v; }
 function get_user_by( $field, $value ) {
@@ -71,6 +73,12 @@ foreach ( array(
 check_file05( false === strpos( $by_name['Assessor actions (no learner responses)'], 'response_json' ), 'assessor export omits learner response' );
 check_file05( false === strpos( $by_name['CPD verification actions (no learner evidence)'], 'evidence_json' ), 'verifier export omits learner evidence' );
 
+$GLOBALS['file05_hold_provider'] = false;
+$wpdb->queries = array();
+$wpdb->deletedTables = array();
+$blocked = LSCH_Future18::privacy_erase( 'learner@example.test', 1 );
+check_file05( $blocked['done'] === false && $blocked['items_retained'] === true && count( $wpdb->deletedTables ) === 0 && count( $wpdb->queries ) === 0, 'Missing File24 hold provider must block all destructive Future18 erasure.' );
+$GLOBALS['file05_hold_provider'] = true;
 $result = LSCH_Future18::privacy_erase( 'learner@example.test', 1 );
 check_file05( $result['items_removed'] && $result['items_retained'], 'actor identifiers removed with academic rows retained' );
 check_file05( count( $wpdb->queries ) > 0, 'SQL redaction executed' );
