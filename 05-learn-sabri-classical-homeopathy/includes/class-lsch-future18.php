@@ -1454,7 +1454,18 @@ final class LSCH_Future18 {
 				'done' => false,
 			);
 		}
-		global $wpdb; $t=self::tables(); $hold=(bool)apply_filters('lsch_user_legal_hold',false,$user_id); $removed=false; $retained=false; $messages=array(); $failures=array();
+		// A present provider returning null, text, error or other invalid output
+		// is also UNKNOWN: never cast malformed data to the destructive no-hold state.
+		$hold_decision = apply_filters( 'lsch_user_legal_hold', null, $user_id );
+		if ( ! is_bool( $hold_decision ) ) {
+			LSCH_Events::audit( 'future18_privacy_hold_decision_unverified', 'user', $user_id, array( 'typed' => false ), 'privacy' );
+			return array(
+				'items_removed' => false, 'items_retained' => true,
+				'messages' => array( __( 'File 24 legal-hold decision was not an authenticated boolean response; no learning evidence was erased.', 'learn-sabri-classical-homeopathy' ) ),
+				'done' => false,
+			);
+		}
+		global $wpdb; $t=self::tables(); $hold=$hold_decision; $removed=false; $retained=false; $messages=array(); $failures=array();
 		// File24 legal hold covers every File05 Future18 learning-evidence class.
 		// Do not erase mastery, review, pathways or portfolio before checking it.
 		if ( $hold ) {
