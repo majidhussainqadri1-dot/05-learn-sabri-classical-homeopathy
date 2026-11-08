@@ -26,10 +26,16 @@ final class LSCH_REST {
 		register_rest_route( self::NS, '/dashboard', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'dashboard' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( self::NS, '/course/(?P<id>\d+)/enroll', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( $this, 'enroll' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( self::NS, '/course/(?P<id>\d+)/state', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'enrollment_state' ), 'permission_callback' => array( $this, 'approved' ) ) );
-		register_rest_route( self::NS, '/course/(?P<id>\d+)/reminder', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'reminder' ), 'permission_callback' => array( $this, 'approved' ) ) );
+		register_rest_route( self::NS, '/course/(?P<id>\d+)/reminder', array(
+			array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'reminder_get' ), 'permission_callback' => array( $this, 'approved' ) ),
+			array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'reminder' ), 'permission_callback' => array( $this, 'approved' ) ),
+		) );
 		register_rest_route( self::NS, '/course/(?P<id>\d+)/analytics', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'analytics' ), 'permission_callback' => array( $this, 'teacher' ) ) );
 		register_rest_route( self::NS, '/course/(?P<id>\d+)/certificate-readiness', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'certificate_readiness' ), 'permission_callback' => array( $this, 'approved' ) ) );
-		register_rest_route( self::NS, '/lesson/(?P<id>\d+)/progress', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'progress' ), 'permission_callback' => array( $this, 'approved' ) ) );
+		register_rest_route( self::NS, '/lesson/(?P<id>\d+)/progress', array(
+			array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'progress_get' ), 'permission_callback' => array( $this, 'approved' ) ),
+			array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'progress' ), 'permission_callback' => array( $this, 'approved' ) ),
+		) );
 		register_rest_route( self::NS, '/lesson/(?P<id>\d+)/progress/reset', array( 'methods' => WP_REST_Server::DELETABLE, 'callback' => array( $this, 'progress_reset' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( self::NS, '/object/(?P<type>[a-z_]+)/(?P<id>\d+)/bookmark', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'bookmark' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( self::NS, '/lesson/(?P<id>\d+)/note', array(
@@ -111,6 +117,50 @@ final class LSCH_REST {
 	}
 
 	public function dashboard() { $data = LSCH_Services::dashboard( get_current_user_id() ); if ( is_wp_error( $data ) ) { return $data; } $response = rest_ensure_response( $data ); $response->header( 'Cache-Control', 'private, no-store' ); return $response; }
+
+	/**
+	 * Read only the current viewer's revision token before a compare-and-swap write.
+	 * Never expose another learner's progress or treat a failed database query as an empty record.
+	 */
+	public function progress_get( WP_REST_Request $r ) {
+		$id = absint( $r['id'] ); $user_id = get_current_user_id();
+		if ( ! LSCH_Policy::can_use_learning_actions( $user_id ) || LSCH_Content::LESSON !== get_post_type( $id ) || ! LSCH_Policy::can_read_post( $id, $user_id ) ) {
+			return new WP_Error( 'lsch_progress_forbidden', __( 'Progress is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
+		}
+		global $wpdb;
+		$row = LSCH_Services::progress_row( $id, $user_id );
+		if ( ! is_array( $row ) && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_progress_read_failed', __( 'Saved progress could not be read. Do not overwrite it.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
+		$response = rest_ensure_response( array(
+			'lesson_id' => $id, 'state' => $row ? (string) $row['state'] : 'not_started',
+			'percent' => $row ? absint( $row['percent'] ) : 0,
+			'version' => $row ? absint( $row['version'] ) : 0,
+		) );
+		$response->header( 'Cache-Control', 'private, no-store' );
+		return $response;
+	}
+
+	/** Read only a learner's own reminder preference; missing is disabled, not enabled. */
+	public function reminder_get( WP_REST_Request $r ) {
+		$id = absint( $r['id'] ); $user_id = get_current_user_id();
+		if ( ! LSCH_Policy::can_use_learning_actions( $user_id ) || LSCH_Content::COURSE !== get_post_type( $id ) || ! LSCH_Policy::can_read_post( $id, $user_id ) ) {
+			return new WP_Error( 'lsch_reminder_forbidden', __( 'Reminder preference is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
+		}
+		global $wpdb; $t = LSCH_Database::tables();
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT enabled,cadence,quiet_hours_json,version FROM {$t['reminders']} WHERE user_id=%d AND course_id=%d LIMIT 1", $user_id, $id ), ARRAY_A );
+		if ( ! is_array( $row ) && ! empty( $wpdb->last_error ) ) {
+			return new WP_Error( 'lsch_reminder_read_failed', __( 'Reminder preference could not be verified. Do not change it.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
+		$response = rest_ensure_response( array(
+			'course_id' => $id, 'enabled' => $row ? 1 === (int) $row['enabled'] : false,
+			'cadence' => $row ? sanitize_key( $row['cadence'] ) : 'weekly',
+			'version' => $row ? absint( $row['version'] ) : 0,
+		) );
+		$response->header( 'Cache-Control', 'private, no-store' );
+		return $response;
+	}
+
 	public function enroll( WP_REST_Request $r ) { return LSCH_Services::enroll( absint( $r['id'] ), get_current_user_id(), $r->get_header( 'Idempotency-Key' ) ); }
 	public function enrollment_state( WP_REST_Request $r ) { return LSCH_Services::change_enrollment_state( absint( $r['id'] ), get_current_user_id(), $r->get_param( 'state' ), absint( $r->get_param( 'version' ) ) ); }
 	public function reminder( WP_REST_Request $r ) { return LSCH_Services::set_reminder( absint( $r['id'] ), get_current_user_id(), (bool) $r->get_param( 'enabled' ), $r->get_param( 'cadence' ), (array) $r->get_param( 'quiet_hours' ) ); }
