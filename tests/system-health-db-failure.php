@@ -38,6 +38,9 @@ function get_option($key,$default=false){
 }
 function apply_filters($name,$default,...$args){return $default;}
 function wp_next_scheduled($name){return true;}
+$GLOBALS['file16_hook'] = true;
+$GLOBALS['file24_hook'] = true;
+function has_filter($hook){return 'lsch_file16_socratic_tutor' === $hook ? $GLOBALS['file16_hook'] : ('lsch_user_legal_hold' === $hook ? $GLOBALS['file24_hook'] : false);}
 function wp_json_encode($v,$flags=0){return json_encode($v,$flags);}
 function check_h($yes,$message){if(!$yes){fwrite(STDERR,"FAIL: $message\n");exit(1);}}
 require __DIR__.'/../05-learn-sabri-classical-homeopathy/includes/class-lsch-operations.php';
@@ -52,4 +55,13 @@ check_h($o['status']==='fail' && $o['checks']['Dead jobs']['status']==='fail','m
 $GLOBALS['wpdb']->failJobs=false;$GLOBALS['wpdb']->failNotes=true;
 $o=LSCH_Operations::system_check();
 check_h($o['status']==='fail' && $o['checks']['Private note key rotation']['status']==='fail','unverifiable key rotation is failed health');
+$GLOBALS['wpdb']->failNotes=false;
+$GLOBALS['file16_hook']=false;
+$o=LSCH_Operations::system_check();
+check_h($o['checks']['File16 learning tutor provider']['status']==='warn' && $o['status']==='warn', 'Unconnected File16 provider is visible as a non-clinical feature warning');
+$GLOBALS['file16_hook']=true;
+$GLOBALS['file24_hook']=false;
+$o=LSCH_Operations::system_check();
+check_h($o['checks']['File24 legal hold owner adapter']['status']==='fail' && $o['status']==='fail', 'Missing File24 legal hold gate blocks release health');
+$GLOBALS['file24_hook']=true;
 echo "PASS: File05 health check never masks queue/rotation DB read errors as zero.\n";
