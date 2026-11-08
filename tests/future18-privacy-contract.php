@@ -49,6 +49,7 @@ final class File05TestDB {
 }
 $wpdb = new File05TestDB();
 define( 'ARRAY_A', 'ARRAY_A' );
+require __DIR__ . '/../05-learn-sabri-classical-homeopathy/includes/class-lsch-mentor-history.php';
 require __DIR__ . '/../05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php';
 class WP_Error { public $code; public function __construct( $code, $message = '' ) { $this->code = $code; } }
 function check_file05( $truth, $label ) {
