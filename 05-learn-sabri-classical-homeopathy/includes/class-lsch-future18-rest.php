@@ -40,6 +40,7 @@ final class LSCH_Future18_REST {
 				'permission_callback' => array( $this, 'approved' ),
 			) );
 		}
+		register_rest_route( $ns, '/future18/practice/pending', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'assessor_queue' ), 'permission_callback' => array( $this, 'assessor' ) ) );
 		register_rest_route( $ns, '/future18/practice/(?P<id>\d+)/grade', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'practice_grade' ), 'permission_callback' => array( $this, 'assessor' ) ) );
 		register_rest_route( $ns, '/future18/learning-path', array(
 			array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'learning_path' ), 'permission_callback' => array( $this, 'approved' ) ),
@@ -132,6 +133,14 @@ final class LSCH_Future18_REST {
 	public function practice( WP_REST_Request $request, $mode ) {
 		$params = (array) $request->get_json_params();
 		return LSCH_Future18::submit_practice( get_current_user_id(), $mode, isset( $params['source_type'] ) ? $params['source_type'] : 'lesson', isset( $params['source_id'] ) ? $params['source_id'] : 0, isset( $params['response'] ) && is_array( $params['response'] ) ? $params['response'] : array() );
+	}
+
+	public function assessor_queue( WP_REST_Request $request ) {
+		$data = LSCH_Future18::pending_assessor_practices( get_current_user_id(), $request->get_param( 'limit' ) ?: 30 );
+		if ( is_wp_error( $data ) ) { return $data; }
+		$response = rest_ensure_response( $data );
+		$response->header( 'Cache-Control', 'private, no-store' );
+		return $response;
 	}
 
 	public function practice_grade( WP_REST_Request $request ) {
