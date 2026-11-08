@@ -145,7 +145,7 @@ final class LSCH_Content {
 				'_lsch_language', '_lsch_access', '_lsch_duration', '_lsch_status', '_lsch_version',
 				'_lsch_reviewer', '_lsch_copyright', '_lsch_sources', '_lsch_objectives', '_lsch_key_terms',
 				'_lsch_examples', '_lsch_safety', '_lsch_prerequisites', '_lsch_equivalence', '_lsch_rubric',
-				'_lsch_blueprint', '_lsch_questions', '_lsch_correction_note', '_lsch_required_components',
+				'_lsch_blueprint', '_lsch_questions', '_lsch_quick_checks', '_lsch_next_action', '_lsch_correction_note', '_lsch_required_components',
 				'_lsch_accessibility', '_lsch_format', '_lsch_certificate_wording_gate', '_lsch_randomize',
 				'_lsch_consent_withdrawal_reason', '_lsch_chapter_map', '_lsch_source_edition',
 				'_lsch_citation_style', '_lsch_low_bandwidth', '_lsch_lifelong_learning', '_lsch_certificate_jurisdiction', '_lsch_certificate_wording',
