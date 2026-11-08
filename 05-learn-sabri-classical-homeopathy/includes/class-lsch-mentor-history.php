@@ -120,7 +120,7 @@ final class LSCH_Mentor_History {
 			return new WP_Error( 'lsch_mentor_history_migration_partial', __( 'Historical mentorship feedback requires operator reconciliation.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
 		$next = $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(sequence_no),0) FROM {$t} WHERE mentorship_id=%d", $mentorship_id ) );
-		if ( false === $next || null === $next || ! is_numeric( $next ) || $next < $count ) {
+		if ( false === $next || null === $next || ! is_numeric( $next ) || (int) $next !== $count ) {
 			return new WP_Error( 'lsch_mentor_history_sequence_unverified', __( 'Mentoring feedback sequence could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
 		$feedback['at'] = gmdate( 'c' );
