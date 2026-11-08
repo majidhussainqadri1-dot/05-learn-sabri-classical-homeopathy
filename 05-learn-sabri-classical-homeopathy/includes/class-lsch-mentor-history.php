@@ -73,6 +73,59 @@ final class LSCH_Mentor_History {
 		return $existing;
 	}
 
+
+	/**
+	 * Verify the entire legacy prefix against normalized, immutable rows.
+	 * A matching COUNT(*) or MAX(sequence_no) alone cannot detect substitutions,
+	 * deleted middle entries or reordered historic feedback.
+	 */
+	private static function verify_legacy_prefix( $mentorship_id, array $legacy ) {
+		$expected = count( $legacy );
+		if ( 0 === $expected ) { return true; }
+		global $wpdb;
+		$t = self::table();
+		$rows = $wpdb->get_results( $wpdb->prepare(
+			"SELECT sequence_no,feedback_json,origin,redacted_at FROM {$t} WHERE mentorship_id=%d AND sequence_no<=%d ORDER BY sequence_no ASC LIMIT %d",
+			absint( $mentorship_id ), $expected, $expected
+		), ARRAY_A );
+		if ( ! is_array( $rows ) || count( $rows ) !== $expected ) {
+			return new WP_Error( 'lsch_mentor_history_prefix_unverified', __( 'The entire historic mentoring feedback prefix could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
+		foreach ( $rows as $index => $row ) {
+			$decoded = isset( $row['feedback_json'] ) ? json_decode( (string) $row['feedback_json'], true ) : null;
+			if ( ! isset( $row['sequence_no'], $row['origin'] ) || (int) $row['sequence_no'] !== $index + 1
+				|| 'legacy' !== $row['origin'] || ! empty( $row['redacted_at'] ) || ! is_array( $decoded ) || $legacy[ $index ] !== $decoded ) {
+				return new WP_Error( 'lsch_mentor_history_prefix_mismatch', __( 'Historic mentor feedback differs from its preserved original. Operator reconciliation is required.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Before the first write, historical JSON must remain readable to the
+	 * authorized participants without a GET request silently changing the DB.
+	 */
+	private static function legacy_page( $mentorship_id, array $parent, array $legacy, $limit, $before ) {
+		$size = count( $legacy );
+		$highest = $before ? min( $size, absint( $before ) - 1 ) : $size;
+		$items = array();
+		for ( $number = $highest; $number >= 1 && count( $items ) < $limit; $number-- ) {
+			$entry = $legacy[ $number - 1 ];
+			$recorded = isset( $entry['at'] ) && is_scalar( $entry['at'] ) && strtotime( (string) $entry['at'] )
+				? gmdate( 'Y-m-d H:i:s', strtotime( (string) $entry['at'] ) )
+				: (string) ( $parent['created_at'] ?? '' );
+			$items[] = array(
+				'mentorship_id' => absint( $mentorship_id ),
+				'sequence_no' => $number,
+				'mentor_id' => absint( $entry['mentor_id'] ?? ( $parent['mentor_id'] ?? 0 ) ),
+				'feedback_json' => wp_json_encode( $entry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ),
+				'origin' => 'legacy',
+				'recorded_at' => $recorded,
+			);
+		}
+		return $items;
+	}
+
 	/**
 	 * The parent mentorship row's version is the optimistic concurrency token.
 	 * This method must run within the REST command's existing outer transaction.
@@ -119,6 +172,8 @@ final class LSCH_Mentor_History {
 		if ( $count < count( $legacy ) ) {
 			return new WP_Error( 'lsch_mentor_history_migration_partial', __( 'Historical mentorship feedback requires operator reconciliation.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
+		$verified_prefix = self::verify_legacy_prefix( $mentorship_id, $legacy );
+		if ( is_wp_error( $verified_prefix ) ) { return $verified_prefix; }
 		$next = $wpdb->get_var( $wpdb->prepare( "SELECT COALESCE(MAX(sequence_no),0) FROM {$t} WHERE mentorship_id=%d", $mentorship_id ) );
 		if ( false === $next || null === $next || ! is_numeric( $next ) || (int) $next !== $count ) {
 			return new WP_Error( 'lsch_mentor_history_sequence_unverified', __( 'Mentoring feedback sequence could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
@@ -146,16 +201,37 @@ final class LSCH_Mentor_History {
 			return new WP_Error( 'lsch_mentor_history_unavailable', __( 'Mentor feedback history is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
 		global $wpdb; $t = self::table(); $m = LSCH_Future18::tables()['mentorship'];
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT id FROM {$m} WHERE id=%d AND (mentor_id=%d OR learner_id=%d) LIMIT 1", $mentorship_id, $viewer_id, $viewer_id ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT id,mentor_id,learner_id,created_at,feedback_json FROM {$m} WHERE id=%d AND (mentor_id=%d OR learner_id=%d) LIMIT 1", $mentorship_id, $viewer_id, $viewer_id ), ARRAY_A );
 		if ( ! $row && ! empty( $wpdb->last_error ) ) {
 			return new WP_Error( 'lsch_mentor_history_authorization_unverified', __( 'Mentorship participants could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
 		if ( ! $row ) {
 			return new WP_Error( 'lsch_mentor_history_forbidden', __( 'This mentoring record is not available to this account.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
 		}
+		$legacy = self::legacy_entries( (string) ( $row['feedback_json'] ?? '' ) );
+		if ( is_wp_error( $legacy ) ) { return $legacy; }
+		$count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t} WHERE mentorship_id=%d", $mentorship_id ) );
+		if ( false === $count || null === $count || ! is_numeric( $count ) ) {
+			return new WP_Error( 'lsch_mentor_history_read_failed', __( 'Historic mentor feedback count could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
+		if ( (int) $count < count( $legacy ) && 0 !== (int) $count ) {
+			return new WP_Error( 'lsch_mentor_history_migration_partial', __( 'Private mentoring history is incompletely migrated. Operator reconciliation is required.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
 		$limit = max( 1, min( 100, absint( $limit ) ) );
+		if ( 0 === (int) $count ) {
+			return self::legacy_page( $mentorship_id, $row, $legacy, $limit, $before );
+		}
+		$verified_prefix = self::verify_legacy_prefix( $mentorship_id, $legacy );
+		if ( is_wp_error( $verified_prefix ) ) { return $verified_prefix; }
 		$where = $before ? $wpdb->prepare( ' AND sequence_no<%d', absint( $before ) ) : '';
 		$items = $wpdb->get_results( $wpdb->prepare( "SELECT id,mentorship_id,sequence_no,mentor_id,feedback_json,origin,recorded_at FROM {$t} WHERE mentorship_id=%d{$where} ORDER BY sequence_no DESC LIMIT %d", $mentorship_id, $limit ), ARRAY_A );
-		return is_array( $items ) ? $items : new WP_Error( 'lsch_mentor_history_read_failed', __( 'Private mentoring history could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		if ( ! is_array( $items ) ) {
+			return new WP_Error( 'lsch_mentor_history_read_failed', __( 'Private mentoring history could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
+		// An inconsistent latest sequence is not silently represented as empty history.
+		if ( ! $before && $items && (int) $items[0]['sequence_no'] !== (int) $count ) {
+			return new WP_Error( 'lsch_mentor_history_sequence_unverified', __( 'Mentoring feedback sequence requires reconciliation.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+		}
+		return $items;
 	}
 }
