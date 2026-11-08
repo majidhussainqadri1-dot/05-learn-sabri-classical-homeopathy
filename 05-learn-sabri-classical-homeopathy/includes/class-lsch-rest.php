@@ -23,6 +23,10 @@ final class LSCH_REST {
 	public function register() {
 		register_rest_route( self::NS, '/catalog', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'catalog' ), 'permission_callback' => '__return_true' ) );
 		register_rest_route( self::NS, '/lesson/(?P<id>\d+)', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'lesson' ), 'permission_callback' => '__return_true' ) );
+		register_rest_route( self::NS, '/lesson/(?P<id>\\d+)/quick-checks', array(
+			array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'quick_checks_get' ), 'permission_callback' => '__return_true' ),
+			array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( $this, 'quick_checks_submit' ), 'permission_callback' => array( $this, 'approved' ) ),
+		) );
 		register_rest_route( self::NS, '/dashboard', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'dashboard' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( self::NS, '/course/(?P<id>\d+)/enroll', array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( $this, 'enroll' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( self::NS, '/course/(?P<id>\d+)/state', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'enrollment_state' ), 'permission_callback' => array( $this, 'approved' ) ) );
@@ -114,6 +118,38 @@ final class LSCH_REST {
 		$post = get_post( $id );
 		$data = array( 'id' => $id, 'title' => get_the_title( $id ), 'summary' => get_the_excerpt( $id ), 'body_html' => apply_filters( 'the_content', $post->post_content ), 'objectives' => (string) get_post_meta( $id, '_lsch_objectives', true ), 'sources' => (string) get_post_meta( $id, '_lsch_sources', true ), 'key_terms' => (string) get_post_meta( $id, '_lsch_key_terms', true ), 'examples' => (string) get_post_meta( $id, '_lsch_examples', true ), 'safety' => (string) get_post_meta( $id, '_lsch_safety', true ), 'accessibility' => (string) get_post_meta( $id, '_lsch_accessibility', true ), 'format' => (string) get_post_meta( $id, '_lsch_format', true ), 'required_components' => json_decode( (string) get_post_meta( $id, '_lsch_required_components', true ), true ) ?: array( 'content' ), 'version' => LSCH_Content::version( $id ), 'access' => LSCH_Content::access( $id ), 'course_id' => absint( get_post_meta( $id, '_lsch_course_id', true ) ), 'book_id' => absint( get_post_meta( $id, '_lsch_book_id', true ) ), 'related' => LSCH_Operations::related_links( LSCH_Content::LESSON, $id ) );
 		$response = rest_ensure_response( $data ); $response->header( 'Cache-Control', LSCH_Policy::publicly_visible( $id ) && ! LSCH_Policy::can_use_protected_reads() ? 'public, max-age=120' : 'private, no-store' ); return $response;
+	}
+
+
+	/** At most five formative questions; never send answer keys before submission. */
+	public function quick_checks_get( WP_REST_Request $r ) {
+		$id = absint( $r['id'] );
+		if ( LSCH_Content::LESSON !== get_post_type( $id ) || ! LSCH_Policy::can_read_post( $id ) ) {
+			return new WP_Error( 'lsch_quick_checks_not_found', __( 'Lesson checks are unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 404 ) );
+		}
+		$rate = $this->guard_rate( 'quick_checks_read', 60, 60 ); if ( is_wp_error( $rate ) ) { return $rate; }
+		$questions = LSCH_Quick_Checks::questions( $id );
+		if ( is_wp_error( $questions ) ) { return $questions; }
+		$response = rest_ensure_response( array( 'lesson_id' => $id, 'lesson_version' => LSCH_Content::version( $id ), 'questions' => $questions, 'formative_only' => true ) );
+		$response->header( 'Cache-Control', 'private, no-store' );
+		return $response;
+	}
+
+	public function quick_checks_submit( WP_REST_Request $r ) {
+		$id = absint( $r['id'] ); $user_id = get_current_user_id();
+		if ( ! LSCH_Policy::can_use_learning_actions( $user_id ) || LSCH_Content::LESSON !== get_post_type( $id ) || ! LSCH_Policy::can_read_post( $id, $user_id ) ) {
+			return new WP_Error( 'lsch_quick_checks_forbidden', __( 'Quick-check submission is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
+		}
+		$params = $r->get_json_params();
+		if ( ! is_array( $params ) || ! isset( $params['answers'] ) || ! is_array( $params['answers'] ) ) {
+			return new WP_Error( 'lsch_quick_checks_answers_invalid', __( 'Quick-check responses must be an answer list.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 400 ) );
+		}
+		$grade = LSCH_Quick_Checks::grade( $id, $params['answers'] );
+		if ( is_wp_error( $grade ) ) { return $grade; }
+		LSCH_Events::audit( 'lesson_formative_check', 'lesson', $id, array( 'learner_id' => $user_id, 'correct' => $grade['correct'], 'total' => $grade['total'] ), 'learning' );
+		$response = rest_ensure_response( $grade );
+		$response->header( 'Cache-Control', 'private, no-store' );
+		return $response;
 	}
 
 	public function dashboard() { $data = LSCH_Services::dashboard( get_current_user_id() ); if ( is_wp_error( $data ) ) { return $data; } $response = rest_ensure_response( $data ); $response->header( 'Cache-Control', 'private, no-store' ); return $response; }
