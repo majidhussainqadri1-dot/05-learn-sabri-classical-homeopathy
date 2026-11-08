@@ -199,7 +199,7 @@ final class LSCH_Plugin {
 			$reason = 'lesson_body_or_title_missing';
 		}
 		else {
-			foreach ( array( '_lsch_objectives', '_lsch_sources', '_lsch_accessibility', '_lsch_safety' ) as $key ) {
+			foreach ( array( '_lsch_objectives', '_lsch_sources', '_lsch_accessibility', '_lsch_safety', '_lsch_next_action' ) as $key ) {
 				if ( '' === trim( (string) get_post_meta( $id, $key, true ) ) ) { $reason = 'missing_' . $key; break; }
 			}
 			if ( '' === $reason && ! LSCH_Value::sources( $id ) ) { $reason = 'source_record_required'; }
@@ -248,7 +248,7 @@ final class LSCH_Plugin {
 			$this->block_publication( $post_id, 'central_policy_unavailable' );
 			return;
 		}
-		foreach ( array( '_lsch_objectives', '_lsch_sources', '_lsch_accessibility', '_lsch_safety' ) as $key ) {
+		foreach ( array( '_lsch_objectives', '_lsch_sources', '_lsch_accessibility', '_lsch_safety', '_lsch_next_action' ) as $key ) {
 			if ( '' === trim( (string) get_post_meta( $post_id, $key, true ) ) ) {
 				$this->block_publication( $post_id, 'missing_' . $key );
 				return;
