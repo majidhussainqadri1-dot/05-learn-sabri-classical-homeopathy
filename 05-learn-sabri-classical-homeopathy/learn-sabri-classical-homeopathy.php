@@ -3,7 +3,7 @@
  * Plugin Name: Learn Sabri Classical Homeopathy
  * Plugin URI: https://sabrihomeopathy.com/learn/
  * Description: Canonical curriculum, courses, lessons, enrollment, mastery, clinical-learning laboratories, progress, assessments, governed correction/citation/value tools and education integrations for the Sabri Social Homeopathy Platform.
- * Version: 4.0.0
+ * Version: 4.1.0
  * Requires at least: 6.6
  * Requires PHP: 7.4
  * Author: Dr. Allamah Majid Hussain Sabri
@@ -14,9 +14,9 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'LSCH_VERSION', '4.0.0' );
+define( 'LSCH_VERSION', '4.1.0' );
 define( 'LSCH_SCHEMA_VERSION', 18 );
-define( 'LSCH_PLAN_VERSION', 'SSH-F05-PLAN-2026-v1.1-future18-current-central-2026-08-10' );
+define( 'LSCH_PLAN_VERSION', 'SSH-F05-MASTER-PLAN-v12-2026-10-22' );
 define( 'LSCH_FILE', __FILE__ );
 define( 'LSCH_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LSCH_URL', plugin_dir_url( __FILE__ ) );
