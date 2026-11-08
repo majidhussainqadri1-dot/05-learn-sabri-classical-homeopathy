@@ -1442,7 +1442,19 @@ final class LSCH_Future18 {
 	}
 
 	public static function privacy_erase( $email, $page = 1 ) {
-		$user=get_user_by('email',$email); if(!$user||1!==absint($page)){return array('items_removed'=>false,'items_retained' => false,'messages'=>array(),'done'=>true);} $user_id=absint($user->ID); global $wpdb; $t=self::tables(); $hold=(bool)apply_filters('lsch_user_legal_hold',false,$user_id); $removed=false; $retained=false; $messages=array(); $failures=array();
+		$user=get_user_by('email',$email); if(!$user||1!==absint($page)){return array('items_removed'=>false,'items_retained' => false,'messages'=>array(),'done'=>true);} $user_id=absint($user->ID);
+		// No registered File24 legal-hold authority is UNKNOWN, not "no hold".
+		// Refuse destructive changes, preserve evidence and make the native
+		// eraser retryable until a verified owner hook is connected.
+		if ( ! function_exists( 'has_filter' ) || false === has_filter( 'lsch_user_legal_hold' ) ) {
+			LSCH_Events::audit( 'future18_privacy_hold_owner_unverified', 'user', $user_id, array( 'provider_registered' => false ), 'privacy' );
+			return array(
+				'items_removed' => false, 'items_retained' => true,
+				'messages' => array( __( 'File 24 legal-hold authority is unavailable. No learning evidence was erased; complete provider verification before retrying.', 'learn-sabri-classical-homeopathy' ) ),
+				'done' => false,
+			);
+		}
+		global $wpdb; $t=self::tables(); $hold=(bool)apply_filters('lsch_user_legal_hold',false,$user_id); $removed=false; $retained=false; $messages=array(); $failures=array();
 		// File24 legal hold covers every File05 Future18 learning-evidence class.
 		// Do not erase mastery, review, pathways or portfolio before checking it.
 		if ( $hold ) {
