@@ -291,20 +291,48 @@
         heading(panel, 'Active and historical mentorship');
         listRecords(panel, data, 'status', (parent, record) => {
           if (validId(record.id)) {
-            const openHistory = button(parent, 'View normalized feedback history');
+            const openHistory = button(parent, 'View mentoring feedback');
             openHistory.setAttribute('aria-expanded', 'false');
             const history = append(parent, element('div', '', 'lsch-f18-history'));
-            openHistory.addEventListener('click', async () => {
+            let oldestVisible = 0;
+            let fetching = false;
+            const loadHistory = async () => {
+              if (fetching) return;
+              fetching = true;
               openHistory.disabled = true;
               try {
-                const records = await api('future18/mentorship/' + validId(record.id) + '/history?limit=50');
-                clear(history);
-                listRecords(history, records, 'recorded_at');
+                const url = 'future18/mentorship/' + validId(record.id) + '/history?limit=50' +
+                  (oldestVisible > 0 ? '&before=' + oldestVisible : '');
+                const records = await api(url);
+                if (!Array.isArray(records)) throw new Error('Mentoring history returned an invalid page.');
+                if (oldestVisible === 0) clear(history);
+                const earlier = history.querySelector('[data-lsch-history-more]');
+                if (earlier) earlier.remove();
+                if (records.length) listRecords(history, records, 'recorded_at');
+                else if (oldestVisible === 0) paragraph(history, 'No recorded mentoring feedback yet.');
                 openHistory.setAttribute('aria-expanded', 'true');
-              } catch (error) { status.textContent = error.message; } finally { openHistory.disabled = false; }
+                if (records.length) {
+                  const next = Number(records[records.length - 1].sequence_no || 0);
+                  if (!validId(next) || (oldestVisible > 0 && next >= oldestVisible)) {
+                    throw new Error('Historical feedback order is inconsistent. Ask the learning administrator to check it.');
+                  }
+                  oldestVisible = next;
+                  if (records.length === 50 && oldestVisible > 1) {
+                    const more = button(history, 'Load older feedback');
+                    more.dataset.lschHistoryMore = '1';
+                    more.addEventListener('click', loadHistory);
+                  }
+                }
+              } catch (error) { status.textContent = error.message; }
+              finally { openHistory.disabled = false; fetching = false; }
+            };
+            openHistory.addEventListener('click', () => {
+              if (!openHistory.hasAttribute || openHistory.getAttribute('aria-expanded') !== 'true') loadHistory();
             });
           }
-          if (record.status !== 'active' || !validId(record.id) || !validId(record.version)) return;
+          // A learner must not be presented with a mentor-only submission form.
+          if (Number(record.mentor_id) !== Number(app.viewer_id) ||
+              record.status !== 'active' || !validId(record.id) || !validId(record.version)) return;
           const form = append(parent, element('form', '', 'lsch-f18-inline-form'));
           const feedback = input(form, 'Mentor feedback (authorized mentors only)', 'feedback', 'textarea', true, 4000);
           button(form, 'Record mentoring feedback', 'submit');
