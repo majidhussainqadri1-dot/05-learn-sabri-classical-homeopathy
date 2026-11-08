@@ -58,8 +58,10 @@ php tests/eighteenth-mentorship-reassignment.php
 php tests/eighteenth-outbox-delivery-failures.php
 php tests/eighteenth-cpd-portfolio-integrity.php
 php tests/v12-progress-reminder-contract.php
+php tests/v12-lesson-quick-checks.php
 node tests/v12-client-state.test.js
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
+node --check 05-learn-sabri-classical-homeopathy/assets/js/future18.js
 
 find 05-learn-sabri-classical-homeopathy -type f -name '*.php' -print0 \
   | sort -z \
