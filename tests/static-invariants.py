@@ -38,7 +38,7 @@ for path in required_docs:
         errors.append(f'Missing release/governance document: {path}')
 
 required_tokens = [
-    "LSCH_VERSION', '4.0.0'",
+    "LSCH_VERSION', '4.1.0'",
     'const SCHEMA = 2',
     'LSCH_SCHEMA_VERSION\', 18',
     'single-free-tier-v2',
