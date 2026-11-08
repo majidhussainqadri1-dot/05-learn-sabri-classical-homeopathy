@@ -8,6 +8,8 @@ class LSCH_Capabilities {
  static function verified_doctor($u){return true;}static function is_founder($u){return false;}
 }
 class LSCH_Database {static function uuid(){return 'test-public-id';}}
+/** Isolate portfolio failure from the independently tested normalized feedback writer. */
+class LSCH_Mentor_History { static function append( $row, $mentor_id, $feedback ) { return array( 'sequence_no' => 101 ); } }
 class LSCH_Events {
  static $pub=array(),$audit=array();
  static function publish($name,$type,$id,$body){self::$pub[]=$name;return true;}
