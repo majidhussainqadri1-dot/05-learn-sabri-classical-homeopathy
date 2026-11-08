@@ -14,3 +14,12 @@ Live rollback must be rehearsed on staging before production release.
 ## Future-18 rollback boundary
 
 Future-18 tables are additive and do not replace core File 05 data. Rollback to 3.3.x must first place File 05 in safe mode, preserve a verified database backup, disable Future-18 UI/routes, and retain `lsch_f18_*` tables unless an explicitly approved destructive purge is executed. Destructive purge now includes all Future-18 tables and the Future-18 schema option.
+
+
+## File 05 v12 candidate — mentor-history safe rollback
+
+- Retain the new `lsch_f18_mentor_feedback` table and `lsch_mentor_history_schema` option when rolling code back; an older plugin may not read new feedback but must **not delete it**.
+- Freeze the source and backup identifier. Enter safe mode before reverting; temporarily disable mentoring writes and Future18 workbench to avoid split old/new feedback storage.
+- Count and checksum every normalized feedback sequence by mentorship, verify legacy witness `feedback_json`, current mentor/learner status and portfolio evidence. Do not restore older JSON *over* post-cutover academic events.
+- On interrupted migration, restore the exact backup in staging first, not live. Re-test idempotency and compare-and-swap before any production decision.
+- Explicit File24 retention/export/legal-hold approval is required before permanent data removal. Destructive reverse migration is not an automatic rollback option.
