@@ -913,42 +913,35 @@ final class LSCH_Future18 {
 		}
 		global $wpdb;
 		$t = self::tables();
-		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['mentorship']} WHERE id=%d AND mentor_id=%d AND status='active' LIMIT 1", $mentorship_id, $mentor_id ), ARRAY_A );
+		// The outer File05 REST idempotency layer owns the transaction.
+		// A parent version conflict must never create an append-only feedback row.
+		$row = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['mentorship']} WHERE id=%d AND mentor_id=%d AND status='active' LIMIT 1 FOR UPDATE", $mentorship_id, $mentor_id ), ARRAY_A );
 		if ( ! $row && ! empty( $wpdb->last_error ) ) {
 			return new WP_Error( 'lsch_future18_mentor_history_read_failed', __( 'Mentorship history could not be verified before saving feedback.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
 		if ( ! $row || absint( $row['version'] ) !== absint( $expected_version ) ) {
 			return new WP_Error( 'lsch_future18_mentorship_conflict', __( 'Mentorship record changed or was not found.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
-		$raw_feedback = (string) $row['feedback_json'];
-		$existing = json_decode( $raw_feedback, true );
-		// JSON objects with numeric keys also decode to PHP list-shaped arrays.
-		// Require a literal JSON array root to preserve the canonical history type.
-		if ( '[' !== substr( ltrim( $raw_feedback ), 0, 1 ) || ! is_array( $existing ) || array_values( $existing ) !== $existing ) {
-			LSCH_Events::audit( 'future18_mentor_feedback_history_invalid', 'mentorship', $mentorship_id, array( 'mentor_id' => $mentor_id ), 'reliability' );
-			return new WP_Error( 'lsch_future18_mentor_feedback_history_invalid', __( 'Previous mentor feedback cannot be verified. Its history must be reconciled before adding feedback.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
-		}
-		// Do not silently discard the earliest historical academic feedback.
-		// A larger append-only store needs a separately approved schema and migration.
-		if ( count( $existing ) >= 100 ) {
-			LSCH_Events::audit( 'future18_mentor_feedback_history_capacity_reached', 'mentorship', $mentorship_id, array( 'mentor_id' => $mentor_id ), 'reliability' );
-			return new WP_Error( 'lsch_future18_mentor_feedback_history_full', __( 'Mentor feedback history is full. A governed archival extension is required before additional entries can be recorded.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
-		}
-		$feedback['at'] = gmdate( 'c' );
-		$feedback['mentor_id'] = $mentor_id;
-		$existing[] = $feedback;
-		$json = self::encode_json( $existing, 50000 );
-		if ( is_wp_error( $json ) ) { return $json; }
-		$updated = $wpdb->update( $t['mentorship'], array( 'feedback_json' => $json, 'version' => absint( $row['version'] ) + 1, 'updated_at' => current_time( 'mysql', true ) ), array( 'id' => $mentorship_id, 'mentor_id' => $mentor_id, 'version' => absint( $row['version'] ) ), array( '%s', '%d', '%s' ), array( '%d', '%d', '%d' ) );
+		$written = LSCH_Mentor_History::append( $row, $mentor_id, $feedback );
+		if ( is_wp_error( $written ) ) { return $written; }
+		// Keep old feedback_json as read-only historical witness until a
+		// separately accepted privacy/retention reconciliation completes.
+		$updated = $wpdb->update( $t['mentorship'], array(
+			'version' => absint( $row['version'] ) + 1,
+			'updated_at' => current_time( 'mysql', true ),
+		), array( 'id' => $mentorship_id, 'mentor_id' => $mentor_id, 'version' => absint( $row['version'] ) ), array( '%d', '%s' ), array( '%d', '%d', '%d' ) );
 		if ( 1 !== $updated ) {
-			return new WP_Error( 'lsch_future18_mentorship_conflict', __( 'Mentorship record changed while saving.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
+			return new WP_Error( 'lsch_future18_mentorship_conflict', __( 'Mentorship changed while saving; the REST transaction must roll back the new row.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 409 ) );
 		}
-		$portfolio = self::add_portfolio_item( absint( $row['learner_id'] ), 'mentor_feedback', 'mentorship', $mentorship_id, '', array( 'mentor_id' => $mentor_id, 'course_id' => absint( $row['course_id'] ) ) );
+		$portfolio = self::add_portfolio_item( absint( $row['learner_id'] ), 'mentor_feedback', 'mentorship', $mentorship_id, '', array(
+			'mentor_id' => $mentor_id, 'course_id' => absint( $row['course_id'] ), 'sequence_no' => $written['sequence_no'],
+		) );
 		if ( is_wp_error( $portfolio ) || false === $portfolio ) {
 			LSCH_Events::audit( 'future18_mentor_portfolio_pending', 'mentorship', $mentorship_id, array( 'learner_id' => absint( $row['learner_id'] ) ), 'reliability' );
-			return new WP_Error( 'lsch_future18_mentor_portfolio_pending', __( 'Feedback was saved but its portfolio record requires reconciliation. Do not repeat the old version.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+			return new WP_Error( 'lsch_future18_mentor_portfolio_pending', __( 'Mentorship evidence could not be committed together; retry after recovery.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
-		return true;
+		LSCH_Events::audit( 'future18_mentor_feedback_appended', 'mentorship', $mentorship_id, array( 'mentor_id' => $mentor_id, 'sequence_no' => $written['sequence_no'] ), 'learning' );
+		return array( 'id' => $mentorship_id, 'version' => absint( $row['version'] ) + 1, 'sequence_no' => $written['sequence_no'] );
 	}
 
 	public static function end_mentorship( $actor_id, $mentorship_id, $expected_version ) {
