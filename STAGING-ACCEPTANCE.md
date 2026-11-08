@@ -223,3 +223,16 @@ Before Future-18 may be called staging-accepted, test all 18 IDs with real Membe
 - In actual File05 WordPress/MySQL staging, set up a mentor record with authorized verified File09 mentor and existing feedback. Inject unreadable prior JSON, truncated JSON, JSON null and JSON object where the append-only list is required; verify 503, a bounded error audit and zero update/version loss. Test valid [] and valid list records to establish success and versioned concurrent-writer protection.
 - Check File24 subject privacy and export accuracy for old mentor feedback, File19 event/outbox partial failure, true rollback/reconciliation, File20/25 learner visualization and File26 public index isolation. Do not auto-reset damaged historical feedback without a governed recovery decision and backup.
 - Independently stage full File05 education workflow, source/current DB parity, File08 clinical owner separation, approved historical patient re-consent, and true academic state/outbox atomicity. Approved deploy then live retest, exact artifact parity and rollback proof are separate release gates.
+
+
+## File 05 v12 candidate — interactive UI and append-only-history release gates
+
+- Capture exact SHA for PR #5 candidate package, plugin header, deployed files and database/options/migration state; compare against active Hostinger WordPress staging artifact **before** interpreting symptoms.
+- On private or account-only lessons, read `GET /lesson/{id}/progress` and verify viewer ownership, 0/new/updated version, stale 409, DB failure 503, no cross-user cache.
+- Enable and disable reminders on two devices; GET must reflect persisted state rather than hard-coded HTML attributes; all PUT/POST requests must carry durable Idempotency-Key and nonce.
+- Confirm `_lsch_quick_checks` max 5, invalid 6/answer key rejected, hidden answers never in initial HTML/GET, post-submit formative feedback; `_lsch_next_action` editorial gate, real native/Files22 save ordering and v12 accessible next-step rendering.
+- Visit `/learn/mastery/` as guest, verified learner, clinician, teacher, assessor, suspended user, guardian-blocked account; verify all 18 selector paths, 8 governed labs, human-reviewed viva/OSCE, status/errors, under slow internet and 320–1920px RTL/English UI. Simulated educational data only.
+- Test File16 source-grounded tutor provider online/offline, empty/malformed citations, and File06/12/15 external sources. File05 must not become a medical diagnosis/prescription authority or the global search owner.
+- In a safely restorable staging DB, migrate 0,99,100,101,500 previous feedback items to normalized append-only history, then append; inject stale versions, concurrent mentoring, partial migration, schema unavailable, legal hold, participant IDOR and privacy export/erase failures. Verify portfolio and event transactions commit or roll back together.
+- Fresh clinical patient case re-consent is **not activated**; test withdrawn records remain private after repeat consent attempts. File08/File24 authority and Founder policy signoff required before coding an activation path.
+- Full backups, migration, operational System Check, rollback, deployed parity and live retest are required in that order. Source CI alone is not runtime acceptance.
