@@ -50,6 +50,8 @@ final class LSCH_Admin {
 			'_lsch_equivalence' => array( 'label' => __( 'Equivalence rules', 'learn-sabri-classical-homeopathy' ), 'type' => 'textarea' ),
 			'_lsch_key_terms' => array( 'label' => __( 'Key terms', 'learn-sabri-classical-homeopathy' ), 'type' => 'textarea' ),
 			'_lsch_examples' => array( 'label' => __( 'Examples', 'learn-sabri-classical-homeopathy' ), 'type' => 'textarea' ),
+			'_lsch_next_action' => array( 'label' => __( 'Next learning action (required for v12 lesson approval)', 'learn-sabri-classical-homeopathy' ), 'type' => 'textarea' ),
+			'_lsch_quick_checks' => array( 'label' => __( 'Up to 5 formative quick checks JSON; correct answers stay server-side', 'learn-sabri-classical-homeopathy' ), 'type' => 'textarea' ),
 			'_lsch_sources' => array( 'label' => __( 'Sources and references', 'learn-sabri-classical-homeopathy' ), 'type' => 'textarea' ),
 			'_lsch_accessibility' => array( 'label' => __( 'Accessibility evidence / transcript / alt-text notes', 'learn-sabri-classical-homeopathy' ), 'type' => 'textarea' ),
 			'_lsch_safety' => array( 'label' => __( 'Educational and medical safety statement', 'learn-sabri-classical-homeopathy' ), 'type' => 'textarea' ),
@@ -80,8 +82,8 @@ final class LSCH_Admin {
 		if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) || ! LSCH_Content::object_type( $post_id ) || empty( $_POST['lsch_governance_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['lsch_governance_nonce'] ) ), 'lsch_save_governance_' . $post_id ) || ! LSCH_Policy::can_use_learning_actions() || ! current_user_can( 'edit_post', $post_id ) ) { return; }
 		$input = isset( $_POST['lsch_meta'] ) && is_array( $_POST['lsch_meta'] ) ? wp_unslash( $_POST['lsch_meta'] ) : array();
 		$integer_keys = array( '_lsch_program_id', '_lsch_course_id', '_lsch_book_id', '_lsch_lesson_id', '_lsch_teacher_id', '_lsch_reviewer_id', '_lsch_pass_mark', '_lsch_max_attempts', '_lsch_time_limit', '_lsch_required', '_lsch_certificate_wording_approved' );
-		$json_keys = array( '_lsch_required_components', '_lsch_questions', '_lsch_blueprint' );
-		$allowed_keys = array( '_lsch_access', '_lsch_language', '_lsch_format', '_lsch_duration', '_lsch_program_id', '_lsch_course_id', '_lsch_book_id', '_lsch_lesson_id', '_lsch_teacher_id', '_lsch_reviewer_id', '_lsch_objectives', '_lsch_prerequisites', '_lsch_equivalence', '_lsch_key_terms', '_lsch_examples', '_lsch_sources', '_lsch_accessibility', '_lsch_safety', '_lsch_required_components', '_lsch_questions', '_lsch_blueprint', '_lsch_rubric', '_lsch_pass_mark', '_lsch_max_attempts', '_lsch_time_limit', '_lsch_required', '_lsch_certificate_jurisdiction', '_lsch_certificate_wording', '_lsch_certificate_wording_approved' );
+		$json_keys = array( '_lsch_required_components', '_lsch_questions', '_lsch_blueprint', '_lsch_quick_checks' );
+		$allowed_keys = array( '_lsch_access', '_lsch_language', '_lsch_format', '_lsch_duration', '_lsch_program_id', '_lsch_course_id', '_lsch_book_id', '_lsch_lesson_id', '_lsch_teacher_id', '_lsch_reviewer_id', '_lsch_objectives', '_lsch_next_action', '_lsch_quick_checks', '_lsch_prerequisites', '_lsch_equivalence', '_lsch_key_terms', '_lsch_examples', '_lsch_sources', '_lsch_accessibility', '_lsch_safety', '_lsch_required_components', '_lsch_questions', '_lsch_blueprint', '_lsch_rubric', '_lsch_pass_mark', '_lsch_max_attempts', '_lsch_time_limit', '_lsch_required', '_lsch_certificate_jurisdiction', '_lsch_certificate_wording', '_lsch_certificate_wording_approved' );
 		$changed = false;
 		foreach ( $input as $key => $value ) {
 			$key = sanitize_key( $key ); if ( 0 !== strpos( $key, '_lsch_' ) || ! in_array( $key, $allowed_keys, true ) ) { continue; }
@@ -100,6 +102,7 @@ final class LSCH_Admin {
 				$decoded = json_decode( (string) $value, true ); if ( ! is_array( $decoded ) ) { continue; }
 				if ( '_lsch_required_components' === $key ) { $normalized = array_values( array_unique( array_map( 'sanitize_key', $decoded ) ) ); if ( ! $normalized || array_diff( $normalized, array( 'content', 'assessment', 'assignment' ) ) ) { continue; } $decoded = $normalized; }
 				if ( '_lsch_questions' === $key && count( $decoded ) > 200 ) { continue; }
+				if ( '_lsch_quick_checks' === $key ) { $validated = LSCH_Quick_Checks::normalize( (string) $value ); if ( is_wp_error( $validated ) ) { continue; } $decoded = $validated; }
 				$value = wp_json_encode( $decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ); if ( false === $value || strlen( $value ) > 1048576 ) { continue; }
 			}
 			else { $value = sanitize_textarea_field( $value ); }
