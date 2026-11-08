@@ -36,6 +36,7 @@ $lsch_files = array(
 	'class-lsch-value.php',
 	'class-lsch-idempotency.php',
 	'class-lsch-future18.php',
+	'class-lsch-mentor-history.php',
 	'class-lsch-future18-rest.php',
 	'class-lsch-frontend.php',
 	'class-lsch-admin.php',
@@ -65,6 +66,7 @@ function lsch_bootstrap() {
 		LSCH_Database::maybe_upgrade();
 		LSCH_State::maybe_upgrade();
 		LSCH_Future18::maybe_upgrade();
+		LSCH_Mentor_History::maybe_upgrade();
 	} catch ( Throwable $error ) {
 		update_option(
 			'lsch_runtime_failure',
