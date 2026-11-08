@@ -1268,6 +1268,18 @@ final class LSCH_Future18 {
 		if ( is_wp_error( $data ) ) {
 			return '<div class="lsch-notice">' . esc_html( $data->get_error_message() ) . '</div>';
 		}
+		// Render a genuine interactive learning workbench. Source, permissions and clinical
+		// authority stay server-owned; this client is only an interface to versioned REST.
+		wp_enqueue_style( 'lsch-learning', LSCH_URL . 'assets/css/learning.css', array(), LSCH_VERSION );
+		wp_enqueue_script( 'lsch-future18-workbench', LSCH_URL . 'assets/js/future18.js', array(), LSCH_VERSION, true );
+		wp_localize_script( 'lsch-future18-workbench', 'LSCH_F18_APP', array(
+			'root' => esc_url_raw( rest_url( LSCH_REST::NS . '/' ) ),
+			'nonce' => wp_create_nonce( 'wp_rest' ),
+			'errors' => array(
+				'unavailable' => __( 'This lesson or activity has not yet been approved for this mode.', 'learn-sabri-classical-homeopathy' ),
+				'pending' => __( 'An assessor must review this educational response.', 'learn-sabri-classical-homeopathy' ),
+			),
+		) );
 		$summary = $data['mastery']['summary'];
 		$out = '<section class="lsch-future18" aria-labelledby="lsch-f18-title"><h2 id="lsch-f18-title">' . esc_html__( 'Mastery & Clinical Education Center', 'learn-sabri-classical-homeopathy' ) . '</h2>';
 		$out .= '<p>' . esc_html( sprintf( __( 'Mastery average: %1$s%% · Weak competencies: %2$d · Due reviews: %3$d', 'learn-sabri-classical-homeopathy' ), $summary['average'], $summary['weak'], count( (array) $data['due_reviews'] ) ) ) . '</p>';
@@ -1283,7 +1295,33 @@ final class LSCH_Future18 {
 		foreach ( $cards as $label => $value ) {
 			$out .= '<article class="lsch-f18-card"><h3>' . esc_html( $label ) . '</h3><strong>' . esc_html( (string) $value ) . '</strong></article>';
 		}
-		$out .= '</div><p class="lsch-f18-boundary">' . esc_html__( 'Educational use only. Real patient diagnosis/prescription is not delegated to simulations or AI. External knowledge, PDF, repertory, messages, notifications and AI answers remain with their canonical platform owners.', 'learn-sabri-classical-homeopathy' ) . '</p></section>';
+		$out .= '</div>';
+		$workbench_labels = array(
+			'F05-FUT-01' => __( 'Competency mastery map', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-02' => __( 'Spaced repetition review', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-03' => __( 'Private flashcards', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-04' => __( 'Clinical case simulation', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-05' => __( 'Remedy differentiation', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-06' => __( 'Case-taking simulator', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-07' => __( 'Repertory reasoning', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-08' => __( 'Clinical reasoning map', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-09' => __( 'Oral viva', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-10' => __( 'OSCE practical stations', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-11' => __( 'Personal learning path', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-12' => __( 'Mistake book', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-13' => __( 'Evidence appraisal', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-14' => __( 'Competency portfolio', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-15' => __( 'Mentorship records', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-16' => __( 'Continuing professional development', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-17' => __( 'Source-grounded AI tutor', 'learn-sabri-classical-homeopathy' ),
+			'F05-FUT-18' => __( 'Knowledge-change re-study', 'learn-sabri-classical-homeopathy' ),
+		);
+		$out .= '<section class="lsch-f18-workbench lsch-panel" data-lsch-f18-workbench><h3>' . esc_html__( 'Learning workbench', 'learn-sabri-classical-homeopathy' ) . '</h3><label for="lsch-f18-tool">' . esc_html__( 'Choose a learning activity', 'learn-sabri-classical-homeopathy' ) . '</label><select id="lsch-f18-tool" data-lsch-f18-tool>';
+		foreach ( $workbench_labels as $feature_id => $feature_label ) {
+			$out .= '<option value="' . esc_attr( $feature_id ) . '">' . esc_html( $feature_label ) . '</option>';
+		}
+		$out .= '</select><div data-lsch-f18-panel></div><p class="lsch-status" role="status" aria-live="polite" data-lsch-f18-status></p></section>';
+		$out .= '<p class="lsch-f18-boundary">' . esc_html__( 'Educational use only. Real patient diagnosis/prescription is not delegated to simulations or AI. External knowledge, PDF, repertory, messages, notifications and AI answers remain with their canonical platform owners.', 'learn-sabri-classical-homeopathy' ) . '</p></section>';
 		return $out;
 	}
 
