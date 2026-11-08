@@ -33,6 +33,22 @@ final class LSCH_Operations {
 			'status' => LSCH_Policy::central_policy_ready() ? 'pass' : 'fail',
 			'detail' => LSCH_Policy::central_policy_ready() ? 'Single free tier, no donor advantage, Sabri Green and File 26 ownership verified.' : 'Current central business/design/search policy is not verified.',
 		);
+		// Source-level hook detection is a release gate, NOT a verified proof
+		// that any external File16/File24 plugin is active, authorized or healthy.
+		$file16_hook = function_exists( 'has_filter' ) && false !== has_filter( 'lsch_file16_socratic_tutor' );
+		$file24_hold_hook = function_exists( 'has_filter' ) && false !== has_filter( 'lsch_user_legal_hold' );
+		$checks['File16 learning tutor provider'] = array(
+			'status' => $file16_hook ? 'pass' : 'warn',
+			'detail' => $file16_hook
+				? 'Socratic provider hook is registered. File16 source/citation runtime acceptance remains required.'
+				: 'No registered File16 Socratic teaching provider is visible; the tutor must remain safely unavailable.',
+		);
+		$checks['File24 legal hold owner adapter'] = array(
+			'status' => $file24_hold_hook ? 'pass' : 'fail',
+			'detail' => $file24_hold_hook
+				? 'A legal-hold callback is registered. Exact File24 authority and live evidence still require verification.'
+				: 'File24 legal-hold callback is not registered. Privacy erasure/retention acceptance is BLOCKED until the owner contract is verified.',
+		);
 		foreach ( $t as $name => $table ) {
 			$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table;
 			$checks[ 'Table: ' . $name ] = array( 'status' => $exists ? 'pass' : 'fail', 'detail' => $exists ? $table : 'Missing owner table.' );
