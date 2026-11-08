@@ -12,8 +12,10 @@ const phpLabel = (id) => "'F05-FUT-" + String(id).padStart(2, '0') + "'";
 for (let id = 1; id <= 18; id++) {
   assert.ok(f.includes(phpLabel(id)), 'Future18 canonical feature ' + id + ' must exist.');
   assert.ok(f.includes("'F05-FUT-" + String(id).padStart(2, '0') + "'"), 'Future18 view option ' + id + ' is missing.');
-  assert.ok(js.includes("'F05-FUT-" + String(id).padStart(2, '0') + "'") ||
-    (id !== 1 && id !== 2 && id !== 3 && id !== 11 && id !== 12 && id !== 14 && id !== 15 && id !== 16 && id !== 17 && id !== 18),
+  const labIds = [4, 5, 6, 7, 8, 9, 10, 13];
+  assert.ok(labIds.includes(id)
+      ? js.includes("'F05-FUT-" + String(id).padStart(2, '0') + "'")
+      : js.includes('number === ' + id),
     'Future18 JS feature ' + id + ' is missing.');
 }
 for (const lab of [
