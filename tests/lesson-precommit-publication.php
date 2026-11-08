@@ -16,7 +16,7 @@ class LSCH_Policy {
 }
 class LSCH_Value {public static $valid_sources=true;public static function sources($id){return self::$valid_sources?array('verified-citation'):array();}}
 class LSCH_Events {public static $audits=array();public static function audit($name,$type,$id,$data,$purpose){self::$audits[]=array($name,$data['reason']??'');}}
-$GLOBALS['meta']=array('_lsch_objectives'=>'Objectives','_lsch_sources'=>'Verified source','_lsch_accessibility'=>'Transcript','_lsch_safety'=>'Safety rules','_lsch_reviewer_id'=>10);
+$GLOBALS['meta']=array('_lsch_objectives'=>'Objectives','_lsch_sources'=>'Verified source','_lsch_accessibility'=>'Transcript','_lsch_safety'=>'Safety rules','_lsch_next_action'=>'Continue the next approved lesson','_lsch_reviewer_id'=>10);
 $GLOBALS['topics']=array('foundations');
 $GLOBALS['tag_present']=false;
 $GLOBALS['tag_error']=false;
@@ -46,6 +46,7 @@ LSCH_Policy::$ready=false;check_case($base,'pending','central_policy_unavailable
 $GLOBALS['publisher_permission']=false;check_case($base,'pending','unauthorized_publication_actor');$GLOBALS['publisher_permission']=true;
 check_case(array_merge($base,array('post_content'=>' ')),'pending','lesson_body_or_title_missing');
 $GLOBALS['meta']['_lsch_safety']='';check_case($base,'pending','missing__lsch_safety');$GLOBALS['meta']['_lsch_safety']='Safety rules';
+$GLOBALS['meta']['_lsch_next_action']='';check_case($base,'pending','missing__lsch_next_action');$GLOBALS['meta']['_lsch_next_action']='Continue the next approved lesson';
 LSCH_Value::$valid_sources=false;check_case($base,'pending','source_record_required');LSCH_Value::$valid_sources=true;
 $GLOBALS['meta']['_lsch_reviewer_id']=2;check_case($base,'pending','independent_reviewer_required');$GLOBALS['meta']['_lsch_reviewer_id']=10;
 $GLOBALS['topics']=new WP_Error('read_failed');check_case($base,'pending','patient_case_taxonomy_unavailable');
