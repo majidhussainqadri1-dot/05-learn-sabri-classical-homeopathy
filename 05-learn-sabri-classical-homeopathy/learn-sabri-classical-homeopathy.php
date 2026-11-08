@@ -44,6 +44,7 @@ $lsch_files = array(
 	'class-lsch-operations.php',
 	'class-lsch-activator.php',
 	'class-lsch-plugin.php',
+	'class-lsch-file06-source-links.php',
 );
 foreach ( $lsch_files as $lsch_file ) {
 	require_once LSCH_DIR . 'includes/' . $lsch_file;
@@ -84,5 +85,6 @@ function lsch_bootstrap() {
 
 	delete_option( 'lsch_runtime_failure' );
 	( new LSCH_Plugin() )->run();
+	LSCH_File06_Source_Links::hooks();
 }
 add_action( 'plugins_loaded', 'lsch_bootstrap', 30 );
