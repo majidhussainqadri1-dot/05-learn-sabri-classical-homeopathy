@@ -45,23 +45,57 @@
     } catch (error) { show(button, error.message, false); } finally { button.disabled = false; }
   }));
 
-  all('[data-lsch-reminder]').forEach((button) => button.addEventListener('click', async () => {
-    if (!requireLogin()) return;
+  const reminderLabel = (enabled) => enabled
+    ? (app.strings?.reminderDisable || 'Disable weekly reminder')
+    : (app.strings?.reminderEnable || 'Enable weekly reminder');
+  const setReminderButton = (button, enabled) => {
+    button.dataset.enabled = enabled ? '1' : '0';
+    button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    button.textContent = reminderLabel(enabled);
+  };
+  all('[data-lsch-reminder]').forEach((button) => {
+    // A missing preference is disabled. Never guess from a hard-coded HTML attribute.
     button.disabled = true;
-    try {
-      const enabled = button.dataset.enabled !== '0';
-      const data = await api(`course/${button.dataset.lschReminder}/reminder`, { method: 'PUT', body: JSON.stringify({ enabled, cadence: 'weekly', quiet_hours: { start: '21:00', end: '08:00' } }) });
-      button.dataset.enabled = data.enabled ? '0' : '1';
-      button.setAttribute('aria-pressed', data.enabled ? 'true' : 'false');
-      show(button, app.strings?.saved || 'Saved');
-    } catch (error) { show(button, error.message, false); } finally { button.disabled = false; }
-  }));
+    (async () => {
+      if (!app.loggedIn) return;
+      try {
+        const saved = await api(`course/${button.dataset.lschReminder}/reminder`);
+        setReminderButton(button, Number(saved.enabled || 0) === 1);
+        button.disabled = false;
+      } catch (error) { show(button, error.message, false); }
+    })();
+    button.addEventListener('click', async () => {
+      if (!requireLogin()) return;
+      button.disabled = true;
+      try {
+        // Re-read before changing: another device may have changed this preference.
+        const previous = await api(`course/${button.dataset.lschReminder}/reminder`);
+        const desired = Number(previous.enabled || 0) !== 1;
+        const data = await api(`course/${button.dataset.lschReminder}/reminder`, {
+          method: 'PUT',
+          body: JSON.stringify({ enabled: desired, cadence: previous.cadence || 'weekly', quiet_hours: { start: '21:00', end: '08:00' } }),
+        });
+        setReminderButton(button, Number(data.enabled || 0) === 1);
+        show(button, app.strings?.saved || 'Saved');
+      } catch (error) { show(button, error.message, false); } finally { button.disabled = false; }
+    });
+  });
 
   all('[data-lsch-progress]').forEach((button) => button.addEventListener('click', async () => {
     if (!requireLogin()) return;
     button.disabled = true;
     try {
-      const data = await api(`lesson/${button.dataset.lschProgress}/progress`, { method: 'PUT', body: JSON.stringify({ complete: true }) });
+      // Read the current optimistic-lock version; never send an implicit zero on existing rows.
+      const current = await api(`lesson/${button.dataset.lschProgress}/progress`);
+      if (current.state === 'completed') {
+        button.setAttribute('aria-pressed', 'true');
+        show(button, app.strings?.alreadyCompleted || 'Lesson already completed');
+        return;
+      }
+      const data = await api(`lesson/${button.dataset.lschProgress}/progress`, {
+        method: 'PUT',
+        body: JSON.stringify({ complete: true, version: Number(current.version || 0) }),
+      });
       button.setAttribute('aria-pressed', data.state === 'completed' ? 'true' : 'false');
       show(button, `${app.strings?.saved || 'Saved'} — ${Number(data.percent || 0)}%`);
     } catch (error) { show(button, error.message, false); } finally { button.disabled = false; }
