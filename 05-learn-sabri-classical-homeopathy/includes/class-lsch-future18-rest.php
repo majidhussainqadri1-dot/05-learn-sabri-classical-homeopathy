@@ -52,6 +52,7 @@ final class LSCH_Future18_REST {
 			array( 'methods' => WP_REST_Server::CREATABLE, 'callback' => array( $this, 'mentorship_assign' ), 'permission_callback' => array( $this, 'manager' ) ),
 		) );
 		register_rest_route( $ns, '/future18/mentorship/(?P<id>\d+)/feedback', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'mentorship_feedback' ), 'permission_callback' => array( $this, 'teacher' ) ) );
+		register_rest_route( $ns, '/future18/mentorship/(?P<id>\d+)/history', array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'mentorship_history' ), 'permission_callback' => array( $this, 'approved_or_teacher' ) ) );
 		register_rest_route( $ns, '/future18/mentorship/(?P<id>\d+)/end', array( 'methods' => WP_REST_Server::EDITABLE, 'callback' => array( $this, 'mentorship_end' ), 'permission_callback' => array( $this, 'approved' ) ) );
 		register_rest_route( $ns, '/future18/cpd', array(
 			array( 'methods' => WP_REST_Server::READABLE, 'callback' => array( $this, 'cpd_get' ), 'permission_callback' => array( $this, 'approved' ) ),
@@ -165,6 +166,17 @@ final class LSCH_Future18_REST {
 
 	public function mentorship_feedback( WP_REST_Request $request ) {
 		return LSCH_Future18::mentor_feedback( get_current_user_id(), absint( $request['id'] ), (array) $request->get_param( 'feedback' ), absint( $request->get_param( 'version' ) ) );
+	}
+
+	public function mentorship_history( WP_REST_Request $request ) {
+		$data = LSCH_Mentor_History::records(
+			absint( $request['id'] ), get_current_user_id(),
+			$request->get_param( 'limit' ) ?: 50, $request->get_param( 'before' ) ?: 0
+		);
+		if ( is_wp_error( $data ) ) { return $data; }
+		$response = rest_ensure_response( $data );
+		$response->header( 'Cache-Control', 'private, no-store' );
+		return $response;
 	}
 
 	public function mentorship_end( WP_REST_Request $request ) {
