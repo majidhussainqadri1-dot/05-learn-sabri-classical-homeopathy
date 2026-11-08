@@ -62,6 +62,7 @@ php tests/v12-progress-reminder-contract.php
 php tests/v12-lesson-quick-checks.php
 node tests/v12-client-state.test.js
 node tests/v12-future18-interface-contract.test.js
+node tests/v12-future18-workbench-dom.test.js
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
 node --check 05-learn-sabri-classical-homeopathy/assets/js/future18.js
 
