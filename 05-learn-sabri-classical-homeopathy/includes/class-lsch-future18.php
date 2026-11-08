@@ -741,6 +741,41 @@ final class LSCH_Future18 {
 		return array( 'id' => (int) $wpdb->insert_id, 'public_id' => $public_id, 'mode' => $mode, 'status' => $status, 'score' => (float) $scored['score'], 'feedback' => $scored['feedback'] );
 	}
 
+
+	/**
+	 * Separate assessor's queue; never return another learner's response based
+	 * solely on a broad teacher role. Active, conflict-cleared object assignments
+	 * are enforced in the SQL join BEFORE protected responses leave the DB.
+	 */
+	public static function pending_assessor_practices( $actor_id, $limit = 30 ) {
+		$actor_id = absint( $actor_id );
+		if ( ! self::approved_user( $actor_id ) ) {
+			return new WP_Error( 'lsch_future18_assessor_forbidden', __( 'Assessment work queue is unavailable.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
+		}
+		$manager = user_can( $actor_id, LSCH_Capabilities::MANAGE_CURRICULUM );
+		if ( ! $manager && ! user_can( $actor_id, LSCH_Capabilities::ASSESS ) ) {
+			return new WP_Error( 'lsch_future18_assessor_forbidden', __( 'Only qualified, assigned assessors may view pending educational responses.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 403 ) );
+		}
+		global $wpdb;
+		$t = self::tables();
+		$core = LSCH_Database::tables();
+		$limit = max( 1, min( 50, absint( $limit ) ) );
+		$fields = 'p.id,p.public_id,p.user_id,p.mode,p.source_type,p.source_id,p.blueprint_version,p.competency_key,p.response_json,p.status,p.version,p.created_at';
+		if ( $manager ) {
+			$sql = $wpdb->prepare(
+				"SELECT {$fields} FROM {$t['practice']} p WHERE p.status='awaiting_assessor' AND p.user_id<>%d ORDER BY p.created_at ASC,p.id ASC LIMIT %d",
+				$actor_id, $limit
+			);
+		} else {
+			$sql = $wpdb->prepare(
+				"SELECT DISTINCT {$fields} FROM {$t['practice']} p INNER JOIN {$core['staff']} s ON s.object_type=p.source_type AND s.object_id=p.source_id AND s.user_id=%d AND s.role='assessor' AND s.conflict_status='clear' AND s.active=1 WHERE p.status='awaiting_assessor' AND p.user_id<>%d ORDER BY p.created_at ASC,p.id ASC LIMIT %d",
+				$actor_id, $actor_id, $limit
+			);
+		}
+		$rows = $wpdb->get_results( $sql, ARRAY_A );
+		return is_array( $rows ) ? $rows : new WP_Error( 'lsch_future18_assessor_queue_read_failed', __( 'Authorized pending assessments could not be read; no answer data was released.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
+	}
+
 	public static function grade_practice( $practice_id, $assessor_id, $score, array $feedback, $expected_version ) {
 		$practice_id = absint( $practice_id );
 		$assessor_id = absint( $assessor_id );
