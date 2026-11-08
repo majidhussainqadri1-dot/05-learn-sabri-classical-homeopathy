@@ -54,7 +54,7 @@ const document = {
 const window = {
   LSCH_APP: { loggedIn: true, root: '/wp-json/learn-sabri-classical-homeopathy/v2/', nonce: 'test', strings: {} },
   location: { href: '' },
-  crypto: { randomUUID: () => 'v12-test-id' }
+  crypto: { randomUUID: () => 'v12-test-id-0001' }
 };
 vm.runInNewContext(source, { document, window, fetch, console });
 const tick = () => new Promise(resolve => setImmediate(resolve));
