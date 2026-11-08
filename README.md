@@ -4,11 +4,11 @@ Canonical repository for the Sabri Social Homeopathy Platform learning domain.
 
 ## Current corrective candidate
 
-- Runtime: `4.0.0`
+- Runtime: `4.1.0`
 - Core schema marker: `18`
 - File 05 auxiliary state schema: `3`
 - Future-18 learning-intelligence schema: `2`
-- Plan: `SSH-F05-PLAN-2026-v1.1-future18-current-central-2026-08-10` under the current consolidated central governing corpus
+- Plan: `SSH-F05-MASTER-PLAN-v12-2026-10-22` under the current consolidated central governing corpus
 - REST contract: `learn-sabri-classical-homeopathy/v2` (kept versioned/backward-compatible)
 - Canonical package root: `05-learn-sabri-classical-homeopathy/`
 - WordPress slug/text domain: `learn-sabri-classical-homeopathy`
@@ -28,7 +28,7 @@ Private notes use AES-256-GCM with an independent deployment/key-manager keyring
 
 ## Future Superset 18
 
-Runtime 4.0.0 materializes F05-FUT-01..18. See `FUTURE-18-ENHANCEMENTS.md` and `REQUIREMENTS-TRACEABILITY.md`.
+Runtime 4.1.0 materializes F05-FUT-01..18. See `FUTURE-18-ENHANCEMENTS.md` and `REQUIREMENTS-TRACEABILITY.md`.
 
 ## Verification
 
