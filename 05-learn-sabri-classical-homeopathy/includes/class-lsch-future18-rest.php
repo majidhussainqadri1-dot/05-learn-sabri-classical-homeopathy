@@ -29,6 +29,11 @@ final class LSCH_Future18_REST {
 			'evidence-appraisal' => LSCH_Future18::FEATURE_EVIDENCE_APPRAISAL,
 		);
 		foreach ( $labs as $slug => $mode ) {
+			register_rest_route( $ns, '/future18/lab/' . $slug . '/blueprint', array(
+				'methods' => WP_REST_Server::READABLE,
+				'callback' => function( WP_REST_Request $request ) use ( $mode ) { return $this->practice_blueprint( $request, $mode ); },
+				'permission_callback' => array( $this, 'approved' ),
+			) );
 			register_rest_route( $ns, '/future18/lab/' . $slug, array(
 				'methods' => WP_REST_Server::CREATABLE,
 				'callback' => function( WP_REST_Request $request ) use ( $mode ) { return $this->practice( $request, $mode ); },
@@ -112,6 +117,15 @@ final class LSCH_Future18_REST {
 
 	public function blueprint( WP_REST_Request $request ) {
 		return LSCH_Future18::set_blueprint( absint( $request['lesson_id'] ), $request->get_param( 'mode' ), (array) $request->get_param( 'blueprint' ) );
+	}
+
+
+	public function practice_blueprint( WP_REST_Request $request, $mode ) {
+		$data = LSCH_Future18::learner_blueprint( absint( $request->get_param( 'lesson_id' ) ), $mode, get_current_user_id() );
+		if ( is_wp_error( $data ) ) { return $data; }
+		$response = rest_ensure_response( $data );
+		$response->header( 'Cache-Control', 'private, no-store' );
+		return $response;
 	}
 
 	public function practice( WP_REST_Request $request, $mode ) {
