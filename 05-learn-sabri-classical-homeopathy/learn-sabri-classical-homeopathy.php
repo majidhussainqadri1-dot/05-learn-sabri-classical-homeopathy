@@ -44,11 +44,15 @@ $lsch_files = array(
 	'class-lsch-operations.php',
 	'class-lsch-activator.php',
 	'class-lsch-plugin.php',
+	'class-lsch-file26-connector.php',
 );
 foreach ( $lsch_files as $lsch_file ) {
 	require_once LSCH_DIR . 'includes/' . $lsch_file;
 }
 unset( $lsch_files, $lsch_file );
+
+// Owner adapter registers even when the learning runtime must fail closed.
+LSCH_File26_Connector::register();
 
 register_activation_hook( LSCH_FILE, array( 'LSCH_Activator', 'activate' ) );
 register_deactivation_hook( LSCH_FILE, array( 'LSCH_Activator', 'deactivate' ) );
