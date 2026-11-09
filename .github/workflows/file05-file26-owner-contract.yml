@@ -1,0 +1,40 @@
+name: File 05 File 26 Candidate Owner Contract QA
+
+on:
+  push:
+    branches: [integration/file05-file26-public-learning-20261109]
+  pull_request:
+    paths:
+      - '05-learn-sabri-classical-homeopathy/**'
+      - '.github/workflows/file05-file26-owner-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Syntax for complete plugin and tests
+        run: |
+          set -euo pipefail
+          find 05-learn-sabri-classical-homeopathy tests -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l >/dev/null
+      - name: Current source invariant, privacy and owner contracts
+        run: bash tests/source-invariants.sh
+      - name: Deterministic build and installed package inventory
+        run: |
+          set -euo pipefail
+          python3 scripts/build-release.py --root . --output /tmp/file05-owner-a.zip
+          python3 scripts/build-release.py --root . --output /tmp/file05-owner-b.zip
+          cmp /tmp/file05-owner-a.zip /tmp/file05-owner-b.zip
+          unzip -t /tmp/file05-owner-a.zip
+          mkdir -p /tmp/file05-owner-extracted
+          unzip -q /tmp/file05-owner-a.zip -d /tmp/file05-owner-extracted
+          (cd /tmp/file05-owner-extracted/05-learn-sabri-classical-homeopathy && sha256sum -c MANIFEST.sha256)
+          sha256sum /tmp/file05-owner-a.zip
