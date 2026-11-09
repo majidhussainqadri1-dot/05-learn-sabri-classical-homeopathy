@@ -1,6 +1,6 @@
 <?php
 /** Canonical File05 → File26 public-only learning connector; proposed until source events and owner acceptance. */
-defined('ABSPATH') || exit;
+defined( 'ABSPATH' ) || exit;
 final class LSCH_File26_Connector {
     const SLUG='file05-public-learning';
     const TYPES=array('lsch_lesson'=>'lesson','lsch_course'=>'course','lsch_book'=>'book');
