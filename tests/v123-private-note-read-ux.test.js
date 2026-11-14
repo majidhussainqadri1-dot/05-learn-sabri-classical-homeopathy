@@ -37,7 +37,10 @@ async function scenario(readSucceeds) {
     const method = options.method || 'GET';
     calls.push({ url, method, payload: options.body ? JSON.parse(options.body) : null });
     if (method === 'GET') {
-      return readSucceeds
+      if (readSucceeds === 'malformed') {
+        return { ok: true, json: async () => ({ note: 'Existing note without revision' }), headers: { get: () => null } };
+      }
+      return readSucceeds === true
         ? { ok: true, json: async () => ({ note: 'Previously saved note', version: 8 }), headers: { get: () => null } }
         : { ok: false, json: async () => ({ message: 'Stored private note was not readable' }), headers: { get: () => null } };
     }
@@ -49,7 +52,7 @@ async function scenario(readSucceeds) {
   assert.strictEqual(save.disabled, true, 'Save is gated before GET resolves.');
   assert.strictEqual(area.readOnly, true, 'The field is read-only until GET resolves.');
   await new Promise(resolve => setImmediate(resolve));
-  if (readSucceeds) {
+  if (readSucceeds === true) {
     assert.strictEqual(area.dataset.loaded, '1');
     assert.strictEqual(area.value, 'Previously saved note');
     assert.strictEqual(area.dataset.version, '8');
@@ -73,6 +76,7 @@ async function scenario(readSucceeds) {
 }
 (async () => {
   await scenario(false);
+  await scenario('malformed');
   await scenario(true);
   console.log('PASS: File05 V12.3 private-note read fail-closed and valid-version save.');
 })().catch(error => { console.error(error); process.exit(1); });
