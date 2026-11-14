@@ -64,6 +64,7 @@ php tests/v12-lesson-quick-checks.php
 php tests/v12-file06-approved-links.php
 php tests/v123-file26-public-version.php
 node tests/v12-client-state.test.js
+node tests/v123-private-note-read-ux.test.js
 node tests/v12-future18-interface-contract.test.js
 node tests/v12-future18-workbench-dom.test.js
 node --check 05-learn-sabri-classical-homeopathy/assets/js/learning.js
