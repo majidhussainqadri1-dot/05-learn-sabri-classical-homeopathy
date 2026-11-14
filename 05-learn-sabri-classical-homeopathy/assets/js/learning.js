@@ -126,9 +126,16 @@
     if (!app.loggedIn) return;
     try {
       const data = await api(`lesson/${area.dataset.lschNote}/note`);
-      const version = Number(data?.version ?? 0);
-      if (!Number.isSafeInteger(version) || version < 0) throw new Error('Invalid private-note revision.');
-      area.value = String(data?.note || '');
+      // A missing revision is not a verified first draft: new notes must explicitly return version 0.
+      const rawVersion = data?.version;
+      if ((typeof rawVersion !== 'number' && typeof rawVersion !== 'string') ||
+          !/^(0|[1-9][0-9]*)$/.test(String(rawVersion)) ||
+          !Number.isSafeInteger(Number(rawVersion)) ||
+          (data.note !== undefined && data.note !== null && typeof data.note !== 'string')) {
+        throw new Error('Unverifiable private-note revision.');
+      }
+      const version = Number(rawVersion);
+      area.value = typeof data.note === 'string' ? data.note : '';
       area.dataset.version = String(version);
       area.dataset.loaded = '1';
       area.readOnly = false;
