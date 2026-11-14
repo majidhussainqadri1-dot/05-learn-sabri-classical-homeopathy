@@ -7,7 +7,7 @@
 
 ## Interpretation and measurable status
 
-This is an **evidence register**, not 53 certificates of completion. An existing PHP class, REST route or successful mock test is *source evidence only*. An item is accepted only after its own negative and successful real WordPress journeys, cross-owner permissions, current content, user-facing presentation, backup/restore and exact package/runtime parity are documented.
+This is an **evidence register**, not 53 certificates of completion. The five CEN-03..07 supplemental rows are *not* claimed to be verbatim V12.3 entries; their origin is the former local File05 traceability document and they remain subject to latest-master-plan precedence. An existing PHP class, REST route or successful mock test is *source evidence only*. An item is accepted only after its own negative and successful real WordPress journeys, cross-owner permissions, current content, user-facing presentation, backup/restore and exact package/runtime parity are documented.
 
 | Evidence grade | Meaning |
 | --- | --- |
@@ -18,9 +18,9 @@ This is an **evidence register**, not 53 certificates of completion. An existing
 | Staging-accepted | Actual WP/PHP/MariaDB/LiteSpeed, users/permissions, UI, failure and restore tests passed |
 | Live-verified | Deployed ZIP checksum, DB migrations and complete live user journey match the tested build |
 
-**Current aggregate:** 53 IDs traced to repository-documented source evidence, but **0/53 independently established as Live-verified** by this audit. This is an absence of verification, not a finding that zero functions work.
+**Current aggregate:** 48 IDs were located directly in V12.3 (`F05-FR` 18, `F05-NFR` 10, `F05-FUT` 18, `F05-CEN` 2), plus 5 `F05-CEN-03..07` amendments documented in the pre-existing File05 source traceability (whose continuing non-conflicting applicability needs editorial confirmation). Thus **53 combined inventory rows**, but **0/53 independently established as Live-verified** by this audit. This is an absence of verification, not a finding that zero functions work.
 
-## Canonical File 05 ID register — 53 source claims versus real acceptance gates
+## Combined File 05 ID register — 48 V12.3 direct IDs + 5 prior companion amendments = 53 source claims
 
 | Requirement ID | Required capability | Repository evidence reported | Remaining proof noted by source | Current status |
 | --- | --- | --- | --- | --- |
