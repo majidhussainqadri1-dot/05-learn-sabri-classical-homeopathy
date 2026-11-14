@@ -22,7 +22,7 @@ class LSCH_Policy {
 class LSCH_Value {
     public static function sources($lesson_id){
         return array(array('title'=>'Approved Original Source','url'=>'https://example.org/sources/original',
-            'author'=>'A. Scholar','edition'=>'1890','year'=>'1890','pages'=>'21'));
+            'object_id'=>'source-17','author'=>'A. Scholar','edition'=>'1890','year'=>'1890','pages'=>'21'));
     }
 }
 class LSCH_Events {public static function audit($a,$b,$c,$d,$e){$GLOBALS['audits']++;}}
@@ -31,10 +31,13 @@ function apply_filters($name,$value,...$args){
         $GLOBALS['context']=$args[0];
         if($GLOBALS['provider']==='throw')throw new RuntimeException('provider connection failed');
         if($GLOBALS['provider']==='absent')return null;
+        if($GLOBALS['provider']==='wp_error')return new WP_Error('provider_sensitive_error','Sensitive backend key fragment');
         if($GLOBALS['provider']==='bad_shape')return array('text'=>array('unsafe'),'citations'=>array());
         if($GLOBALS['provider']==='too_long')return array('text'=>str_repeat('A',12001),'citations'=>array());
         $citation=array('owner_file'=>'','object_id'=>'','title'=>'Claim','url'=>'https://example.org/sources/original');
         if($GLOBALS['provider']==='unapproved')$citation['url']='https://unapproved.example.net/fiction';
+        if($GLOBALS['provider']==='spoofed_url'){$citation['object_id']='source-17';$citation['url']='https://unapproved.example.net/fiction';}
+        if($GLOBALS['provider']==='spoofed_id'){$citation['object_id']='nonmatching-id';}
         if($GLOBALS['provider']==='array_field')$citation['url']=array('not'=>'scalar');
         if($GLOBALS['provider']==='long_list'){
             $citation['url']='https://unapproved.example.net/fiction';
@@ -58,6 +61,9 @@ $GLOBALS['provider']='absent';$r=$call();
 must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_provider_unavailable','Absent File16 provider fails closed');
 $GLOBALS['provider']='throw';$r=$call();
 must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_provider_unavailable','Thrown provider failure degrades safely');
+$GLOBALS['provider']='wp_error';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_provider_unavailable',
+    'Raw provider WP_Error must not leak upstream details to learner');
 $GLOBALS['provider']='bad_shape';$r=$call();
 must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_provider_invalid','Non-string response refused');
 $GLOBALS['provider']='too_long';$r=$call();
@@ -65,6 +71,12 @@ must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_provide
 $GLOBALS['provider']='unapproved';$r=$call();
 must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required',
   'An external true filter must never upgrade an unrelated URL');
+$GLOBALS['provider']='spoofed_url';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required',
+    'A matching source ID cannot authorize an unrelated citation URL');
+$GLOBALS['provider']='spoofed_id';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required',
+    'A matching source URL cannot authorize an unrelated citation ID');
 $GLOBALS['provider']='array_field';$r=$call();
 must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required','Array fields cannot be coerced into valid citation');
 $GLOBALS['provider']='long_list';$r=$call();
