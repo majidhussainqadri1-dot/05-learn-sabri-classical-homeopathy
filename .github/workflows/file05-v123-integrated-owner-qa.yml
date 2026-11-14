@@ -1,0 +1,59 @@
+name: File05 V12.3 Integrated Owner Source QA
+
+on:
+  push:
+    branches:
+      - audit/file05-v123-integrated-owner-gates-20261114
+  pull_request:
+    paths:
+      - '05-learn-sabri-classical-homeopathy/**'
+      - 'tests/v12-file06-approved-links.php'
+      - 'tests/v123-file26-public-version.php'
+      - '.github/workflows/file05-v123-integrated-owner-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  owner-and-full-source:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Record exact source SHA
+        run: git rev-parse HEAD
+      - name: All PHP syntax
+        run: |
+          set -euo pipefail
+          find 05-learn-sabri-classical-homeopathy tests -type f -name '*.php' -print0 | sort -z | xargs -0 -n1 php -l >/dev/null
+      - name: File06 and File26 owner boundary regression
+        run: |
+          set -euo pipefail
+          php tests/v12-file06-approved-links.php
+          php tests/v123-file26-public-version.php
+      - name: Complete preexisting File05 source invariants
+        run: bash tests/source-invariants.sh
+
+  deterministic-package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Reproducible draft ZIP verification, not deployment approval
+        run: |
+          set -euo pipefail
+          python3 scripts/build-release.py --root . --output /tmp/file05-v123-a.zip
+          python3 scripts/build-release.py --root . --output /tmp/file05-v123-b.zip
+          cmp /tmp/file05-v123-a.zip /tmp/file05-v123-b.zip
+          unzip -t /tmp/file05-v123-a.zip
+          mkdir -p /tmp/file05-v123-check
+          unzip -q /tmp/file05-v123-a.zip -d /tmp/file05-v123-check
+          (cd /tmp/file05-v123-check/05-learn-sabri-classical-homeopathy && sha256sum -c MANIFEST.sha256)
+          sha256sum /tmp/file05-v123-a.zip
