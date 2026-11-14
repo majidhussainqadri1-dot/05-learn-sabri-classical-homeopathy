@@ -43,6 +43,20 @@ f05_ci_assert(isset($routes[$ns.'/catalog']),'Actual WordPress REST catalog regi
 f05_ci_assert(isset($routes[$ns.'/dashboard']),'Actual WordPress private dashboard route registered');
 f05_ci_assert(isset($routes[$ns.'/future18/mastery']),'Actual Future18 REST route registered');
 f05_ci_assert(isset($routes[$ns.'/file06/lesson/(?P<id>\d+)/approve-link']),'File06 approval route registered');
+wp_set_current_user(0);
+$guest_catalog=rest_do_request(new WP_REST_Request('GET',$ns.'/catalog'));
+f05_ci_assert($guest_catalog instanceof WP_REST_Response && $guest_catalog->get_status()===200,
+    'Guest may read public-only empty catalog');
+$guest_dashboard=rest_do_request(new WP_REST_Request('GET',$ns.'/dashboard'));
+f05_ci_assert($guest_dashboard instanceof WP_REST_Response && in_array($guest_dashboard->get_status(),array(401,403),true),
+    'Guest denied private dashboard by native WordPress REST permission');
+$guest_mastery=rest_do_request(new WP_REST_Request('GET',$ns.'/future18/mastery'));
+f05_ci_assert($guest_mastery instanceof WP_REST_Response && in_array($guest_mastery->get_status(),array(401,403),true),
+    'Guest denied private mastery by native WordPress REST permission');
+$guest_approval=rest_do_request(new WP_REST_Request('POST',$ns.'/file06/lesson/7/approve-link'));
+f05_ci_assert($guest_approval instanceof WP_REST_Response && in_array($guest_approval->get_status(),array(401,403),true),
+    'Guest denied external scholarly link approval');
+wp_set_current_user(1);
 f05_ci_assert(LSCH_File26_Connector::manifest()['status']==='proposed','File26 adapter remains non-active');
 f05_ci_assert(LSCH_File26_Connector::health()['state']==='healthy','Basic owner adapter health under disposable stub');
 $empty=LSCH_File26_Connector::list_batch();
