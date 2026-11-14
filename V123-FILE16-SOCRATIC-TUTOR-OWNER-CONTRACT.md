@@ -30,7 +30,7 @@ Context includes:
 | question | bounded UTF-8 educational question; no direct patient record |
 | safety | educational_only=true; diagnosis_authority=false; prescription_authority=false; emergency_authority=false; source_grounded_required=true |
 
-File16 must return **an array** with string \`text\` and a list \`citations\` of bounded typed source objects. Text length is limited to 12,000 bytes and at most the first 20 citations are considered. A citation must match File05 lesson-approved source identity/URL at the current version; downstream review can veto, never elevate an unrelated URL. No arbitrary extra fields, raw patient identity, model debug prompts or secrets should be returned.
+File16 must return **an array** with string \`text\` and a list \`citations\` of bounded typed source objects. Text length is limited to 12,000 bytes and at most the first 20 citations are considered. A citation must match File05 lesson-approved source identity/URL at the current version; if both object ID and URL are supplied, **both must match the same approved source**. Neither field can authorize a forged other field. Downstream review can veto, never elevate an unrelated source. No arbitrary extra fields, raw patient identity, model debug prompts or secrets should be returned.
 
 ## Failure behavior
 
@@ -38,6 +38,7 @@ File16 must return **an array** with string \`text\` and a list \`citations\` of
 | --- | --- | --- |
 | No actual File16 handler | 503 \`lsch_future18_tutor_provider_unavailable\` | Safe no-answer state |
 | File16 callback throws | 503 \`lsch_future18_tutor_provider_unavailable\` | No throwable exposed to learner |
+| File16 returns WP_Error | 503 (generic safe provider unavailable) | Do not relay raw third-party error text/code to learner |
 | Missing/non-string/oversized text | 502 \`lsch_future18_tutor_provider_invalid\` | No unverified answer |
 | No matching source | 502 \`lsch_future18_tutor_source_required\` | Citation is mandatory |
 | Reviewer veto/exception | 502 \`lsch_future18_tutor_source_required\` | No privilege escalation |
