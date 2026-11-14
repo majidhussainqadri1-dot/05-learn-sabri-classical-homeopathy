@@ -34,11 +34,13 @@ final class LSCH_File26_Connector {
         // Patient case educational material is never indexed even if a page could
         // be accessed after special consent; searchable public exposure is distinct.
         $terms=wp_get_post_terms($post->ID,'lsch_topic',array('fields'=>'slugs'));
-        if(is_wp_error($terms)||!is_array($terms)){return false;}
+        if(is_wp_error($terms)||!is_array($terms)){return new WP_Error('file05_search_taxonomy_unavailable','Learning source taxonomy is unavailable; retry the complete owner snapshot.');}
         return !in_array('patient-case-learning',$terms,true);
     }
     private static function project($post){
-        if(!self::eligible($post)){return null;}
+        $access=self::eligible($post);
+        if(is_wp_error($access)){return $access;}
+        if(!$access){return null;}
         $url=get_permalink($post);
         if(!is_string($url)||!wp_http_validate_url($url)){return null;}
         $title=sanitize_text_field(get_the_title($post));
@@ -76,8 +78,12 @@ final class LSCH_File26_Connector {
         $items=array();
         foreach($rows as $row_id){
             $row_id=(int)$row_id;
+            $wpdb->last_error='';
             $post=get_post($row_id);
+            if(''!==(string)$wpdb->last_error){return new WP_Error('file05_search_owner_post_read_failed','Cannot read the source object consistently.');}
             $doc=self::project($post);
+            if(is_wp_error($doc)){return $doc;}
+            if(''!==(string)$wpdb->last_error){return new WP_Error('file05_search_owner_projection_failed','Cannot verify the source projection; retry.');}
             if($doc){$items[]=$doc;}
             $id=max($id,$row_id);
         }
@@ -92,9 +98,12 @@ final class LSCH_File26_Connector {
     public static function fetch_object($entity_type,$public_id=''){
         if(!self::native_ready()){return null;}
         if(!isset(self::TYPES['lsch_'.$entity_type])||!is_scalar($public_id)||!preg_match('/^[1-9][0-9]*$/D',(string)$public_id)){return null;}
+        global $wpdb;
+        $wpdb->last_error='';
         $post=get_post((int)$public_id);
-        if(!($post instanceof WP_Post)||$post->post_type!=='lsch_'.$entity_type){return null;}
-        return self::project($post);
+        if(''!==(string)$wpdb->last_error||!($post instanceof WP_Post)||$post->post_type!=='lsch_'.$entity_type){return null;}
+        $doc=self::project($post);
+        return ''===(string)$wpdb->last_error&&!is_wp_error($doc)?$doc:null;
     }
     public static function can_view($document,$audience=array()){
         if(!is_array($document)||($document['connector_slug']??'')!==self::SLUG||($document['visibility']??'')!=='public'||($document['state']??'')!=='published'){return false;}
