@@ -24,6 +24,8 @@ function sanitize_text_field($v){return trim((string)$v);}
 function wp_strip_all_tags($v,$remove_breaks=true){return strip_tags($v);}
 function post_type_exists($t){return in_array($t,array('lsch_lesson','lsch_course','lsch_book'),true);}
 function get_option($key,$fallback=false){return false;}
+class FakeOwnerDB {public $posts='wp_posts';public $last_error='';public function prepare($query,$args){return $query;}public function get_col($query){if(!empty($GLOBALS['db_fails'])){$this->last_error='read_failed';return false;}return array(17);}}
+$GLOBALS['wpdb']=new FakeOwnerDB();
 function must($value,$label){$GLOBALS['checks']++;if(!$value){fwrite(STDERR,"FAILED: {$label}\n");exit(1);}}
 $GLOBALS['checks']=0;$GLOBALS['ready']=true;$GLOBALS['public']=true;
 $GLOBALS['topics']=array('foundations');$GLOBALS['version']=8;$GLOBALS['post']=new WP_Post();
@@ -51,6 +53,18 @@ $GLOBALS['public']=true;$GLOBALS['topics']=array('patient-case-learning');
 must(!LSCH_File26_Connector::can_view($document),'Patient-case lesson never indexes');
 $GLOBALS['topics']=new WP_Error('taxonomy_unavailable');
 must(!LSCH_File26_Connector::can_view($document),'Taxonomy failure blocks indexing');
+$failed_snapshot=LSCH_File26_Connector::list_batch();
+must($failed_snapshot instanceof WP_Error && $failed_snapshot->get_error_code()==='file05_search_taxonomy_unavailable',
+    'Taxonomy provider failure must abort source batch, not skip indexed documents');
+$GLOBALS['topics']=array('foundations');
+$GLOBALS['db_fails']=true;
+$failed_snapshot=LSCH_File26_Connector::list_batch();
+must($failed_snapshot instanceof WP_Error && $failed_snapshot->get_error_code()==='file05_search_owner_db_error',
+    'Owner database read failure must abort source batch');
+$GLOBALS['db_fails']=false;
+$source_snapshot=LSCH_File26_Connector::list_batch();
+must(is_array($source_snapshot)&&count($source_snapshot['items'])===1&&$source_snapshot['done']===true,
+    'Healthy owner source read returns one complete public lesson');
 $GLOBALS['topics']=array('foundations');$GLOBALS['post']->post_status='draft';
 must(!LSCH_File26_Connector::can_view($document),'Withdrawn publication blocks result');
 echo "File05->File26 exact-public-version and fallback: {$GLOBALS['checks']} isolated checks PASS.\n";
