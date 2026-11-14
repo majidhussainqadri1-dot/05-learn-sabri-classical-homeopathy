@@ -44,11 +44,16 @@ $lsch_files = array(
 	'class-lsch-operations.php',
 	'class-lsch-activator.php',
 	'class-lsch-plugin.php',
+	'class-lsch-file06-source-links.php',
+	'class-lsch-file26-connector.php',
 );
 foreach ( $lsch_files as $lsch_file ) {
 	require_once LSCH_DIR . 'includes/' . $lsch_file;
 }
 unset( $lsch_files, $lsch_file );
+
+// Proposed File26 source connector is registered even when learning must fail closed.
+LSCH_File26_Connector::register();
 
 register_activation_hook( LSCH_FILE, array( 'LSCH_Activator', 'activate' ) );
 register_deactivation_hook( LSCH_FILE, array( 'LSCH_Activator', 'deactivate' ) );
@@ -84,5 +89,6 @@ function lsch_bootstrap() {
 
 	delete_option( 'lsch_runtime_failure' );
 	( new LSCH_Plugin() )->run();
+	LSCH_File06_Source_Links::hooks();
 }
 add_action( 'plugins_loaded', 'lsch_bootstrap', 30 );
