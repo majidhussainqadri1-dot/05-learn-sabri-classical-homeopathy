@@ -1121,18 +1121,24 @@ final class LSCH_Future18 {
 			'question' => $question,
 			'safety' => array( 'educational_only' => true, 'diagnosis_authority' => false, 'prescription_authority' => false, 'emergency_authority' => false, 'source_grounded_required' => true ),
 		);
-		$result = apply_filters( 'lsch_file16_socratic_tutor', null, $context );
+		try {
+			$result = apply_filters( 'lsch_file16_socratic_tutor', null, $context );
+		} catch ( Throwable $error ) {
+			return new WP_Error( 'lsch_future18_tutor_provider_unavailable',
+				__( 'The File 16 educational provider cannot be verified at present.', 'learn-sabri-classical-homeopathy' ),
+				array( 'status' => 503 ) );
+		}
 		if ( null === $result || false === $result ) {
 			return new WP_Error( 'lsch_future18_tutor_provider_unavailable', __( 'The File 16 source-grounded Socratic tutor provider is not currently available.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
 		if ( is_wp_error( $result ) ) { return $result; }
-		if ( ! is_array( $result ) || empty( $result['text'] ) ) {
+		if ( ! is_array( $result ) || ! isset( $result['text'] ) || ! is_string( $result['text'] ) || '' === trim( $result['text'] ) || strlen( $result['text'] ) > 12000 ) {
 			return new WP_Error( 'lsch_future18_tutor_provider_invalid', __( 'The File 16 tutor provider returned an invalid learning response.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 502 ) );
 		}
 		$citations = array();
 		$approved_sources = (array) $context['sources'];
-		foreach ( (array) ( $result['citations'] ?? array() ) as $citation ) {
-			if ( ! is_array( $citation ) ) { continue; }
+		foreach ( array_slice( (array) ( $result['citations'] ?? array() ), 0, 20 ) as $citation ) {
+			if ( ! is_array( $citation ) || array_filter( array( 'owner_file', 'object_id', 'title', 'url' ), static function( $key ) use ( $citation ) { return isset( $citation[$key] ) && ! is_scalar( $citation[$key] ); } ) ) { continue; }
 			$item = array(
 				'owner_file' => sanitize_text_field( (string) ( $citation['owner_file'] ?? '' ) ),
 				'object_id'  => sanitize_text_field( (string) ( $citation['object_id'] ?? '' ) ),
@@ -1150,7 +1156,14 @@ final class LSCH_Future18 {
 				$url_match = '' !== $item['url'] && '' !== $source_url && hash_equals( $source_url, $item['url'] );
 				if ( $owner_match && ( $object_match || $url_match ) ) { $approved = true; break; }
 			}
-			$approved = (bool) apply_filters( 'lsch_future18_tutor_citation_approved', $approved, $item, $approved_sources, $lesson_id, $user_id );
+			// External reviewers may VETO a source, but must not promote an
+			// unrelated citation into File05's approved lesson bibliography.
+			try {
+				$review = apply_filters( 'lsch_future18_tutor_citation_approved', $approved, $item, $approved_sources, $lesson_id, $user_id );
+				$approved = $approved && true === $review;
+			} catch ( Throwable $error ) {
+				$approved = false;
+			}
 			if ( $approved && ( $item['object_id'] || $item['url'] ) ) { $citations[] = $item; }
 		}
 		if ( ! $citations ) {
