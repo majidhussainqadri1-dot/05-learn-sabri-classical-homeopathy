@@ -1131,7 +1131,11 @@ final class LSCH_Future18 {
 		if ( null === $result || false === $result ) {
 			return new WP_Error( 'lsch_future18_tutor_provider_unavailable', __( 'The File 16 source-grounded Socratic tutor provider is not currently available.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 		}
-		if ( is_wp_error( $result ) ) { return $result; }
+		if ( is_wp_error( $result ) ) {
+			return new WP_Error( 'lsch_future18_tutor_provider_unavailable',
+				__( 'The File 16 educational provider cannot be verified at present.', 'learn-sabri-classical-homeopathy' ),
+				array( 'status' => 503 ) );
+		}
 		if ( ! is_array( $result ) || ! isset( $result['text'] ) || ! is_string( $result['text'] ) || '' === trim( $result['text'] ) || strlen( $result['text'] ) > 12000 ) {
 			return new WP_Error( 'lsch_future18_tutor_provider_invalid', __( 'The File 16 tutor provider returned an invalid learning response.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 502 ) );
 		}
@@ -1152,9 +1156,13 @@ final class LSCH_Future18 {
 				$source_id = sanitize_text_field( (string) ( $source['object_id'] ?? '' ) );
 				$source_owner = sanitize_text_field( (string) ( $source['owner_file'] ?? '' ) );
 				$owner_match = '' === $item['owner_file'] || ( '' !== $source_owner && 0 === strcasecmp( trim( $source_owner ), trim( $item['owner_file'] ) ) );
-				$object_match = '' !== $item['object_id'] && '' !== $source_id && hash_equals( $source_id, $item['object_id'] );
-				$url_match = '' !== $item['url'] && '' !== $source_url && hash_equals( $source_url, $item['url'] );
-				if ( $owner_match && ( $object_match || $url_match ) ) { $approved = true; break; }
+				// Every identity field provided by File16 must match the SAME approved lesson source.
+				// A matching object ID cannot authorize an unrelated URL (or vice versa).
+				$has_object = '' !== $item['object_id'];
+				$has_url = '' !== $item['url'];
+				$object_match = ! $has_object || ( '' !== $source_id && hash_equals( $source_id, $item['object_id'] ) );
+				$url_match = ! $has_url || ( '' !== $source_url && hash_equals( $source_url, $item['url'] ) );
+				if ( $owner_match && ( $has_object || $has_url ) && $object_match && $url_match ) { $approved = true; break; }
 			}
 			// External reviewers may VETO a source, but must not promote an
 			// unrelated citation into File05's approved lesson bibliography.
