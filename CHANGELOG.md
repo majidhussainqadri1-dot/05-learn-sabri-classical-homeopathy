@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.1.0 — 2026-11-14 — V12.3 integration and source-only hardening (DRAFT)
+
+- Combines the proposed File06 reviewed-lesson relation and proposed File26 public-only learning connector without activating global indexing.
+- Rechecks current File06 canonical identity/version and published status on approval **and on each related-source read**; suppresses links on owner failure/retraction/version drift.
+- Rechecks current File05 reviewer eligibility; forbids source approval while learning safe-mode or protected actions are unavailable.
+- File26 rejects stale indexed document versions, changed canonical URLs and withdrawn source status at the canonical owner gate.
+- Source snapshot now fails explicitly on taxonomy/post/projection database read failures rather than silently omitting an eligible source.
+- Adds source-only regression tests under PHP 7.4 and 8.3, whole-suite CI and reproducible candidate-package verification. These are not WordPress staging, clinical validation or Live approval.
+- Adds a 48-direct + 5-local-supplement V12.3 traceability register; the existing plan marker remains historical until a separately approved release identity decision.
+- Status: GitHub **Draft PR #8** only. Production/staging deployment, backend version and migrations unverified. **No-Go** under CEN-REL-001.
+
 ## 4.0.0 — 2026-08-10 — Future Superset 18 candidate
 
 - Added all Founder-approved F05-FUT-01..18 enhancements: mastery, spaced review, flashcards, eight clinical-learning/evidence labs, personal learning prescription, mistake ledger, portfolio, mentorship, CPD, File16 Socratic tutor and knowledge-change re-study.
