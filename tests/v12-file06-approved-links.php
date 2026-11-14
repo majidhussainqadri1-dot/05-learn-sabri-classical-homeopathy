@@ -9,10 +9,11 @@ class LSCH_Content {
 class LSCH_Policy {
 	public static function central_policy_ready(){return true;}
 	public static function publicly_visible($id){return !empty($GLOBALS['public_lesson']);}
+	public static function can_use_learning_actions($id=0){return empty($GLOBALS['safe_mode']);}
 }
 class LSCH_Capabilities {
 	const REVIEW_LESSONS='lsch_review_lessons';
-	public static function can_review($id){return true;}
+	public static function can_review($id){return $GLOBALS['reviewer_authorized']??true;}
 }
 class LSCH_REST {const NS='lsch/v1';}
 class WP_Error {private $c;public function __construct($c,$m='',$d=array()){$this->c=$c;}public function get_error_code(){return $this->c;}}
@@ -33,6 +34,7 @@ function get_current_user_id(){return 3;}
 function wp_verify_nonce($n,$v){return true;}
 function current_user_can($cap){return $GLOBALS['live_reviewer_cap']??true;}
 function apply_filters($name,$value,...$params){
+	if($name==='he_v12_file06_concept_assertion_v1'&&!empty($GLOBALS['owner_exception']))throw new RuntimeException('owner_offline');
 	if($name==='he_v12_file06_concept_assertion_v1'&&($GLOBALS['canonical']??true))return array('owner_file'=>'file-06','published'=>true,'public_id'=>$params[0],'version'=>($GLOBALS['owner_version']??$params[1]));
 	return null;
 }
@@ -49,6 +51,16 @@ require dirname(__DIR__).'/05-learn-sabri-classical-homeopathy/includes/class-ls
 $links=LSCH_File06_Source_Links::collect(array(),$dto);
 must(count($links)===1,'Exact qualified lesson returned');
 must(LSCH_File06_Source_Links::attest(false,$links[0],$dto)===true,'Independent owner reattestation');
+$GLOBALS['canonical']=false;
+must(LSCH_File06_Source_Links::collect(array(),$dto)===array(),'Retracted/absent File06 concept never displays previously approved link');
+must(LSCH_File06_Source_Links::attest(false,$links[0],$dto)===false,'Retracted File06 concept revokes previous attestation');
+$GLOBALS['canonical']=true;
+$GLOBALS['owner_version']=4;
+must(LSCH_File06_Source_Links::collect(array(),$dto)===array(),'File06 source-version change invalidates old lesson source');
+$GLOBALS['owner_version']=3;
+$GLOBALS['owner_exception']=true;
+must(LSCH_File06_Source_Links::collect(array(),$dto)===array(),'File06 lookup exception denies cached relation');
+$GLOBALS['owner_exception']=false;
 $other=$dto;$other['id']='22222222-2222-4222-8222-222222222222';
 must(LSCH_File06_Source_Links::collect(array(),$other)===array(),'No lexical matching or wrong concept identity');
 $GLOBALS['public_lesson']=false;
@@ -66,6 +78,10 @@ $GLOBALS['meta']['_lsch_file06_source_approval_v1']['rights_evidence_ref']='righ
 $GLOBALS['reviewer_active']=false;
 must(LSCH_File06_Source_Links::collect(array(),$dto)===array(),'Revoked reviewer rights disables projection');
 $GLOBALS['reviewer_active']=true;
+$GLOBALS['reviewer_authorized']=false;
+must(LSCH_File06_Source_Links::collect(array(),$dto)===array(),'File00 suspended reviewer disables old source relation');
+$GLOBALS['reviewer_authorized']=true;
+$GLOBALS['reviewer_active']=true;
 $request=new MockRequest(array('id'=>9,'concept_public_id'=>$id,'concept_version'=>3,
   'lesson_version'=>8,'rights_scope'=>'permission-to-link','rights_evidence_ref'=>'rights:2026-approved'));
 $GLOBALS['owner_version']=2;
@@ -78,6 +94,11 @@ $revoked=LSCH_File06_Source_Links::approve($request);
 must($revoked instanceof WP_Error && $revoked->get_error_code()==='lsch_f06_review_denied',
   'Revoked reviewer capability must be rechecked before mutation');
 $GLOBALS['live_reviewer_cap']=true;
+$GLOBALS['safe_mode']=true;
+$blocked=LSCH_File06_Source_Links::approve($request);
+must($blocked instanceof WP_Error && $blocked->get_error_code()==='lsch_f06_review_denied',
+  'Safe-mode blocks approval even if WordPress capability is present');
+$GLOBALS['safe_mode']=false;
 $accepted=LSCH_File06_Source_Links::approve($request);
 must(is_array($accepted)&&$accepted['approved']===true,
   'Exact File06 current version can be independently approved');
