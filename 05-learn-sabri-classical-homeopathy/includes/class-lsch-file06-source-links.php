@@ -22,6 +22,28 @@ final class LSCH_File06_Source_Links {
 		return is_string($id) && (bool) preg_match( '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $id );
 	}
 
+
+	/** Revalidate the current canonical source before exposing or approving any link. */
+	private static function current_concept( $id, $version ) {
+		$id = strtolower( (string) $id );
+		if ( ! self::valid_uuid( $id ) || ! is_scalar( $version )
+			|| ! preg_match( '/^[1-9][0-9]*$/D', (string) $version ) ) { return false; }
+		try {
+			$owner = apply_filters( 'he_v12_file06_concept_assertion_v1', null, $id, absint( $version ) );
+		} catch ( Throwable $error ) {
+			// A failed canonical owner is not approval to use a stale link.
+			return false;
+		}
+		return is_array( $owner )
+			&& true === ( $owner['published'] ?? false )
+			&& 'file-06' === ( $owner['owner_file'] ?? '' )
+			&& hash_equals( $id, strtolower( (string) ( $owner['public_id'] ?? '' ) ) )
+			&& isset( $owner['version'] )
+			&& ( is_int( $owner['version'] ) || ( is_string( $owner['version'] )
+				&& preg_match( '/^[1-9][0-9]*$/D', $owner['version'] ) ) )
+			&& (string) $version === (string) $owner['version'];
+	}
+
 	private static function valid_link( $lesson_id, $concept_public_id, $concept_version ) {
 		$lesson_id = absint($lesson_id);
 		$post = $lesson_id ? get_post($lesson_id) : null;
@@ -37,7 +59,9 @@ final class LSCH_File06_Source_Links {
 			|| ! preg_match('/^[A-Za-z0-9._:-]{8,120}$/',(string)($approval['rights_evidence_ref']??''))
 			|| absint($approval['reviewer_user_id']??0)<1
 			|| absint($approval['reviewer_user_id']??0)===(int)$post->post_author
-			|| ! user_can(absint($approval['reviewer_user_id']),LSCH_Capabilities::REVIEW_LESSONS) ) { return null; }
+			|| ! user_can(absint($approval['reviewer_user_id']),LSCH_Capabilities::REVIEW_LESSONS)
+			|| ! LSCH_Capabilities::can_review(absint($approval['reviewer_user_id']))
+			|| ! self::current_concept($concept_public_id,$concept_version) ) { return null; }
 		$url=get_permalink($lesson_id);
 		if ( ! is_string($url) || ! wp_http_validate_url($url) ) { return null; }
 		return array(
@@ -78,7 +102,8 @@ final class LSCH_File06_Source_Links {
 		register_rest_route( LSCH_REST::NS,'/file06/lesson/(?P<id>\d+)/approve-link',array(
 			'methods'=>'POST','callback'=>array(__CLASS__,'approve'),
 			'permission_callback'=>static function($request) {
-				return get_current_user_id()>0 && LSCH_Capabilities::can_review(get_current_user_id())
+				return get_current_user_id()>0 && LSCH_Policy::can_use_learning_actions(get_current_user_id())
+					&& LSCH_Capabilities::can_review(get_current_user_id())
 					&& current_user_can(LSCH_Capabilities::REVIEW_LESSONS);
 			},
 		));
@@ -91,6 +116,7 @@ final class LSCH_File06_Source_Links {
 		$id=absint($request['id']);$post=$id?get_post($id):null;
 		$actor=get_current_user_id();
 		if(!$post||LSCH_Content::LESSON!==$post->post_type||$actor===(int)$post->post_author
+			|| ! LSCH_Policy::can_use_learning_actions($actor)
 			|| ! LSCH_Capabilities::can_review($actor)
 			|| ! current_user_can(LSCH_Capabilities::REVIEW_LESSONS)
 			|| !LSCH_Policy::publicly_visible($id)) {
@@ -107,14 +133,8 @@ final class LSCH_File06_Source_Links {
 			||!preg_match('/^[A-Za-z0-9._:-]{8,120}$/',$proof)) {
 			return new WP_Error('lsch_f06_link_invalid','Canonical ID, current versions and rights attestation required',array('status'=>422));
 		}
-		// File 06 is the owner. Do not approve arbitrary unreviewed IDs.
-		$canonical=apply_filters('he_v12_file06_concept_assertion_v1',null,$uuid,$cv);
-		if(!is_array($canonical)||true!==($canonical['published']??false)
-			||'file-06'!==($canonical['owner_file']??'')
-			||!hash_equals($uuid,(string)($canonical['public_id']??''))
-			|| !isset($canonical['version'])
-			|| !(is_int($canonical['version']) || (is_string($canonical['version']) && preg_match('/^[1-9][0-9]*$/D',$canonical['version'])))
-			|| (string)$cv !== (string)$canonical['version']) {
+		// File 06 is the canonical owner; do not accept stale or absent proof.
+		if ( ! self::current_concept( $uuid, $cv ) ) {
 			return new WP_Error('lsch_f06_owner_unavailable','Canonical File06 publication/version proof required',array('status'=>503));
 		}
 		$record=array('approved'=>true,'concept_public_id'=>$uuid,'concept_version'=>$cv,
