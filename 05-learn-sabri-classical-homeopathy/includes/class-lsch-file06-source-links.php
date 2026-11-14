@@ -91,7 +91,9 @@ final class LSCH_File06_Source_Links {
 		$id=absint($request['id']);$post=$id?get_post($id):null;
 		$actor=get_current_user_id();
 		if(!$post||LSCH_Content::LESSON!==$post->post_type||$actor===(int)$post->post_author
-			|| ! LSCH_Capabilities::can_review($actor)||!LSCH_Policy::publicly_visible($id)) {
+			|| ! LSCH_Capabilities::can_review($actor)
+			|| ! current_user_can(LSCH_Capabilities::REVIEW_LESSONS)
+			|| !LSCH_Policy::publicly_visible($id)) {
 			return new WP_Error('lsch_f06_review_denied','Only an independent authorized reviewer can approve a publicly eligible lesson',array('status'=>403));
 		}
 		$data=(array)$request->get_json_params();

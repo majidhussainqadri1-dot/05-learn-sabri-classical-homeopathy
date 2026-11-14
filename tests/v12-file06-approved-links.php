@@ -31,6 +31,7 @@ function wp_http_validate_url($v){return 0===strpos($v,'https://');}
 function user_can($uid,$cap){return $GLOBALS['reviewer_active']??true;}
 function get_current_user_id(){return 3;}
 function wp_verify_nonce($n,$v){return true;}
+function current_user_can($cap){return $GLOBALS['live_reviewer_cap']??true;}
 function apply_filters($name,$value,...$params){
 	if($name==='he_v12_file06_concept_assertion_v1'&&($GLOBALS['canonical']??true))return array('owner_file'=>'file-06','published'=>true,'public_id'=>$params[0],'version'=>($GLOBALS['owner_version']??$params[1]));
 	return null;
@@ -72,6 +73,11 @@ $rejected=LSCH_File06_Source_Links::approve($request);
 must($rejected instanceof WP_Error && $rejected->get_error_code()==='lsch_f06_owner_unavailable',
   'Stale File06 owner attestation must reject requested version');
 $GLOBALS['owner_version']=3;
+$GLOBALS['live_reviewer_cap']=false;
+$revoked=LSCH_File06_Source_Links::approve($request);
+must($revoked instanceof WP_Error && $revoked->get_error_code()==='lsch_f06_review_denied',
+  'Revoked reviewer capability must be rechecked before mutation');
+$GLOBALS['live_reviewer_cap']=true;
 $accepted=LSCH_File06_Source_Links::approve($request);
 must(is_array($accepted)&&$accepted['approved']===true,
   'Exact File06 current version can be independently approved');

@@ -97,7 +97,7 @@ final class LSCH_File26_Connector {
         return self::project($post);
     }
     public static function can_view($document,$audience=array()){
-        if(!is_array($document)||($document['connector_slug']??'')!==self::SLUG||($document['visibility']??'')!=='public'){return false;}
+        if(!is_array($document)||($document['connector_slug']??'')!==self::SLUG||($document['visibility']??'')!=='public'||($document['state']??'')!=='published'){return false;}
         $current=self::fetch_object((string)($document['entity_type']??''),(string)($document['object_id']??''));
         return is_array($current)
             && (string)($document['object_version']??'')===(string)$current['object_version']

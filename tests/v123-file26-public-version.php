@@ -35,6 +35,8 @@ $stale=$document;$stale['object_version']=7;
 must(!LSCH_File26_Connector::can_view($stale),'Stale indexed owner version denied');
 $wrong=$document;$wrong['canonical_url']='https://example.org/learn/lesson/elsewhere';
 must(!LSCH_File26_Connector::can_view($wrong),'Wrong canonical URL denied');
+$wrong=$document;$wrong['state']='withdrawn';
+must(!LSCH_File26_Connector::can_view($wrong),'Withdrawn indexed state denied');
 $wrong=$document;$wrong['object_id']='18';
 must(!LSCH_File26_Connector::can_view($wrong),'Different owner ID denied');
 $GLOBALS['version']=9;
