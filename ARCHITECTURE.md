@@ -1,4 +1,6 @@
-# File 05 Architecture — 4.0.0
+# File 05 Architecture — 4.1.0 draft source candidate (V12.3 audit)
+
+> This document concerns repository source only. Current deployed code, database/schema and production state are not verified. Do not infer Live parity from GitHub tests.
 
 ## Canonical ownership
 
@@ -19,6 +21,12 @@ Foreign domains are consumed through versioned APIs/events/adapters. Direct writ
 9. `LSCH_Events` / `LSCH_Operations` — reliable outbox/inbox/jobs, audit, reconciliation, safe mode and repair.
 10. `LSCH_Privacy` — WordPress export/erasure/legal-hold integration.
 11. `LSCH_Frontend` / `LSCH_Admin` — semantic learning surfaces; global shell/tokens remain external owners.
+
+## V12.3 proposed cross-owner adapter boundary
+
+- `LSCH_File06_Source_Links`: exposes approved lesson links only when File05 policy, independent current reviewer, exact lesson version, rights evidence and **fresh File06 owner identity/version/publication proof** all pass. Source retraction, stale version, missing owner or owner exception suppresses the link. Source approval is forbidden under learning safe mode.
+- `LSCH_File26_Connector`: a **proposed** public-only lesson/course/book provider; it does not transfer ranking or global discovery ownership. It revalidates source visibility, current object version and current canonical URL and aborts source batches on data-read errors. Owner event/tombstone/reconciliation and real File26 approval remain mandatory before indexing.
+- The `LSCH_PLAN_VERSION` constant currently records a v12 provenance identifier. V12.3 requirements are governed by the external latest master plan and its scoped evidence matrix; a version string alone is not a compliance or deployment certificate.
 
 ## Security invariants
 
