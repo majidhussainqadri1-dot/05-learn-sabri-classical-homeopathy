@@ -9,7 +9,7 @@
 - Both are **scoped code/test passes conducted in this assistant-led workflow**, not a claim of two independent human reviewers. V12.3 G4's *two independent acceptance reviews* remain a release blocker.
 - A successful test is a source result only. A deploy/staging/live defect cannot be marked fixed without exact deployed artifact evidence and live retesting.
 
-## Unique source findings (12 cumulative: 5 earlier and 7 added this run)
+## Unique source findings (15 cumulative: 5 earlier and 10 added this run)
 
 | ID | Proven candidate-source issue | Class | Source correction and regression | Test |
 | --- | --- | --- | --- | --- |
@@ -25,8 +25,11 @@
 | F05-S10 | File26 source batch or object projection could advance through DB read errors | Source/DB integrity | Source aborts inconsistent reads; DB-failure test | `tests/v123-file26-public-version.php` |
 | F05-S11 | Failed private-note GET left an editable empty field and no accessible failure feedback | UX/privacy/data-loss confusion | Read-only until revision GET; error status; JS test | `tests/v123-private-note-read-ux.test.js` |
 | F05-S12 | Successful but malformed note payload lacking revision unlocked editing after first fix | Review-B revision validation | Strict canonical revision proof; malformed-success test | `tests/v123-private-note-read-ux.test.js` |
+| F05-S13 | File16 tutor citation filter could upgrade an unrelated/non-approved source to approved | Source-trust escalation | Filters may only veto the native approved bibliography match | `tests/v123-file16-socratic-owner.php` |
+| F05-S14 | File16 external tutor/reviewer callback could throw through the File05 REST handler | Availability / error containment | Provider and review exceptions converted to safe error states | `tests/v123-file16-socratic-owner.php` |
+| F05-S15 | File16 answer and citation fields were not strictly typed/bounded | Payload safety / resource budget | Require bounded string response, scalar citation fields and 20-citation cap | `tests/v123-file16-socratic-owner.php` |
 
-**Status for F05-S01..S12:** corrected in the Draft source branch and corresponding isolated regression checks passed on its prior tested commits. *Current exact head CI must always be rechecked after further commits.* **Live verified: 0**. Do not mark production Resolved.
+**Status for F05-S01..S15:** corrected in the Draft source branch and corresponding isolated regression checks passed on its prior tested commits. *Current exact head CI must always be rechecked after further commits.* **Live verified: 0**. Do not mark production Resolved.
 
 ## Other non-duplicated work and remaining questions
 
@@ -46,7 +49,7 @@
 
 | Mechanism | Proven scope | Not proven |
 | --- | --- | --- |
-| PHP 7.4 + PHP 8.3 | Full source lint, existing fixtures, File06 17 and File26 17 isolated assertions | Real peer contracts or Live |
+| PHP 7.4 + PHP 8.3 | Full source lint, existing fixtures, File06 17, File26 17 and File16 12 isolated assertions | Real peer contracts or Live |
 | Node.js | Original learning/Future18 and new private-note failure/malformed-revision regression | Browser NVDA/TalkBack/VoiceOver |
 | Deterministic ZIP | A/B identical archive plus manifest verification | Actual deployed artifact |
 | WordPress 7.0.1 disposable with MariaDB 10.11 | Plugin activation, installed schema, REST routes, guest/private authorization, owner proposed status and reactivation | File00/01/20 *real* versions, WordPress on Hostinger, upgrade from actual predecessor |
@@ -54,7 +57,7 @@
 
 ## Defect accounting — unique, no stacking
 
-- **Source findings S01..S12:** 12 cumulative; all 12 corrected on the Draft candidate with regression evidence. Of these, **7 findings (S06..S12)** were added and corrected during the present continuation.
+- **Source findings S01..S15:** 15 cumulative; all 15 corrected on the Draft candidate with regression evidence. Of these, **10 findings (S06..S15)** were added and corrected during the present continuation.
 - **Branch integration conflict:** 1 (I01) reconciled in Draft.
 - **Documentation mismatch:** D01 corrected; D02 intentionally open and tracked.
 - **Test failures being concealed:** 0 known in the recorded passing exact-head CI. **Blocked mandatory tests remain** and must never be counted as Passed.
