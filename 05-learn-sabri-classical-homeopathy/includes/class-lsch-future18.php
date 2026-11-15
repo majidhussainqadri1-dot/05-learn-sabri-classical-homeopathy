@@ -1097,6 +1097,20 @@ final class LSCH_Future18 {
 		return is_array( $rows ) ? $rows : new WP_Error( 'lsch_future18_cpd_read_failed', __( 'Private CPD records could not be verified.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
 	}
 
+
+	/** Revalidate owner, learner and source truth after asynchronous/external tutoring. */
+	private static function socratic_context_current( array $context ) {
+		$learner = absint( $context['user_id'] ?? 0 );
+		$lesson = absint( $context['lesson_id'] ?? 0 );
+		return $learner > 0 && $lesson > 0
+			&& self::approved_user( $learner )
+			&& LSCH_Content::LESSON === get_post_type( $lesson )
+			&& LSCH_Policy::can_read_post( $lesson, $learner )
+			&& LSCH_Content::version( $lesson ) === (int) ( $context['lesson_version'] ?? 0 )
+			&& (string) get_post_meta( $lesson, '_lsch_objectives', true ) === (string) ( $context['objectives'] ?? '' )
+			&& LSCH_Value::sources( $lesson ) === (array) ( $context['sources'] ?? array() );
+	}
+
 	public static function socratic_tutor( $user_id, $lesson_id, $question, $stage = 'question' ) {
 		$user_id = absint( $user_id );
 		$lesson_id = absint( $lesson_id );
@@ -1127,6 +1141,14 @@ final class LSCH_Future18 {
 			return new WP_Error( 'lsch_future18_tutor_provider_unavailable',
 				__( 'The File 16 educational provider cannot be verified at present.', 'learn-sabri-classical-homeopathy' ),
 				array( 'status' => 503 ) );
+		}
+
+		// The external provider may run after a learner suspension, source edit or
+		// content retraction. A pre-call permission check does not authorize reuse.
+		if ( ! self::socratic_context_current( $context ) ) {
+			return new WP_Error( 'lsch_future18_tutor_context_revoked',
+				__( 'The learning context changed. Reload the lesson before asking again.', 'learn-sabri-classical-homeopathy' ),
+				array( 'status' => 403 ) );
 		}
 		if ( null === $result || false === $result ) {
 			return new WP_Error( 'lsch_future18_tutor_provider_unavailable', __( 'The File 16 source-grounded Socratic tutor provider is not currently available.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 503 ) );
@@ -1176,6 +1198,12 @@ final class LSCH_Future18 {
 		}
 		if ( ! $citations ) {
 			return new WP_Error( 'lsch_future18_tutor_source_required', __( 'The File 16 Socratic tutor must return at least one approved source citation.', 'learn-sabri-classical-homeopathy' ), array( 'status' => 502 ) );
+		}
+		// Citation-review plugins can also change or revoke the underlying context.
+		if ( ! self::socratic_context_current( $context ) ) {
+			return new WP_Error( 'lsch_future18_tutor_context_revoked',
+				__( 'The learning context changed. Reload the lesson before asking again.', 'learn-sabri-classical-homeopathy' ),
+				array( 'status' => 403 ) );
 		}
 		$out = array( 'text' => wp_kses_post( (string) $result['text'] ), 'citations' => $citations, 'stage' => $stage, 'provider_owner' => 'file16', 'learning_context_owner' => 'file05' );
 		LSCH_Events::audit( 'future18_socratic_tutor_used', 'lesson', $lesson_id, array( 'stage' => $stage, 'question_hash' => hash( 'sha256', $question ), 'citation_count' => count( $out['citations'] ) ), 'learning' );
