@@ -47,21 +47,7 @@ final class LSCH_Frontend {
 	private function is_learning_context() {
 		if ( is_singular( array( LSCH_Content::PROGRAM, LSCH_Content::COURSE, LSCH_Content::BOOK, LSCH_Content::LESSON, LSCH_Content::ASSESSMENT, LSCH_Content::ASSIGNMENT, LSCH_Content::COHORT ) ) || is_post_type_archive( array( LSCH_Content::PROGRAM, LSCH_Content::COURSE, LSCH_Content::BOOK, LSCH_Content::LESSON ) ) ) { return true; }
 		$pages = (array) get_option( 'lsch_page_map', array() );
-		if ( is_page( array_values( array_filter( array_map( 'absint', $pages ) ) ) ) ) { return true; }
-		// File01 may own the shared /learn/ page; this route is transformed to
-		// File05 markup only after wp_enqueue_scripts, so content scanning alone is insufficient.
-		$foundation = (array) get_option( 'spf_page_map', array() );
-		if ( ! empty( $foundation['learn'] ) && is_page( absint( $foundation['learn'] ) ) ) { return true; }
-		// Approved learning shortcodes can also be used on an ordinary WordPress page.
-		if ( is_singular( 'page' ) ) {
-			$post = get_queried_object();
-			if ( $post instanceof WP_Post ) {
-				foreach ( array( 'lsch_learning_home', 'sabri_learning', 'lsch_learning_dashboard', 'lsch_course' ) as $shortcode ) {
-					if ( has_shortcode( (string) $post->post_content, $shortcode ) ) { return true; }
-				}
-			}
-		}
-		return false;
+		return is_page( array_values( array_filter( array_map( 'absint', $pages ) ) ) );
 	}
 
 	public function shell_layout( $mode, $settings ) { unset( $settings ); return $this->is_learning_context() ? 'two' : $mode; }
