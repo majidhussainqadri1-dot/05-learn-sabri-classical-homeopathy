@@ -14,6 +14,12 @@ $versions=array(
 );
 echo 'PINNED PEER SOURCE VERSIONS '.wp_json_encode($versions)."\n";
 f05_peer_check(defined('SMC_VERSION')&&class_exists('SMC_Contracts'),'File00 real PHP owner did not boot');
+$bootstrap=(array)get_option('smc_activation_bootstrap_state_v2',array());
+$owner_status=(string)($bootstrap['status']??'');
+$owner_db=(string)get_option('smc_db_version','');
+echo 'FILE00 PROTECTED BOOTSTRAP '.sanitize_key($owner_status).' / DB '.sanitize_text_field($owner_db)."\n";
+f05_peer_check('ready'===$owner_status && defined('SMC_DB_VERSION') && SMC_DB_VERSION===$owner_db,
+    'File00 is still deferred; plugin code presence alone is not full runtime readiness');
 f05_peer_check(defined('SPF_VERSION'),'File01 real PHP owner did not boot');
 f05_peer_check(defined('SABRI_SHELL_VERSION'),'File20 real PHP owner did not boot');
 f05_peer_check(function_exists('smc_policy'),'File00 smc_policy() owner is absent');
