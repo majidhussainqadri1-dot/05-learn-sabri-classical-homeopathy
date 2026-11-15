@@ -41,6 +41,16 @@ $wrong=$document;$wrong['state']='withdrawn';
 must(!LSCH_File26_Connector::can_view($wrong),'Withdrawn indexed state denied');
 $wrong=$document;$wrong['object_id']='18';
 must(!LSCH_File26_Connector::can_view($wrong),'Different owner ID denied');
+must(LSCH_File26_Connector::fetch_object('lesson','00017')===null,'Leading-zero alternate object ID refused');
+must(LSCH_File26_Connector::fetch_object('lesson','9999999999999999999999999')===null,'Out-of-range object ID refused');
+must(LSCH_File26_Connector::fetch_object('lesson',true)===null,'Boolean object ID refused');
+must(LSCH_File26_Connector::fetch_object(array('lesson'),'17')===null,'Malformed entity type refused');
+$malformed=$document;$malformed['canonical_url']=array('injection');
+must(!LSCH_File26_Connector::can_view($malformed),'Malformed canonical URL field refused');
+$malformed=$document;$malformed['entity_type']=array('lesson');
+must(!LSCH_File26_Connector::can_view($malformed),'Malformed entity type field refused');
+$malformed=$document;$malformed['object_version']=array(8);
+must(!LSCH_File26_Connector::can_view($malformed),'Malformed object version refused');
 $GLOBALS['version']=9;
 must(!LSCH_File26_Connector::can_view($document),'Owner version change invalidates old result');
 $GLOBALS['version']=8;$GLOBALS['ready']=false;
@@ -57,6 +67,9 @@ $failed_snapshot=LSCH_File26_Connector::list_batch();
 must($failed_snapshot instanceof WP_Error && $failed_snapshot->get_error_code()==='file05_search_taxonomy_unavailable',
     'Taxonomy provider failure must abort source batch, not skip indexed documents');
 $GLOBALS['topics']=array('foundations');
+$bad_scope=LSCH_File26_Connector::list_batch('',50,array('locale'=>'ur'));
+must($bad_scope instanceof WP_Error && $bad_scope->get_error_code()==='file05_search_partial_scope',
+    'Unsupported scope must fail rather than silently return unfiltered public snapshot');
 $GLOBALS['db_fails']=true;
 $failed_snapshot=LSCH_File26_Connector::list_batch();
 must($failed_snapshot instanceof WP_Error && $failed_snapshot->get_error_code()==='file05_search_owner_db_error',
