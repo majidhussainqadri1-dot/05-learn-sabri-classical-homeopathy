@@ -8,6 +8,8 @@ up_assert((int)get_option('lsch_schema_version',0)===18,'Core schema preserved')
 up_assert((int)get_option('lsch_state_schema_version',0)===3,'Auxiliary state schema preserved');
 up_assert((int)get_option('lsch_future18_schema',0)===2,'Future18 schema preserved');
 up_assert(class_exists('LSCH_Mentor_History')&&LSCH_Mentor_History::ready(),'Mentor history v1 table now present');
+up_assert((string)get_option('lsch_plan_version','')===LSCH_PLAN_VERSION,
+    'The source provenance marker is refreshed on exact-source replacement, not misrepresented as V12.3 acceptance');
 up_assert((string)get_option('lsch_version','')==='4.1.0',
     'Persistent installed-version marker must not remain 4.0.0 after a successful source upgrade');
 global $wpdb;
