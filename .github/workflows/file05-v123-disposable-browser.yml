@@ -58,7 +58,7 @@ jobs:
           set -euo pipefail
           WP='php /tmp/wp-cli.phar --path=/tmp/file05-wp'
           $WP config create --dbname=wordpress --dbuser=ci_user --dbpass=ci_only --dbhost=127.0.0.1 --skip-check
-          $WP core install --url=http://localhost:8080 --title=File05-CI-Disposable \
+          $WP core install --url=http://127.0.0.1:8080 --title=File05-CI-Disposable \
             --admin_user=ciadmin --admin_password=ci-only-password --admin_email=ci@example.invalid --skip-email
           mkdir -p /tmp/file05-wp/wp-content/mu-plugins
           cp tests/fixtures/v123-ci-only-owner-contract-stub.php /tmp/file05-wp/wp-content/mu-plugins/f05-ci-only.php
