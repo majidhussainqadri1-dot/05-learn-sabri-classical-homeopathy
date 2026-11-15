@@ -1,6 +1,6 @@
 # File05 V12.3 — Defect ledger and two scoped source review passes
 
-**Date:** 2026-11-14. **Basis:** Draft PR #8 and V12.3 execution plan. **Production parity:** UNVERIFIED.
+**Updated:** 2026-11-15; previous findings retain their original 2026-11-14 provenance. **Basis:** Draft PR #8 and V12.3 execution plan. **Production parity:** UNVERIFIED.
 
 ## Exact meaning of review evidence
 
@@ -9,7 +9,7 @@
 - Both are **scoped code/test passes conducted in this assistant-led workflow**, not a claim of two independent human reviewers. V12.3 G4's *two independent acceptance reviews* remain a release blocker.
 - A successful test is a source result only. A deploy/staging/live defect cannot be marked fixed without exact deployed artifact evidence and live retesting.
 
-## Unique source findings (17 cumulative: 5 earlier and 12 added this run)
+## Unique source findings (20 cumulative: 17 previous and 3 from 2026-11-15)
 
 | ID | Proven candidate-source issue | Class | Source correction and regression | Test |
 | --- | --- | --- | --- | --- |
@@ -30,8 +30,11 @@
 | F05-S15 | File16 answer and citation fields were not strictly typed/bounded | Payload safety / resource budget | Require bounded string response, scalar citation fields and 20-citation cap | `tests/v123-file16-socratic-owner.php` |
 | F05-S16 | File16 matching object ID could authorize an unrelated URL (or matching URL an unrelated object ID) | Citation identity/link forgery | When both fields supplied, require both to match one approved source | `tests/v123-file16-socratic-owner.php` |
 | F05-S17 | External File16 WP_Error could expose an untrusted provider error message | Provider error disclosure | Convert all provider errors to bounded safe 503, do not relay the raw error | `tests/v123-file16-socratic-owner.php` |
+| F05-S18 | File16 callback/third-party citation reviewer could revoke learner access or change the lesson/source while answer request was in flight | Runtime authorization and evidence TOCTOU | Revalidate the current learner, lesson version, objectives and approved sources after provider and citation-review filters; four new negative cases | `tests/v123-file16-socratic-owner.php` |
+| F05-S19 | File26 `list_batch()` accepted nonempty scope filters (except `object_id`) but silently returned the full unfiltered snapshot | Incomplete/ambiguous owner contract | Reject all nonempty unsupported scopes; explicit negative test | `tests/v123-file26-public-version.php` |
+| F05-S20 | File26 untrusted document IDs/types could cast booleans/overflowing integers or malformed fields before canonical owner revalidation | Identity normalization / malformed DTO | Reject alternate, out-of-range IDs and non-scalar indexed metadata | `tests/v123-file26-public-version.php` |
 
-**Status for F05-S01..S17:** corrected in the Draft source branch and corresponding isolated regression checks passed on its prior tested commits. *Current exact head CI must always be rechecked after further commits.* **Live verified: 0**. Do not mark production Resolved.
+**Status for F05-S01..S20:** corrected in the Draft source branch and corresponding isolated regression checks passed on its prior tested commits. *Current exact head CI must always be rechecked after further commits.* **Live verified: 0**. Do not mark production Resolved.
 
 ## Other non-duplicated work and remaining questions
 
@@ -44,6 +47,9 @@
 | F05-O01 | P00 | WordPress.com/Jetpack disconnected, WPVibe HTTP 530, public fetch unavailable | **Blocked; root cause unknown** |
 | F05-O02 | P06 | File16 Socratic provider `lsch_file16_socratic_tutor` and actual File19/File24/26 companion lifecycle not attested against deployed builds | **Blocked** |
 | F05-O03 | P11 | WordPress 7.0.1 + MariaDB 10.11 disposable CI with File00/01/20 mocks — *not site staging* | Provisional WP compatibility only |
+| F05-O06 | P06 real peer CI | File00 1.2.44 (DB 1.4.5, `ready` after deferred admin bootstrap), File01 2.0.1, File20 1.4.17, File05 4.1.0: pinned source snapshots and guest/private REST smoke passed | Disposable source integration; Hostinger staging and exact deployed peers unverified |
+| F05-O07 | File00 owner bootstrap log | First authorized CLI activation observed 31 missing-table SQL errors before deferred File00 admin bootstrap completed; upstream issue #62 records reproducible owner finding | Open File00-owned source concern; not a File05/live fix |
+| F05-O08 | File00 readiness contract | Before completion, File00 bootstrap was `queued` while File05's `missing()` returned `[]`; a public owner migration/ready contract should be supplied rather than direct File00 private-table coupling | Pending versioned File00 owner decision |
 | F05-O04 | P07 | Eight source books, lesson claims, edition/copyright, reviewed translations and approved quizzes not populated | **Blocked / pending approval** |
 | F05-O05 | P12 | Exact deployed ZIP/version, DB options/schema, migration/restore and Live re-test unknown | **Blocked** |
 
@@ -51,15 +57,16 @@
 
 | Mechanism | Proven scope | Not proven |
 | --- | --- | --- |
-| PHP 7.4 + PHP 8.3 | Full source lint, existing fixtures, File06 17, File26 17 and File16 15 isolated assertions | Real peer contracts or Live |
+| PHP 7.4 + PHP 8.3 | Full source lint, existing fixtures, File06 17, File26 25 and File16 19 isolated assertions | Hostinger/Live and actual provider suites |
 | Node.js | Original learning/Future18 and new private-note failure/malformed-revision regression | Browser NVDA/TalkBack/VoiceOver |
 | Deterministic ZIP | A/B identical archive plus manifest verification | Actual deployed artifact |
-| WordPress 7.0.1 disposable with MariaDB 10.11 | Plugin activation, installed schema, REST routes, guest/private authorization, owner proposed status and reactivation | File00/01/20 *real* versions, WordPress on Hostinger, upgrade from actual predecessor |
+| WordPress 7.0.1 disposable with MariaDB 10.11 | Plugin activation, installed schema, REST routes, guest/private authorization, owner proposed status and reactivation | WordPress on Hostinger, upgrade from actual predecessor |
+| Pinned real File00/01/20 peers in disposable CI | File00 protected admin bootstrap to `ready` / DB 1.4.5, File05 preflight, guest public catalog and native private REST denial succeeded, CI #43664653956 | Real site migration/parity, approved users/teachers, independent security acceptance |
 | P00 runbook | Exact read-only options/tables/roles/parity checklist | No actual Live DB evidence |
 
 ## Defect accounting — unique, no stacking
 
-- **Source findings S01..S17:** 17 cumulative; all 17 corrected on the Draft candidate with regression evidence. Of these, **12 findings (S06..S17)** were added and corrected during the present continuation.
+- **Source findings S01..S20:** 20 cumulative; 17 from earlier work and **3 newly corrected** on 2026-11-15, all with isolated regression evidence. **No live-level resolution is claimed.**
 - **Branch integration conflict:** 1 (I01) reconciled in Draft.
 - **Documentation mismatch:** D01 corrected; D02 intentionally open and tracked.
 - **Test failures being concealed:** 0 known in the recorded passing exact-head CI. **Blocked mandatory tests remain** and must never be counted as Passed.
