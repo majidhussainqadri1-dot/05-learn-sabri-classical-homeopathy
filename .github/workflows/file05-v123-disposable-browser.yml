@@ -80,7 +80,8 @@ jobs:
           set -euo pipefail
           HOME_ID=$(php /tmp/wp-cli.phar --path=/tmp/file05-wp eval 'echo (int) (((array) get_option("lsch_page_map",array()))["home"] ?? 0);')
           test "$HOME_ID" -gt 0
-          php -S 127.0.0.1:8080 -t /tmp/file05-wp /tmp/file05-wp/index.php >/tmp/file05-browser-server.log 2>&1 &
+          # PHP built-in static server must serve CSS/JS directly; index.php as router rewrites assets to HTML.
+          php -S 127.0.0.1:8080 -t /tmp/file05-wp >/tmp/file05-browser-server.log 2>&1 &
           for attempt in $(seq 1 35); do
             if curl --fail --silent "http://127.0.0.1:8080/?page_id=$HOME_ID" >/tmp/file05-landing.html; then break; fi
             sleep 1
