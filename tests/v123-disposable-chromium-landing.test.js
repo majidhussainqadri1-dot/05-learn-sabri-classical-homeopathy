@@ -6,7 +6,7 @@
 const assert = require('assert');
 const { chromium } = require('playwright');
 const url = process.env.F05_TEST_URL;
-assert.ok(/^http:\/\/127\.0\.0\.1:8080\/\?page_id=\d+$/.test(url || ''), 'Expected disposable local WordPress URL');
+assert.ok(/^http:\/\/127\.0\.0\.1:8080\/file05-wp\/\?page_id=\d+$/.test(url || ''), 'Expected disposable local WordPress URL');
 (async()=>{
   const browser = await chromium.launch({headless:true});
   let cases=0;
