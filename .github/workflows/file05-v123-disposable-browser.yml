@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - audit/file05-v123-integrated-owner-gates-20261114
+      - audit/file05-v123-accessible-ui-20261115
     paths:
       - '05-learn-sabri-classical-homeopathy/**'
       - 'tests/v123-disposable-chromium-landing.test.js'
@@ -72,7 +73,7 @@ jobs:
       - name: Install browser automation dependencies
         run: |
           set -euo pipefail
-          npm install --no-save playwright@1.58.2
+          npm install --no-save playwright@1.58.2 axe-core@4.10.3
           npx playwright install chromium --with-deps
       - name: Open disposable public learning page in local WordPress server
         run: |
