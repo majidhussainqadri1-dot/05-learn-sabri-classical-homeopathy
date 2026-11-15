@@ -32,7 +32,17 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/file05-wp\/\?page_id=\d+$/.test(url || '
           sheetHref:document.querySelector('link[href*="assets/css/learning.css"]')?.href || '',
           loadedSheets:Array.from(document.styleSheets).map(sh=>sh.href).filter(Boolean),
           levelsGrid:getComputedStyle(document.querySelector('.lsch-grid-four')).display,
-          cardDisplay:getComputedStyle(document.querySelector('.lsch-level-card')).display
+          cardDisplay:getComputedStyle(document.querySelector('.lsch-level-card')).display,
+          overflowNodes:Array.from(document.querySelectorAll('body *')).filter(e=>{
+            const box=e.getBoundingClientRect();
+            return box.width>0&&box.height>0&&(box.right>innerWidth+2||box.left< -2);
+          }).slice(0,18).map(e=>{
+            const box=e.getBoundingClientRect(),cs=getComputedStyle(e);
+            return {tag:e.tagName,classes:(e.className||'').toString().slice(0,100),
+              text:(e.textContent||'').trim().slice(0,55),
+              box:{x:box.x,w:box.width,right:box.right},minWidth:cs.minWidth,
+              overflowX:cs.overflowX,display:cs.display};
+          })
         }));
         assert.ok(layout.shell,'Native File05 shell is present at '+viewport+'/'+dir);
         assert.ok(layout.bodyText>40,'Non-empty accessible textual page at '+viewport+'/'+dir);
