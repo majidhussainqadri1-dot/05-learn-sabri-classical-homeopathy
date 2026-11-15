@@ -123,6 +123,21 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/file05-wp\/\?page_id=\d+$/.test(url || '
           'Scoped File05 public landing axe issues at '+viewport+'/'+dir
         );
 
+        // Synthetic RTL long-copy reflow stress only: not proof of approved Urdu translation.
+        if (dir==='rtl' && [320,390].includes(viewport)) {
+          await page.evaluate(()=>{
+            document.querySelector('.lsch-hero h1').textContent=
+              'کلاسیکی ہومیوپیتھی کی جامع تعلیم، تحقیقی مہارت اور تمام تعلیمی درجات';
+            document.querySelector('.lsch-hero .lsch-kicker').textContent=
+              'صابری کلاسیکی ہومیوپیتھی کا تعلیمی مرکز';
+          });
+          const urdu=await page.evaluate(()=>({
+            pageWidth:document.documentElement.scrollWidth,viewport:innerWidth,
+            direction:getComputedStyle(document.querySelector('.lsch-shell')).direction
+          }));
+          assert.ok(urdu.pageWidth<=urdu.viewport+2,
+            'Synthetic long Urdu RTL headings overflow narrow screen: '+JSON.stringify(urdu));
+        }
         await page.keyboard.press('Tab');
         const focused=await page.evaluate(()=>document.activeElement?.tagName||'');
         assert.ok(focused && focused!=='BODY','Keyboard navigation must acquire interactive focus at '+viewport+'/'+dir);
