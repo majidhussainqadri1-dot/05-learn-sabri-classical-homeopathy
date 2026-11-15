@@ -65,6 +65,11 @@ jobs:
           set -euo pipefail
           php /tmp/wp-cli.phar --path=/tmp/file05-wp eval-file \
             "$GITHUB_WORKSPACE/tests/v123-wordpress-disposable-smoke.php"
+      - name: Real MariaDB mentorship history boundary/rollback tests
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar --path=/tmp/file05-wp eval-file \
+            "$GITHUB_WORKSPACE/tests/v123-mentor-history-mariadb-boundaries.php"
       - name: Repeat activation and schema readback (fresh install idempotence only)
         run: |
           set -euo pipefail
