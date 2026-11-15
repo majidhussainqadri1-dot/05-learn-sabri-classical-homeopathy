@@ -69,6 +69,12 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/file05-wp\/\?page_id=\d+$/.test(url || '
                 return {sel,rect:{x:r.x,w:r.width,right:r.right},scrollWidth:el.scrollWidth,
                   clientWidth:el.clientWidth,minWidth:cs.minWidth,maxWidth:cs.maxWidth,
                   display:cs.display,overflowX:cs.overflowX};}),
+            internalOverflow:Array.from(document.querySelectorAll('.lsch-shell, .lsch-shell *')).filter(e=>e.scrollWidth>e.clientWidth+4).slice(0,30).map(e=>{
+              const r=e.getBoundingClientRect(),cs=getComputedStyle(e);
+              return {tag:e.tagName,cl:(e.className||'').toString().slice(0,90),text:(e.textContent||'').slice(0,50),
+                scroll:e.scrollWidth,client:e.clientWidth,rect:{x:r.x,w:r.width,right:r.right},display:cs.display,
+                direction:cs.direction,whiteSpace:cs.whiteSpace,overflowWrap:cs.overflowWrap,flexBasis:cs.flexBasis};
+            }),
             overflowing:Array.from(document.querySelectorAll('body *')).filter(e=>{
               const r=e.getBoundingClientRect();
               return r.width>0&&r.height>0&&(r.right>innerWidth+2||r.left< -2);
