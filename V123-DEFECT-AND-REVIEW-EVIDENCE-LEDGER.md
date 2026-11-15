@@ -9,7 +9,7 @@
 - Both are **scoped code/test passes conducted in this assistant-led workflow**, not a claim of two independent human reviewers. V12.3 G4's *two independent acceptance reviews* remain a release blocker.
 - A successful test is a source result only. A deploy/staging/live defect cannot be marked fixed without exact deployed artifact evidence and live retesting.
 
-## Unique source findings (22 cumulative: 17 previous and 5 from 2026-11-15)
+## Unique source findings (24 cumulative: 17 prior + 5 previous 2026-11-15 + 2 scoped UI findings)
 
 | ID | Proven candidate-source issue | Class | Source correction and regression | Test |
 | --- | --- | --- | --- | --- |
@@ -35,8 +35,10 @@
 | F05-S20 | File26 untrusted document IDs/types could cast booleans/overflowing integers or malformed fields before canonical owner revalidation | Identity normalization / malformed DTO | Reject alternate, out-of-range IDs and non-scalar indexed metadata | `tests/v123-file26-public-version.php` |
 | F05-S21 | Exact 4.0.0 → 4.1.0 code replacement upgraded schema but left `lsch_version=4.0.0`, misleading release identity | Version/migration identity | After all schema markers and physical mentor table validate, persist `lsch_version` and source-plan provenance with readback; abort on persistence failure | `tests/v123-upgrade-seed-v400.php`, `tests/v123-upgrade-verify-v410.php` |
 | F05-S22 | File06 approved link metadata was written before relation index; index persistence failure could leave a partially approved, inconsistent relation | Cross-object approval ordering | Persist unprivileged index first, independently approved decision last; inject each meta-write failure | `tests/v12-file06-approved-links.php` |
+| F05-S23 | Media-only course card links had no accessible link name when no featured image was supplied | WCAG 2.4.4 link purpose / UI | Accessible localized aria-label using actual card title; real WP markup regression | `tests/v123-accessible-lesson-ui-wp.php` |
+| F05-S24 | Lesson progress/bookmark controls had no local live-status destination, leaving successful or failed actions visually and semantically silent | Accessible feedback / user trust | Separate role=status region inside learning tools; Node mutation + real WP markup regression | `tests/v123-learning-action-status.test.js`, `tests/v123-accessible-lesson-ui-wp.php` |
 
-**Status for F05-S01..S22:** corrected in the Draft source branch and corresponding isolated regression checks passed on its prior tested commits. *Current exact head CI must always be rechecked after further commits.* **Live verified: 0**. Do not mark production Resolved.
+**Status for F05-S01..S24:** candidate source corrected in the Draft source branch and corresponding isolated regression checks passed on its prior tested commits. *Current exact head CI must always be rechecked after further commits.* **Live verified: 0**. Do not mark production Resolved.
 
 ## Other non-duplicated work and remaining questions
 
@@ -74,7 +76,7 @@
 
 ## Defect accounting — unique, no stacking
 
-- **Source findings S01..S22:** 22 cumulative; 17 inherited from 2026-11-14 and **5 newly corrected** on 2026-11-15 (S18–S22); source regression and disposable WP evidence on exact candidate commits. **No staging/Live resolution is claimed.**
+- **Source findings S01..S24:** 24 cumulative; 17 inherited from 2026-11-14, 5 fixed on the prior 2026-11-15 Draft PR #8 (S18–S22), and **2 candidate UI repairs** on the stacked access branch (S23–S24). Verify the exact branch HEAD and independent real WP + Node regression before marking them source-tested. **No staging/Live resolution is claimed.**
 - **Branch integration conflict:** 1 (I01) reconciled in Draft.
 - **Documentation mismatch:** D01 corrected; D02 intentionally open and tracked.
 - **Test failures being concealed:** 0 known in the recorded passing exact-head CI. **Blocked mandatory tests remain** and must never be counted as Passed.
