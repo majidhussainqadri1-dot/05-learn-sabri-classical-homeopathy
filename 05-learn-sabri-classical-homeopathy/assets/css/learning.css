@@ -35,3 +35,13 @@
 .lsch-grid-four>.lsch-level-card{min-width:0;max-width:100%;overflow-wrap:anywhere}
 .lsch-level-card strong,.lsch-level-card span{overflow-wrap:anywhere}
 @media(max-width:680px){.lsch-grid-four{grid-template-columns:minmax(0,1fr)}}
+
+/* V12.3 real browser 200% text enlargement: text must never impose
+   an unbreakable min-content width beyond its local column. */
+.lsch-hero h1,.lsch-hero p,.lsch-hero .lsch-kicker,
+.lsch-section-head,.lsch-section-head h2,.lsch-section-head .lsch-kicker,
+.lsch-empty,.lsch-empty h3,.lsch-empty p,.lsch-button{overflow-wrap:anywhere}
+.lsch-hero h1,.lsch-hero p,.lsch-section-head>div,.lsch-button{min-width:0;max-width:100%}
+.lsch-section-head{flex-wrap:wrap}
+.lsch-grid:not(.lsch-grid-four){grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
+.lsch-empty{min-width:0;max-width:100%}
