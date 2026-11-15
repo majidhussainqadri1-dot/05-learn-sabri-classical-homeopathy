@@ -62,7 +62,7 @@ final class LSCH_File26_Connector {
     public static function list_batch($cursor='',$limit=50,$scope=array()){
         global $wpdb;
         if(!self::native_ready()){return new WP_Error('file05_search_unavailable','Canonical learning policy is unavailable.');}
-        if(!is_array($scope)||isset($scope['object_id'])){return new WP_Error('file05_search_partial_scope','Only complete File05 owner snapshots are supported.');}
+        if(!is_array($scope)||count($scope)>0){return new WP_Error('file05_search_partial_scope','Only complete File05 owner snapshots are supported.');}
         if($cursor!==''&&(!is_string($cursor)||!preg_match('/^[0-9]{1,18}$/D',$cursor))){
             return new WP_Error('file05_search_invalid_cursor','Invalid source cursor.');
         }
@@ -97,7 +97,7 @@ final class LSCH_File26_Connector {
     }
     public static function fetch_object($entity_type,$public_id=''){
         if(!self::native_ready()){return null;}
-        if(!isset(self::TYPES['lsch_'.$entity_type])||!is_scalar($public_id)||!preg_match('/^[1-9][0-9]*$/D',(string)$public_id)){return null;}
+        if(!is_string($entity_type)||!isset(self::TYPES['lsch_'.$entity_type])||!(is_int($public_id)||is_string($public_id))||!preg_match('/^[1-9][0-9]*$/D',(string)$public_id)||(string)(int)$public_id!==(string)$public_id){return null;}
         global $wpdb;
         $wpdb->last_error='';
         $post=get_post((int)$public_id);
@@ -106,7 +106,11 @@ final class LSCH_File26_Connector {
         return ''===(string)$wpdb->last_error&&!is_wp_error($doc)?$doc:null;
     }
     public static function can_view($document,$audience=array()){
-        if(!is_array($document)||($document['connector_slug']??'')!==self::SLUG||($document['visibility']??'')!=='public'||($document['state']??'')!=='published'){return false;}
+        if(!is_array($document)||($document['connector_slug']??'')!==self::SLUG||($document['visibility']??'')!=='public'||($document['state']??'')!=='published'
+            || !isset($document['entity_type'],$document['object_id'],$document['object_version'],$document['canonical_url'])
+            || !is_string($document['entity_type']) || !(is_string($document['object_id'])||is_int($document['object_id']))
+            || !(is_string($document['object_version'])||is_int($document['object_version']))
+            || !is_string($document['canonical_url'])){return false;}
         $current=self::fetch_object((string)($document['entity_type']??''),(string)($document['object_id']??''));
         return is_array($current)
             && (string)($document['object_version']??'')===(string)$current['object_version']
