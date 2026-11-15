@@ -11,7 +11,7 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/file05-wp\/\?page_id=\d+$/.test(url || '
   const browser = await chromium.launch({headless:true});
   let cases=0;
   try {
-    for (const viewport of [320,375,768,1024,1440]) {
+    for (const viewport of [320,375,390,768,1024,1440,1920]) {
       for (const dir of ['ltr','rtl']) {
         const context=await browser.newContext({viewport:{width:viewport,height:850},reducedMotion:'reduce'});
         const page=await context.newPage();
@@ -56,6 +56,19 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/file05-wp\/\?page_id=\d+$/.test(url || '
         assert.ok(layout.documentWidth<=layout.viewport+2,
           'Horizontal overflow '+viewport+'/'+dir+': '+JSON.stringify(layout));
         assert.deepStrictEqual(errors,[],'No uncaught JS errors on public landing');
+        // CSS text resize is a *limited* automated reflow smoke, not real 200% screen-reader
+        // or browser 400% zoom acceptance; retain manual G4/G5 gates separately.
+        if ([320,390].includes(viewport)) {
+          await page.evaluate(()=>{document.documentElement.style.fontSize='200%';});
+          const magnified=await page.evaluate(()=>({
+            width:document.documentElement.scrollWidth,
+            viewport:window.innerWidth
+          }));
+          assert.ok(magnified.width<=magnified.viewport+2,
+            '200% text-size horizontal overflow '+viewport+'/'+dir+': '+JSON.stringify(magnified));
+          await page.evaluate(()=>{document.documentElement.style.fontSize='';});
+        }
+
         // Automated scoped axe checks complement, but never replace, assistive-tech/manual WCAG review.
         await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
         const audit=await page.evaluate(async()=>window.axe.run(
@@ -97,6 +110,6 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/file05-wp\/\?page_id=\d+$/.test(url || '
       }
     }
     console.log('PASS: Real disposable File05 landing in headless Chromium, '+cases+
-       ' combinations across five widths and RTL/LTR with reduced motion, no overflow or uncaught JS errors. NOT WCAG/staging.');
+       ' combinations across seven widths and RTL/LTR with reduced motion, no overflow or uncaught JS errors. NOT WCAG/staging.');
   }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1);});
