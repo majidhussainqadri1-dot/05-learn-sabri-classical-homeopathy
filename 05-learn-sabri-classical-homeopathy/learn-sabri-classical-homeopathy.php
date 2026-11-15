@@ -72,6 +72,24 @@ function lsch_bootstrap() {
 		LSCH_State::maybe_upgrade();
 		LSCH_Future18::maybe_upgrade();
 		LSCH_Mentor_History::maybe_upgrade();
+
+		// A source-code replacement does not execute the activation hook. Mark the
+		// installed build only AFTER all required schema upgrades have completed.
+		// Reject missing/future markers rather than declaring a partial upgrade ready.
+		if ( (int) get_option( LSCH_Database::OPTION, 0 ) !== LSCH_SCHEMA_VERSION
+			|| (int) get_option( LSCH_State::OPTION, 0 ) !== LSCH_State::SCHEMA
+			|| (int) get_option( LSCH_Future18::OPTION, 0 ) !== LSCH_Future18::SCHEMA
+			|| ! LSCH_Mentor_History::ready() ) {
+			throw new RuntimeException( 'File 05 required database schema markers were not fully verified.' );
+		}
+		foreach ( array( 'lsch_version' => LSCH_VERSION, 'lsch_plan_version' => LSCH_PLAN_VERSION ) as $option => $expected ) {
+			if ( (string) get_option( $option, '' ) !== (string) $expected ) {
+				update_option( $option, $expected, false );
+				if ( (string) get_option( $option, '' ) !== (string) $expected ) {
+					throw new RuntimeException( 'File 05 source version identity was not persisted after migration.' );
+				}
+			}
+		}
 	} catch ( Throwable $error ) {
 		update_option(
 			'lsch_runtime_failure',
