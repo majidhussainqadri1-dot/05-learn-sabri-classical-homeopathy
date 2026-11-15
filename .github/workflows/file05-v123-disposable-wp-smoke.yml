@@ -1,0 +1,92 @@
+name: File05 V12.3 Disposable WordPress MariaDB Smoke (NOT Staging)
+on:
+  push:
+    branches:
+      - audit/file05-v123-integrated-owner-gates-20261114
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  disposable-wp:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    services:
+      database:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: ci_root_only
+          MARIADB_DATABASE: wordpress
+          MARIADB_USER: ci_user
+          MARIADB_PASSWORD: ci_only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc
+        with:
+          php-version: '8.3'
+          extensions: mysqli, curl, mbstring, xml, zip
+          coverage: none
+      - name: Exact source and environment
+        run: |
+          git rev-parse HEAD
+          php --version
+          php -m | grep -i mysqli
+      - name: Install disposable WP-CLI and exact plan WP baseline
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --silent --show-error \
+            https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+            -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar --info
+          mkdir -p /tmp/file05-wp
+          php /tmp/wp-cli.phar core download --version=7.0.1 --path=/tmp/file05-wp
+      - name: Install disposable WordPress and File05 with CI-only owners
+        run: |
+          set -euo pipefail
+          WP='php /tmp/wp-cli.phar --path=/tmp/file05-wp'
+          $WP config create --dbname=wordpress --dbuser=ci_user --dbpass=ci_only --dbhost=127.0.0.1 --skip-check
+          $WP core install --url=http://localhost:8080 --title=File05-CI-Disposable \
+            --admin_user=ciadmin --admin_password=ci-only-password --admin_email=ci@example.invalid --skip-email
+          mkdir -p /tmp/file05-wp/wp-content/mu-plugins
+          cp tests/fixtures/v123-ci-only-owner-contract-stub.php /tmp/file05-wp/wp-content/mu-plugins/f05-ci-only.php
+          cp -R 05-learn-sabri-classical-homeopathy /tmp/file05-wp/wp-content/plugins/
+          $WP plugin activate 05-learn-sabri-classical-homeopathy
+          $WP plugin status 05-learn-sabri-classical-homeopathy
+      - name: Real WP REST, schema, private-draft and proposed-connector smoke
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar --path=/tmp/file05-wp eval-file \
+            "$GITHUB_WORKSPACE/tests/v123-wordpress-disposable-smoke.php"
+      - name: Real MariaDB mentorship history boundary/rollback tests
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar --path=/tmp/file05-wp eval-file \
+            "$GITHUB_WORKSPACE/tests/v123-mentor-history-mariadb-boundaries.php"
+      - name: Repeat activation and schema readback (fresh install idempotence only)
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar --path=/tmp/file05-wp plugin deactivate 05-learn-sabri-classical-homeopathy
+          php /tmp/wp-cli.phar --path=/tmp/file05-wp plugin activate 05-learn-sabri-classical-homeopathy
+          php /tmp/wp-cli.phar --path=/tmp/file05-wp eval-file \
+            "$GITHUB_WORKSPACE/tests/v123-wordpress-disposable-smoke.php"
+      - name: Fail if a CI-only owner shim was packaged
+        run: |
+          set -euo pipefail
+          python3 scripts/build-release.py --root . --output /tmp/file05-wp-smoke.zip
+          unzip -Z1 /tmp/file05-wp-smoke.zip | grep -q '05-learn-sabri-classical-homeopathy/learn-sabri-classical-homeopathy.php'
+          ! unzip -Z1 /tmp/file05-wp-smoke.zip | grep -q 'v123-ci-only-owner-contract-stub.php'
+      - name: Partial-deployment parity failure must pause learning safely
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar --path=/tmp/file05-wp eval-file \
+            "$GITHUB_WORKSPACE/tests/v123-ci-inject-mentor-table-loss.php"
+          php /tmp/wp-cli.phar --path=/tmp/file05-wp eval-file \
+            "$GITHUB_WORKSPACE/tests/v123-ci-detect-stale-schema.php"

@@ -1,0 +1,111 @@
+<?php
+/** File05 FUT17 File16 provider/citation source-only contract; NOT a real AI or medical test. */
+declare(strict_types=1);define('ABSPATH',__DIR__);
+class WP_Error {
+    private $c; public function __construct($code,$message='',$data=array()){$this->c=$code;}
+    public function get_error_code(){return $this->c;}
+}
+function is_wp_error($v){return $v instanceof WP_Error;}
+function absint($v){return abs((int)$v);}
+function __($s,$domain=''){return $s;}
+function sanitize_textarea_field($s){return trim((string)$s);}
+function sanitize_text_field($s){return trim((string)$s);}
+function esc_url_raw($s){return trim((string)$s);}
+function wp_kses_post($s){return strip_tags((string)$s);}
+function get_post_type($id){return $id===17?'lsch_lesson':'';}
+function get_post_meta($id,$key,$single=true){return $key==='_lsch_objectives'?'Learn source criticism':'';}
+class LSCH_Content {const LESSON='lsch_lesson';public static function version($id){return $GLOBALS['lesson_version']??8;}}
+class LSCH_Policy {
+    public static function can_use_learning_actions($id){return $id===23&&empty($GLOBALS['block_access']);}
+    public static function can_read_post($id,$user_id){return $id===17&&$user_id===23;}
+}
+class LSCH_Value {
+    public static function sources($lesson_id){
+        if(!empty($GLOBALS['source_revoked']))return array();
+        return array(array('title'=>'Approved Original Source','url'=>'https://example.org/sources/original',
+            'object_id'=>'source-17','author'=>'A. Scholar','edition'=>'1890','year'=>'1890','pages'=>'21'));
+    }
+}
+class LSCH_Events {public static function audit($a,$b,$c,$d,$e){$GLOBALS['audits']++;}}
+function apply_filters($name,$value,...$args){
+    if($name==='lsch_file16_socratic_tutor'){
+        $GLOBALS['context']=$args[0];
+        if($GLOBALS['provider']==='throw')throw new RuntimeException('provider connection failed');
+        if($GLOBALS['provider']==='absent')return null;
+        if($GLOBALS['provider']==='wp_error')return new WP_Error('provider_sensitive_error','Sensitive backend key fragment');
+        if($GLOBALS['provider']==='bad_shape')return array('text'=>array('unsafe'),'citations'=>array());
+        if($GLOBALS['provider']==='too_long')return array('text'=>str_repeat('A',12001),'citations'=>array());
+        $citation=array('owner_file'=>'','object_id'=>'','title'=>'Claim','url'=>'https://example.org/sources/original');
+        if($GLOBALS['provider']==='unapproved')$citation['url']='https://unapproved.example.net/fiction';
+        if($GLOBALS['provider']==='spoofed_url'){$citation['object_id']='source-17';$citation['url']='https://unapproved.example.net/fiction';}
+        if($GLOBALS['provider']==='spoofed_id'){$citation['object_id']='nonmatching-id';}
+        if($GLOBALS['provider']==='array_field')$citation['url']=array('not'=>'scalar');
+        if($GLOBALS['provider']==='revoke_access')$GLOBALS['block_access']=true;
+        if($GLOBALS['provider']==='change_lesson_version')$GLOBALS['lesson_version']=9;
+        if($GLOBALS['provider']==='revoke_source')$GLOBALS['source_revoked']=true;
+        if($GLOBALS['provider']==='long_list'){
+            $citation['url']='https://unapproved.example.net/fiction';
+            $copies=array_fill(0,21,$citation);
+            $copies[20]['url']='https://example.org/sources/original';
+            return array('text'=>'Education only','citations'=>$copies);
+        }
+        return array('text'=>'Education only','citations'=>array($citation));
+    }
+    if($name==='lsch_future18_tutor_citation_approved'){
+        if(!empty($GLOBALS['throw_review']))throw new RuntimeException('reviewer offline');
+        if(!empty($GLOBALS['revoke_during_review']))$GLOBALS['block_access']=true;
+        return $GLOBALS['review_decision'];
+    }
+    return $value;
+}
+function must($v,$label){$GLOBALS['checks']++;if(!$v){fwrite(STDERR,"FAILED: {$label}\n");exit(1);}}
+$GLOBALS['checks']=0;$GLOBALS['audits']=0;$GLOBALS['review_decision']=true;$GLOBALS['throw_review']=false;
+require dirname(__DIR__).'/05-learn-sabri-classical-homeopathy/includes/class-lsch-future18.php';
+$call=function(){return LSCH_Future18::socratic_tutor(23,17,'What is the original source?','hint');};
+$GLOBALS['provider']='absent';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_provider_unavailable','Absent File16 provider fails closed');
+$GLOBALS['provider']='throw';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_provider_unavailable','Thrown provider failure degrades safely');
+$GLOBALS['provider']='wp_error';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_provider_unavailable',
+    'Raw provider WP_Error must not leak upstream details to learner');
+$GLOBALS['provider']='bad_shape';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_provider_invalid','Non-string response refused');
+$GLOBALS['provider']='too_long';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_provider_invalid','Oversized answer refused');
+$GLOBALS['provider']='unapproved';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required',
+  'An external true filter must never upgrade an unrelated URL');
+$GLOBALS['provider']='spoofed_url';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required',
+    'A matching source ID cannot authorize an unrelated citation URL');
+$GLOBALS['provider']='spoofed_id';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required',
+    'A matching source URL cannot authorize an unrelated citation ID');
+$GLOBALS['provider']='array_field';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required','Array fields cannot be coerced into valid citation');
+$GLOBALS['provider']='long_list';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required','Provider may not hide an approved URL beyond the 20-citation cap');
+$GLOBALS['provider']='revoke_access';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_context_revoked','Learner suspension during provider call blocks response');
+$GLOBALS['block_access']=false;
+$GLOBALS['provider']='change_lesson_version';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_context_revoked','Lesson revision during provider call blocks stale answer');
+$GLOBALS['lesson_version']=8;
+$GLOBALS['provider']='revoke_source';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_context_revoked','Source withdrawal during provider call blocks stale answer');
+$GLOBALS['source_revoked']=false;
+$GLOBALS['provider']='approved';$GLOBALS['revoke_during_review']=true;$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_context_revoked','Access revoked during reviewer callback blocks reply');
+$GLOBALS['block_access']=false;$GLOBALS['revoke_during_review']=false;
+$GLOBALS['provider']='approved';$GLOBALS['review_decision']=false;$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required','Reviewer veto still enforced');
+$GLOBALS['review_decision']=true;$GLOBALS['throw_review']=true;$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required','Reviewer exception vetoes citation');
+$GLOBALS['throw_review']=false;$r=$call();
+must(is_array($r)&&count($r['citations'])===1&&$r['provider_owner']==='file16','Approved exact URL citation accepted');
+must($GLOBALS['context']['contract']==='File16.SocraticTutor.v1'&&
+    $GLOBALS['context']['safety']['diagnosis_authority']===false&&
+    $GLOBALS['context']['safety']['prescription_authority']===false,'No clinical authority in provider context');
+must($GLOBALS['audits']===1,'Only accepted educational answer audited as used');
+echo "PASS: File05->File16 Socratic tutor provider/citation isolation: {$GLOBALS['checks']} checks.\n";

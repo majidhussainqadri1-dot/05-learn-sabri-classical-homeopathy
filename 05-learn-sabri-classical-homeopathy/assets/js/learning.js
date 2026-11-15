@@ -118,18 +118,39 @@
   }));
 
   all('[data-lsch-note]').forEach(async (area) => {
+    const save = one(`[data-lsch-save-note="${area.dataset.lschNote}"]`);
+    // A note is not safely editable until its actual revision has been read.
+    area.readOnly = true;
+    area.dataset.loaded = '0';
+    if (save) save.disabled = true;
     if (!app.loggedIn) return;
     try {
       const data = await api(`lesson/${area.dataset.lschNote}/note`);
-      area.value = data.note || '';
-      area.dataset.version = String(data.version || 0);
-    } catch (error) { /* private note loading fails silently without exposing detail */ }
+      // A missing revision is not a verified first draft: new notes must explicitly return version 0.
+      const rawVersion = data?.version;
+      if ((typeof rawVersion !== 'number' && typeof rawVersion !== 'string') ||
+          !/^(0|[1-9][0-9]*)$/.test(String(rawVersion)) ||
+          !Number.isSafeInteger(Number(rawVersion)) ||
+          (data.note !== undefined && data.note !== null && typeof data.note !== 'string')) {
+        throw new Error('Unverifiable private-note revision.');
+      }
+      const version = Number(rawVersion);
+      area.value = typeof data.note === 'string' ? data.note : '';
+      area.dataset.version = String(version);
+      area.dataset.loaded = '1';
+      area.readOnly = false;
+      if (save) save.disabled = false;
+    } catch (error) {
+      // A failed GET must not silently show an empty editable note.
+      show(area, app.strings?.noteLoadFailed ||
+        'Private note could not be loaded. Editing and saving are disabled until the current version is verified.', false);
+    }
   });
 
   all('[data-lsch-save-note]').forEach((button) => button.addEventListener('click', async () => {
     if (!requireLogin()) return;
     const area = one(`[data-lsch-note="${button.dataset.lschSaveNote}"]`);
-    if (!area) return;
+    if (!area || area.dataset.loaded !== '1' || area.readOnly) return;
     button.disabled = true;
     try {
       const data = await api(`lesson/${button.dataset.lschSaveNote}/note`, { method: 'PUT', body: JSON.stringify({ note: area.value, version: Number(area.dataset.version || 0) }) });

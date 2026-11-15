@@ -1,0 +1,75 @@
+name: File05 V12.3 Disposable Historical v4.0 to v4.1 Upgrade (NOT Staging)
+on:
+  push:
+    branches: [audit/file05-v123-integrated-owner-gates-20261114]
+    paths:
+      - '05-learn-sabri-classical-homeopathy/**'
+      - 'tests/v123-upgrade-*.php'
+      - '.github/workflows/file05-v123-disposable-upgrade.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade-from-v400:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: ci-root
+          MARIADB_DATABASE: wordpress
+          MARIADB_USER: ci_upgrade
+          MARIADB_PASSWORD: ci_only
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: candidate
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 1fa37ec81df5ef9da4b794cdb44283a7204d1dcf
+          path: old-v400
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc
+        with:
+          php-version: '8.3'
+          extensions: mysqli, curl, mbstring, xml, zip
+          coverage: none
+      - name: Verify immutable 4.0 baseline
+        run: |
+          test "$(git -C old-v400 rev-parse HEAD)" = "1fa37ec81df5ef9da4b794cdb44283a7204d1dcf"
+          git -C candidate rev-parse HEAD
+      - name: Create disposable WordPress and install real File05 4.0 source
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar core download --version=7.0.1 --path=/tmp/file05-upgrade-wp
+          WP='php /tmp/wp-cli.phar --path=/tmp/file05-upgrade-wp'
+          $WP config create --dbname=wordpress --dbuser=ci_upgrade --dbpass=ci_only --dbhost=127.0.0.1 --skip-check
+          $WP core install --url=http://localhost:8080 --title=F05-Disposable-Upgrade \
+            --admin_user=ciadmin --admin_password=ci-only --admin_email=ci@example.invalid --skip-email
+          mkdir -p /tmp/file05-upgrade-wp/wp-content/mu-plugins
+          cp candidate/tests/fixtures/v123-ci-only-owner-contract-stub.php /tmp/file05-upgrade-wp/wp-content/mu-plugins/ci-only.php
+          cp -R old-v400/05-learn-sabri-classical-homeopathy /tmp/file05-upgrade-wp/wp-content/plugins/
+          $WP plugin activate 05-learn-sabri-classical-homeopathy
+          $WP eval-file "$GITHUB_WORKSPACE/candidate/tests/v123-upgrade-seed-v400.php"
+      - name: Replace exact old plugin source with current candidate without modifying DB
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/file05-upgrade-wp/wp-content/plugins/05-learn-sabri-classical-homeopathy
+          cp -R candidate/05-learn-sabri-classical-homeopathy /tmp/file05-upgrade-wp/wp-content/plugins/
+          php /tmp/wp-cli.phar --path=/tmp/file05-upgrade-wp eval-file \
+            "$GITHUB_WORKSPACE/candidate/tests/v123-upgrade-verify-v410.php"
+      - name: Confirm CI-only peer stub never enters release candidate ZIP
+        run: |
+          set -euo pipefail
+          cd candidate
+          python3 scripts/build-release.py --root . --output /tmp/f05-candidate-upgrade.zip
+          ! unzip -Z1 /tmp/f05-candidate-upgrade.zip | grep -q 'v123-ci-only-owner-contract-stub.php'

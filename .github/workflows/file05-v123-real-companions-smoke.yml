@@ -1,0 +1,101 @@
+name: File05 V12.3 Real File00-01-20 Disposable Integration (NOT Staging)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - audit/file05-v123-integrated-owner-gates-20261114
+    paths:
+      - '.github/workflows/file05-v123-real-companions-smoke.yml'
+      - 'tests/v123-real-companions-smoke.php'
+      - '05-learn-sabri-classical-homeopathy/**'
+
+permissions:
+  contents: read
+
+jobs:
+  real-companion-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: ci_root
+          MARIADB_DATABASE: wordpress
+          MARIADB_USER: ci_member
+          MARIADB_PASSWORD: ci_pass
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+    steps:
+      - name: Checkout exact File05 candidate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          path: file05
+      - name: Checkout immutable File00 main snapshot
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: majidhussainqadri1-dot/00-sabri-membership-core
+          ref: 1fad051c86d530d558be3eb1890d3c6e67bce6e8
+          path: peer00
+      - name: Checkout immutable File01 main snapshot
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: majidhussainqadri1-dot/01-sabri-platform-foundation
+          ref: adf6dbb9980a85f25f7cf4c2ee679b52703c2e71
+          path: peer01
+      - name: Checkout immutable File20 main snapshot
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: majidhussainqadri1-dot/20-sabri-unified-application-shell
+          ref: 8a4dbcaf4fef8e926b9b834ecfde16c21a0f00ca
+          path: peer20
+      - uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc
+        with:
+          php-version: '8.3'
+          extensions: mysqli, curl, mbstring, xml, zip
+          coverage: none
+      - name: Freeze four source identities
+        run: |
+          set -euo pipefail
+          (cd file05 && git rev-parse HEAD)
+          (cd peer00 && test "$(git rev-parse HEAD)" = "1fad051c86d530d558be3eb1890d3c6e67bce6e8")
+          (cd peer01 && test "$(git rev-parse HEAD)" = "adf6dbb9980a85f25f7cf4c2ee679b52703c2e71")
+          (cd peer20 && test "$(git rev-parse HEAD)" = "8a4dbcaf4fef8e926b9b834ecfde16c21a0f00ca")
+      - name: Disposable WordPress 7.0.1 installation
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar -o /tmp/wp-cli.phar
+          php /tmp/wp-cli.phar core download --version=7.0.1 --path=/tmp/f05-peer-wp
+          WP='php /tmp/wp-cli.phar --path=/tmp/f05-peer-wp'
+          $WP config create --dbname=wordpress --dbuser=ci_member --dbpass=ci_pass --dbhost=127.0.0.1 --skip-check
+          $WP core install --url=http://localhost:8080 --title=F05-RealPeer-Disposable \
+            --admin_user=ciadmin --admin_password=ci-password --admin_email=ci@example.invalid --skip-email
+          mkdir -p /tmp/f05-peer-wp/wp-content/plugins
+          cp -R peer00/source/sabri-membership-core /tmp/f05-peer-wp/wp-content/plugins/
+          mkdir -p /tmp/f05-peer-wp/wp-content/plugins/sabri-platform-foundation
+          cp -R peer01/includes peer01/sabri-platform-foundation.php /tmp/f05-peer-wp/wp-content/plugins/sabri-platform-foundation/
+          cp -R peer20/sabri-unified-application-shell /tmp/f05-peer-wp/wp-content/plugins/
+          cp -R file05/05-learn-sabri-classical-homeopathy /tmp/f05-peer-wp/wp-content/plugins/
+          $WP plugin activate sabri-membership-core
+          # File00 intentionally DEFERS protected bootstrap until an authorized admin_init.
+          # Execute this exact owner lifecycle only in our empty disposable CI database.
+          $WP --user=ciadmin eval 'do_action("admin_init");'
+          $WP option get smc_db_version || true
+          $WP --user=ciadmin plugin activate sabri-platform-foundation
+          $WP --user=ciadmin plugin activate sabri-unified-application-shell
+          $WP --user=ciadmin plugin activate 05-learn-sabri-classical-homeopathy
+      # File01 explicitly rejects activation without WordPress activate_plugins capability;
+      # the disposable CLI operator is the pre-created site administrator, not a bypass.
+      - name: Check actual File00/01/20 public contracts and File05 boot
+        run: |
+          set -euo pipefail
+          php /tmp/wp-cli.phar --path=/tmp/f05-peer-wp eval-file \
+            "$GITHUB_WORKSPACE/file05/tests/v123-real-companions-smoke.php"
+      - name: Verify no synthetic stub in real-companion setup
+        run: |
+          test ! -f /tmp/f05-peer-wp/wp-content/mu-plugins/f05-ci-only.php

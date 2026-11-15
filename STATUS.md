@@ -1,4 +1,18 @@
-# File 05 Status — 4.0.0 Future-18 Current-Plans Source Candidate
+# File 05 Status — V12.3 Audit of the 4.1.0 Draft Source Candidate
+
+## Current authority and release status — 2026-11-14
+
+- Governing plan: **Sabri Website Master Plan V12.3**, with direct F05 18 FR + 10 NFR + 18 FUT + 2 CEN IDs; five older local CEN amendments are separately documented pending latest-plan comparison. See `V123-REQUIREMENT-EVIDENCE-MATRIX.md`.
+- Repository source: **Draft PR #8** (`audit/file05-v123-integrated-owner-gates-20261114`), branched from Draft PR #5 and combining its File06 and File26 adapter branches. The final immutable SHA must be read from GitHub before any packaging decision.
+- Plugin source header: `4.1.0`; **not proof of installed/staging/live version**. The existing source constant `LSCH_PLAN_VERSION` identifies a 2026-10-22 v12 provenance baseline; it has **not** been silently rewritten into a V12.3 acceptance certificate.
+- Current candidate source-only changes: File06 canonical current-version/read-time reattestation and reviewer/safe-mode checks; File26 exact-current public source, taxonomy/projection read fail-closed; source regression fixtures.
+- **Automated QA:** consult the GitHub workflow result for the exact branch HEAD; previous successful CI is not evidence for an updated commit.
+- **Staging:** unverified. **Live:** unverified. **DB/schema/migrations and ZIP checksum:** unverified.
+- **Release decision:** NO-GO until exact deployed-state freeze, required owner integrations, full academic content/rights, two independent acceptance reviews, WordPress staging/restore/rollback, Founder signoff and same-build live re-test.
+
+The historical 4.0.0 records below are retained for provenance only. They are not a statement that the live site is running 4.0.0 or 4.1.0.
+
+## Historical source status recorded before the V12.3 audit
 
 This status distinguishes repository truth from staging/live truth.
 
@@ -14,7 +28,7 @@ This status distinguishes repository truth from staging/live truth.
 | Live deployed | **No claim / not changed by this source work** |
 | Operationally accepted | **No** |
 
-## Current release identity
+## Historical 2026-08-10 release identity (not deployed truth)
 
 - Runtime: `4.0.0`
 - Core database/schema marker: `18`
