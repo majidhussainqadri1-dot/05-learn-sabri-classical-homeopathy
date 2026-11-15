@@ -5,7 +5,7 @@ function old_assert($ok,$msg){if(!$ok){fwrite(STDERR,"FAILED BEFORE: ".$msg."\n"
 old_assert(defined('LSCH_VERSION')&&LSCH_VERSION==='4.0.0','Exact old source loaded');
 old_assert((string)get_option('lsch_version','')==='4.0.0','Old installed version marker persisted');
 old_assert((int)get_option('lsch_schema_version',0)===18,'Old core schema marker 18');
-old_assert((int)get_option('lsch_future18_schema',0)===2,'Old future schema marker 2');
+old_assert((int)get_option('lsch_future18_schema',0)===1,'Original 4.0.0 Future18 schema marker 1 before the v4.1.0 upgrade to schema 2');
 global $wpdb;
 $t=LSCH_Future18::tables()['mentorship'];
 $entries=array();
