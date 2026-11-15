@@ -82,6 +82,10 @@ jobs:
           cp -R peer20/sabri-unified-application-shell /tmp/f05-peer-wp/wp-content/plugins/
           cp -R file05/05-learn-sabri-classical-homeopathy /tmp/f05-peer-wp/wp-content/plugins/
           $WP plugin activate sabri-membership-core
+          # File00 intentionally DEFERS protected bootstrap until an authorized admin_init.
+          # Execute this exact owner lifecycle only in our empty disposable CI database.
+          $WP --user=ciadmin eval 'do_action("admin_init");'
+          $WP option get smc_db_version || true
           $WP --user=ciadmin plugin activate sabri-platform-foundation
           $WP --user=ciadmin plugin activate sabri-unified-application-shell
           $WP --user=ciadmin plugin activate 05-learn-sabri-classical-homeopathy
