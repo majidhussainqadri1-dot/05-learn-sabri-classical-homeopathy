@@ -39,6 +39,28 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/\?page_id=\d+$/.test(url || ''), 'Expect
           document.querySelector('.lsch-shell'),
           {runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa']}}
         ));
+        if (audit.violations.length) {
+          const diagnostics=await page.evaluate(()=>{
+            const item=document.querySelector('.lsch-level-card:nth-child(1)');
+            if(!item)return null;
+            const rect=item.getBoundingClientRect(),style=getComputedStyle(item);
+            return {
+              rect:{x:rect.x,y:rect.y,width:rect.width,height:rect.height,right:rect.right,bottom:rect.bottom},
+              gridGap:getComputedStyle(item.parentElement).gap,
+              direction:style.direction,
+              clientRects:Array.from(item.getClientRects()).map(r=>({x:r.x,y:r.y,w:r.width,h:r.height})),
+              neighbors:Array.from(item.parentElement.children).map(a=>{const r=a.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,link:a.href};})
+            };
+          });
+          console.error('FILE05_AXE_DIAGNOSTIC',JSON.stringify({
+            viewport,dir,
+            violations:audit.violations.map(v=>({
+              id:v.id,help:v.help,impact:v.impact,
+              nodes:v.nodes.map(n=>({target:n.target,summary:n.failureSummary,html:n.html,related:n.any}))
+            })),
+            diagnostics
+          }));
+        }
         assert.deepStrictEqual(
           audit.violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),[],
           'Scoped File05 public landing axe issues at '+viewport+'/'+dir
