@@ -31,4 +31,21 @@ f05_peer_check(is_array($missing)&&count($missing)===0,'File05 fails closed unti
 f05_peer_check(LSCH_Dependencies::runtime_ready(),'File05 does not attest peer readiness');
 f05_peer_check(LSCH_Policy::central_policy_ready(),'Actual File00 policy does not match File05 free-tier/owner contract');
 f05_peer_check((int)get_option('lsch_schema_version',0)===18,'Real peer WordPress does not have expected File05 core schema');
+
+$namespace='/'.LSCH_REST::NS;
+wp_set_current_user(0);
+$guest_public=rest_do_request(new WP_REST_Request('GET',$namespace.'/catalog'));
+f05_peer_check($guest_public instanceof WP_REST_Response && $guest_public->get_status()===200,
+    'Real companion owner contracts block the public-safe learning catalog unexpectedly');
+$guest_private=rest_do_request(new WP_REST_Request('GET',$namespace.'/dashboard'));
+f05_peer_check($guest_private instanceof WP_REST_Response && in_array($guest_private->get_status(),array(401,403),true),
+    'Real owner integration permitted a guest private learner dashboard');
+$guest_mastery=rest_do_request(new WP_REST_Request('GET',$namespace.'/future18/mastery'));
+f05_peer_check($guest_mastery instanceof WP_REST_Response && in_array($guest_mastery->get_status(),array(401,403),true),
+    'Real owner integration permitted guest private mastery');
+$guest_approval=rest_do_request(new WP_REST_Request('POST',$namespace.'/file06/lesson/7/approve-link'));
+f05_peer_check($guest_approval instanceof WP_REST_Response && in_array($guest_approval->get_status(),array(401,403),true),
+    'Real owner integration permitted guest source-review approval');
+echo "PASS: Real peers guest public catalog and three native REST private denials verified.\n";
+
 echo "PASS: File05 boots with pinned real File00/01/20 source in disposable WordPress; not staging acceptance.\n";
