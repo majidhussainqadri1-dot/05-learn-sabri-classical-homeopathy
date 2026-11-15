@@ -114,6 +114,9 @@ must(is_array($accepted)&&$accepted['approved']===true,
   'Exact File06 current version can be independently approved');
 // A failed approval write leaves only an index, never a new academic decision.
 $prior=$GLOBALS['meta'][LSCH_File06_Source_Links::META_APPROVAL];
+// Change an actual reviewed field: same-second identical metadata is a successful
+// idempotent no-op and must not be counted as an artificial failed write.
+$request['rights_evidence_ref']='rights:2026-new-audit';
 $GLOBALS['fail_meta_key']=LSCH_File06_Source_Links::META_APPROVAL;
 $approval_error=LSCH_File06_Source_Links::approve($request);
 must($approval_error instanceof WP_Error && $approval_error->get_error_code()==='lsch_f06_review_store',
