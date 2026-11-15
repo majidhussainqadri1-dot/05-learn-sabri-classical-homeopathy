@@ -25,11 +25,20 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/\?page_id=\d+$/.test(url || ''), 'Expect
           viewport:window.innerWidth,
           shell:!!document.querySelector('.lsch-shell'),
           mainHeading:(document.querySelector('.lsch-shell h1')?.textContent||'').trim(),
-          bodyText:document.body.innerText.length
+          bodyText:document.body.innerText.length,
+          styleRegistered:!!document.querySelector('link[href*="assets/css/learning.css"]'),
+          levelsGrid:getComputedStyle(document.querySelector('.lsch-grid-four')).display,
+          cardDisplay:getComputedStyle(document.querySelector('.lsch-level-card')).display
         }));
         assert.ok(layout.shell,'Native File05 shell is present at '+viewport+'/'+dir);
         assert.ok(layout.bodyText>40,'Non-empty accessible textual page at '+viewport+'/'+dir);
         assert.ok(layout.mainHeading.length>2,'Missing public learning h1 at '+viewport+'/'+dir);
+        assert.strictEqual(layout.styleRegistered,true,
+          'File05 learning stylesheet missing from File01-managed Learn page');
+        assert.strictEqual(layout.levelsGrid,'grid',
+          'Four-level cards have no CSS grid on File01-managed page '+viewport+'/'+dir);
+        assert.strictEqual(layout.cardDisplay,'flex',
+          'Level cards must use accessible responsive flex layout '+viewport+'/'+dir);
         assert.ok(layout.documentWidth<=layout.viewport+2,
           'Horizontal overflow '+viewport+'/'+dir+': '+JSON.stringify(layout));
         assert.deepStrictEqual(errors,[],'No uncaught JS errors on public landing');
