@@ -24,6 +24,7 @@ const document={
   querySelector(){return null;}
 };
 const calls=[];
+let failBookmark=false;
 async function fetch(url,opts={}){
   const method=opts.method||'GET';calls.push({url,method});
   let data;
@@ -33,6 +34,9 @@ async function fetch(url,opts={}){
     data={state:'completed',version:13,percent:100};
   }else if(url.includes('bookmark')&&method==='PUT')data={active:true};
   else throw Error('Unexpected request '+url);
+  if (url.includes('bookmark')&&failBookmark) {
+    return {ok:false,json:async()=>({message:'Bookmark service unavailable'}),headers:{get:()=>null}};
+  }
   return {ok:true,json:async()=>data,headers:{get:()=>null}};
 }
 const window={LSCH_APP:{loggedIn:true,root:'/wp-json/file05/v2/',nonce:'dummy',strings:{saved:'Saved'}},crypto:{randomUUID:()=> 'test-idempotency-00017'},location:{href:''}};
@@ -47,5 +51,13 @@ vm.runInNewContext(script,{document,window,fetch,console,setTimeout,clearTimeout
   assert.strictEqual(notices.bookmark.dataset.state,'success');
   assert.strictEqual(bookmark.attrs['aria-pressed'],'true');
   assert.strictEqual(calls.filter(x=>x.method==='PUT').length,2);
-  console.log('PASS: Progress/bookmark outcomes announced beside controls after verified mutation.');
+  failBookmark=true;
+  await handlers['bookmark:click']();
+  assert.strictEqual(notices.bookmark.dataset.state,'error',
+    'A failed protected mutation is announced separately as error');
+  assert.match(notices.bookmark.textContent,/service unavailable/i);
+  assert.strictEqual(bookmark.disabled,false,'Retry is permitted after backend failure');
+  assert.strictEqual(bookmark.attrs['aria-pressed'],'true',
+    'Last confirmed state must not be changed by failed mutation');
+  console.log('PASS: Progress/bookmark success/error announced beside controls without changing verified state on failure.');
 })().catch(e=>{console.error(e);process.exit(1);});
