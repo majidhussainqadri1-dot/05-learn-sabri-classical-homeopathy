@@ -20,3 +20,28 @@
 .lsch-f18-workbench [aria-live]{min-height:1.5rem}
 @media(max-width:640px){.lsch-f18-workbench .lsch-f18-kv{grid-template-columns:minmax(0,1fr)}.lsch-f18-workbench .lsch-f18-records{padding-inline-start:1.25rem}}
 @media(prefers-reduced-motion:reduce){.lsch-f18-workbench *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* V12.3: progress and bookmark mutation feedback occupies its own readable row. */
+.lsch-learning-tools > [data-lsch-status]{flex:1 1 100%;min-width:0;margin:0;overflow-wrap:anywhere}
+
+/* V12.3 verified 320px reflow: prevent inline-flex kicker min-content
+   from forcing the hero grid track wider than the viewport. */
+.lsch-hero>div,.lsch-hero>.lsch-search{min-width:0;max-width:100%}
+.lsch-hero .lsch-kicker{max-width:100%;min-width:0;flex-wrap:wrap;overflow-wrap:anywhere}
+@media(max-width:950px){.lsch-hero{grid-template-columns:minmax(0,1fr)}}
+
+/* V12.3 200% text-only resizing: long level titles must not define min-content
+   grid tracks wider than a narrow phone; preserve actual readable text. */
+.lsch-grid-four>.lsch-level-card{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.lsch-level-card strong,.lsch-level-card span{overflow-wrap:anywhere}
+@media(max-width:680px){.lsch-grid-four{grid-template-columns:minmax(0,1fr)}}
+
+/* V12.3 real browser 200% text enlargement: text must never impose
+   an unbreakable min-content width beyond its local column. */
+.lsch-hero h1,.lsch-hero p,.lsch-hero .lsch-kicker,
+.lsch-section-head,.lsch-section-head h2,.lsch-section-head .lsch-kicker,
+.lsch-empty,.lsch-empty h3,.lsch-empty p,.lsch-button{overflow-wrap:anywhere}
+.lsch-hero h1,.lsch-hero p,.lsch-section-head>div,.lsch-button{min-width:0;max-width:100%}
+.lsch-section-head{flex-wrap:wrap}
+.lsch-grid:not(.lsch-grid-four){grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))}
+.lsch-empty{min-width:0;max-width:100%}

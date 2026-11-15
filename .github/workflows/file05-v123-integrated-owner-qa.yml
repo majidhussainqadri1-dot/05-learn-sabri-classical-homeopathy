@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - audit/file05-v123-integrated-owner-gates-20261114
+      - audit/file05-v123-accessible-ui-20261115
   pull_request:
     paths:
       - '05-learn-sabri-classical-homeopathy/**'
