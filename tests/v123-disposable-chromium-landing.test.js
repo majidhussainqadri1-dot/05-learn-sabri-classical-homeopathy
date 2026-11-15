@@ -17,6 +17,8 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/\?page_id=\d+$/.test(url || ''), 'Expect
         const page=await context.newPage();
         const errors=[];
         page.on('pageerror',e=>errors.push(e.message));
+        const failedRequests=[];
+        page.on('requestfailed',req=>failedRequests.push({url:req.url(),reason:req.failure()?.errorText}));
         const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:25000});
         assert.strictEqual(response.status(),200,'Public page must load without server error');
         await page.evaluate(dir=>{document.documentElement.setAttribute('dir',dir);},dir);
@@ -27,6 +29,8 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/\?page_id=\d+$/.test(url || ''), 'Expect
           mainHeading:(document.querySelector('.lsch-shell h1')?.textContent||'').trim(),
           bodyText:document.body.innerText.length,
           styleRegistered:!!document.querySelector('link[href*="assets/css/learning.css"]'),
+          sheetHref:document.querySelector('link[href*="assets/css/learning.css"]')?.href || '',
+          loadedSheets:Array.from(document.styleSheets).map(sh=>sh.href).filter(Boolean),
           levelsGrid:getComputedStyle(document.querySelector('.lsch-grid-four')).display,
           cardDisplay:getComputedStyle(document.querySelector('.lsch-level-card')).display
         }));
@@ -36,7 +40,7 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/\?page_id=\d+$/.test(url || ''), 'Expect
         assert.strictEqual(layout.styleRegistered,true,
           'File05 learning stylesheet missing from File01-managed Learn page');
         assert.strictEqual(layout.levelsGrid,'grid',
-          'Four-level cards have no CSS grid on File01-managed page '+viewport+'/'+dir);
+          'Four-level cards lack CSS grid '+viewport+'/'+dir+': '+JSON.stringify({layout,failedRequests}));
         assert.strictEqual(layout.cardDisplay,'flex',
           'Level cards must use accessible responsive flex layout '+viewport+'/'+dir);
         assert.ok(layout.documentWidth<=layout.viewport+2,
