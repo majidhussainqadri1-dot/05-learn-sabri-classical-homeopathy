@@ -47,7 +47,7 @@ final class LSCH_Frontend {
 	private function is_learning_context() {
 		if ( is_singular( array( LSCH_Content::PROGRAM, LSCH_Content::COURSE, LSCH_Content::BOOK, LSCH_Content::LESSON, LSCH_Content::ASSESSMENT, LSCH_Content::ASSIGNMENT, LSCH_Content::COHORT ) ) || is_post_type_archive( array( LSCH_Content::PROGRAM, LSCH_Content::COURSE, LSCH_Content::BOOK, LSCH_Content::LESSON ) ) ) { return true; }
 		$pages = (array) get_option( 'lsch_page_map', array() );
-		if ( is_page( array_values( array_filter( array_map( 'absint', $pages ) ) ) ) { return true; }
+		if ( is_page( array_values( array_filter( array_map( 'absint', $pages ) ) ) ) ) { return true; }
 		// File01 may own the shared /learn/ page; this route is transformed to
 		// File05 markup only after wp_enqueue_scripts, so content scanning alone is insufficient.
 		$foundation = (array) get_option( 'spf_page_map', array() );
