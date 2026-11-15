@@ -23,3 +23,9 @@
 
 /* V12.3: progress and bookmark mutation feedback occupies its own readable row. */
 .lsch-learning-tools > [data-lsch-status]{flex:1 1 100%;min-width:0;margin:0;overflow-wrap:anywhere}
+
+/* V12.3 verified 320px reflow: prevent inline-flex kicker min-content
+   from forcing the hero grid track wider than the viewport. */
+.lsch-hero>div,.lsch-hero>.lsch-search{min-width:0;max-width:100%}
+.lsch-hero .lsch-kicker{max-width:100%;min-width:0;flex-wrap:wrap;overflow-wrap:anywhere}
+@media(max-width:950px){.lsch-hero{grid-template-columns:minmax(0,1fr)}}
