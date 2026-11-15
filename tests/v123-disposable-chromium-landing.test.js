@@ -63,6 +63,12 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/file05-wp\/\?page_id=\d+$/.test(url || '
           const magnified=await page.evaluate(()=>({
             width:document.documentElement.scrollWidth,
             viewport:window.innerWidth,
+            roots:['html','body','.wp-site-blocks','.lsch-shell','.lsch-hero','.lsch-grid-four']
+              .map(sel=>{const el=document.querySelector(sel);if(!el)return {sel,missing:true};
+                const r=el.getBoundingClientRect(),cs=getComputedStyle(el);
+                return {sel,rect:{x:r.x,w:r.width,right:r.right},scrollWidth:el.scrollWidth,
+                  clientWidth:el.clientWidth,minWidth:cs.minWidth,maxWidth:cs.maxWidth,
+                  display:cs.display,overflowX:cs.overflowX};}),
             overflowing:Array.from(document.querySelectorAll('body *')).filter(e=>{
               const r=e.getBoundingClientRect();
               return r.width>0&&r.height>0&&(r.right>innerWidth+2||r.left< -2);
