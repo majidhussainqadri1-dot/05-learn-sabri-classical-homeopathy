@@ -33,6 +33,17 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/\?page_id=\d+$/.test(url || ''), 'Expect
         assert.ok(layout.documentWidth<=layout.viewport+2,
           'Horizontal overflow '+viewport+'/'+dir+': '+JSON.stringify(layout));
         assert.deepStrictEqual(errors,[],'No uncaught JS errors on public landing');
+        // Automated scoped axe checks complement, but never replace, assistive-tech/manual WCAG review.
+        await page.addScriptTag({path:require.resolve('axe-core/axe.min.js')});
+        const audit=await page.evaluate(async()=>window.axe.run(
+          document.querySelector('.lsch-shell'),
+          {runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa']}}
+        ));
+        assert.deepStrictEqual(
+          audit.violations.map(v=>({id:v.id,impact:v.impact,targets:v.nodes.map(n=>n.target)})),[],
+          'Scoped File05 public landing axe issues at '+viewport+'/'+dir
+        );
+
         await page.keyboard.press('Tab');
         const focused=await page.evaluate(()=>document.activeElement?.tagName||'');
         assert.ok(focused && focused!=='BODY','Keyboard navigation must acquire interactive focus at '+viewport+'/'+dir);
