@@ -82,9 +82,11 @@ jobs:
           cp -R peer20/sabri-unified-application-shell /tmp/f05-peer-wp/wp-content/plugins/
           cp -R file05/05-learn-sabri-classical-homeopathy /tmp/f05-peer-wp/wp-content/plugins/
           $WP plugin activate sabri-membership-core
-          $WP plugin activate sabri-platform-foundation
-          $WP plugin activate sabri-unified-application-shell
-          $WP plugin activate 05-learn-sabri-classical-homeopathy
+          $WP --user=ciadmin plugin activate sabri-platform-foundation
+          $WP --user=ciadmin plugin activate sabri-unified-application-shell
+          $WP --user=ciadmin plugin activate 05-learn-sabri-classical-homeopathy
+      # File01 explicitly rejects activation without WordPress activate_plugins capability;
+      # the disposable CLI operator is the pre-created site administrator, not a bypass.
       - name: Check actual File00/01/20 public contracts and File05 boot
         run: |
           set -euo pipefail
