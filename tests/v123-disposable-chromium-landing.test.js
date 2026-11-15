@@ -62,7 +62,16 @@ assert.ok(/^http:\/\/127\.0\.0\.1:8080\/file05-wp\/\?page_id=\d+$/.test(url || '
           await page.evaluate(()=>{document.documentElement.style.fontSize='200%';});
           const magnified=await page.evaluate(()=>({
             width:document.documentElement.scrollWidth,
-            viewport:window.innerWidth
+            viewport:window.innerWidth,
+            overflowing:Array.from(document.querySelectorAll('body *')).filter(e=>{
+              const r=e.getBoundingClientRect();
+              return r.width>0&&r.height>0&&(r.right>innerWidth+2||r.left< -2);
+            }).slice(0,16).map(e=>{
+              const r=e.getBoundingClientRect(),cs=getComputedStyle(e);
+              return {tag:e.tagName,cls:(e.className||'').toString().slice(0,80),
+                text:(e.textContent||'').trim().slice(0,40),
+                x:r.x,w:r.width,right:r.right,display:cs.display,minWidth:cs.minWidth};
+            })
           }));
           assert.ok(magnified.width<=magnified.viewport+2,
             '200% text-size horizontal overflow '+viewport+'/'+dir+': '+JSON.stringify(magnified));
