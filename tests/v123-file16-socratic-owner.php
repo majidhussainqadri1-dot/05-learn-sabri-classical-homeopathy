@@ -14,13 +14,14 @@ function esc_url_raw($s){return trim((string)$s);}
 function wp_kses_post($s){return strip_tags((string)$s);}
 function get_post_type($id){return $id===17?'lsch_lesson':'';}
 function get_post_meta($id,$key,$single=true){return $key==='_lsch_objectives'?'Learn source criticism':'';}
-class LSCH_Content {const LESSON='lsch_lesson';public static function version($id){return 8;}}
+class LSCH_Content {const LESSON='lsch_lesson';public static function version($id){return $GLOBALS['lesson_version']??8;}}
 class LSCH_Policy {
-    public static function can_use_learning_actions($id){return $id===23;}
+    public static function can_use_learning_actions($id){return $id===23&&empty($GLOBALS['block_access']);}
     public static function can_read_post($id,$user_id){return $id===17&&$user_id===23;}
 }
 class LSCH_Value {
     public static function sources($lesson_id){
+        if(!empty($GLOBALS['source_revoked']))return array();
         return array(array('title'=>'Approved Original Source','url'=>'https://example.org/sources/original',
             'object_id'=>'source-17','author'=>'A. Scholar','edition'=>'1890','year'=>'1890','pages'=>'21'));
     }
@@ -39,6 +40,9 @@ function apply_filters($name,$value,...$args){
         if($GLOBALS['provider']==='spoofed_url'){$citation['object_id']='source-17';$citation['url']='https://unapproved.example.net/fiction';}
         if($GLOBALS['provider']==='spoofed_id'){$citation['object_id']='nonmatching-id';}
         if($GLOBALS['provider']==='array_field')$citation['url']=array('not'=>'scalar');
+        if($GLOBALS['provider']==='revoke_access')$GLOBALS['block_access']=true;
+        if($GLOBALS['provider']==='change_lesson_version')$GLOBALS['lesson_version']=9;
+        if($GLOBALS['provider']==='revoke_source')$GLOBALS['source_revoked']=true;
         if($GLOBALS['provider']==='long_list'){
             $citation['url']='https://unapproved.example.net/fiction';
             $copies=array_fill(0,21,$citation);
@@ -49,6 +53,7 @@ function apply_filters($name,$value,...$args){
     }
     if($name==='lsch_future18_tutor_citation_approved'){
         if(!empty($GLOBALS['throw_review']))throw new RuntimeException('reviewer offline');
+        if(!empty($GLOBALS['revoke_during_review']))$GLOBALS['block_access']=true;
         return $GLOBALS['review_decision'];
     }
     return $value;
@@ -81,6 +86,18 @@ $GLOBALS['provider']='array_field';$r=$call();
 must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required','Array fields cannot be coerced into valid citation');
 $GLOBALS['provider']='long_list';$r=$call();
 must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required','Provider may not hide an approved URL beyond the 20-citation cap');
+$GLOBALS['provider']='revoke_access';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_context_revoked','Learner suspension during provider call blocks response');
+$GLOBALS['block_access']=false;
+$GLOBALS['provider']='change_lesson_version';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_context_revoked','Lesson revision during provider call blocks stale answer');
+$GLOBALS['lesson_version']=8;
+$GLOBALS['provider']='revoke_source';$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_context_revoked','Source withdrawal during provider call blocks stale answer');
+$GLOBALS['source_revoked']=false;
+$GLOBALS['provider']='approved';$GLOBALS['revoke_during_review']=true;$r=$call();
+must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_context_revoked','Access revoked during reviewer callback blocks reply');
+$GLOBALS['block_access']=false;$GLOBALS['revoke_during_review']=false;
 $GLOBALS['provider']='approved';$GLOBALS['review_decision']=false;$r=$call();
 must($r instanceof WP_Error&&$r->get_error_code()==='lsch_future18_tutor_source_required','Reviewer veto still enforced');
 $GLOBALS['review_decision']=true;$GLOBALS['throw_review']=true;$r=$call();
