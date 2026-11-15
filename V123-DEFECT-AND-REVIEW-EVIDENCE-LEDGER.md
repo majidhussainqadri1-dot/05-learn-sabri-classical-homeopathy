@@ -9,7 +9,7 @@
 - Both are **scoped code/test passes conducted in this assistant-led workflow**, not a claim of two independent human reviewers. V12.3 G4's *two independent acceptance reviews* remain a release blocker.
 - A successful test is a source result only. A deploy/staging/live defect cannot be marked fixed without exact deployed artifact evidence and live retesting.
 
-## Unique source findings (25 cumulative: 17 prior + 5 previous 2026-11-15 + 3 scoped UI findings)
+## Unique source findings (24 cumulative: 17 prior + 5 previous 2026-11-15 + 2 scoped UI findings)
 
 | ID | Proven candidate-source issue | Class | Source correction and regression | Test |
 | --- | --- | --- | --- | --- |
@@ -37,9 +37,8 @@
 | F05-S22 | File06 approved link metadata was written before relation index; index persistence failure could leave a partially approved, inconsistent relation | Cross-object approval ordering | Persist unprivileged index first, independently approved decision last; inject each meta-write failure | `tests/v12-file06-approved-links.php` |
 | F05-S23 | Media-only course card links had no accessible link name when no featured image was supplied | WCAG 2.4.4 link purpose / UI | Accessible localized aria-label using actual card title; real WP markup regression | `tests/v123-accessible-lesson-ui-wp.php` |
 | F05-S24 | Lesson progress/bookmark controls had no local live-status destination, leaving successful or failed actions visually and semantically silent | Accessible feedback / user trust | Separate role=status region inside learning tools; Node mutation + real WP markup regression | `tests/v123-learning-action-status.test.js`, `tests/v123-accessible-lesson-ui-wp.php` |
-| F05-S25 | Shared Foundation-managed Learn page showed File05 markup but did not load its stylesheet; overlapping RTL learning-level links failed axe target size | File01/05 asset integration and WCAG 2.5.8 | Recognize File01 Learn page and declared learning shortcodes in asset context; enforce computed grid and axe | `tests/v123-disposable-chromium-landing.test.js` |
 
-**Status for F05-S01..S25:** candidate source corrected; S25 exact-head browser acceptance remains pending in the Draft source branch and corresponding isolated regression checks passed on its prior tested commits. *Current exact head CI must always be rechecked after further commits.* **Live verified: 0**. Do not mark production Resolved.
+**Status for F05-S01..S24:** candidate source corrected; browser test after harness correction remains pending in the Draft source branch and corresponding isolated regression checks passed on its prior tested commits. *Current exact head CI must always be rechecked after further commits.* **Live verified: 0**. Do not mark production Resolved.
 
 ## Other non-duplicated work and remaining questions
 
@@ -63,6 +62,11 @@
 | F05-O04 | P07 | Eight source books, lesson claims, edition/copyright, reviewed translations and approved quizzes not populated | **Blocked / pending approval** |
 | F05-O05 | P12 | Exact deployed ZIP/version, DB options/schema, migration/restore and Live re-test unknown | **Blocked** |
 
+## Corrected diagnostic attribution (2026-11-15)
+
+- **F05-T01 — Disposable browser harness bug, NOT File05 code defect.** An initial headless axe `target-size` failure on 1440px RTL reflected missing stylesheet presentation; a subsequent browser run confirmed the File05 CSS `link` was present in HTML but computed `.lsch-grid-four` remained `display:block`. The disposable PHP development server had been started with `index.php` as an explicit router, which routed static asset requests through WordPress instead of serving actual CSS/JS files. The server setup was corrected to use only the static document root. A speculative source `is_learning_context()` modification was **reverted**. Only if a subsequent exact-head browser run with verified loaded CSS still fails should a File05 layout defect be recorded.
+- This correction replaces the provisional source-root-cause claim; do not count F05-T01 among File05 source findings or present it as live/staging evidence.
+
 ## Test/evidence inventory
 
 | Mechanism | Proven scope | Not proven |
@@ -77,7 +81,7 @@
 
 ## Defect accounting — unique, no stacking
 
-- **Source findings S01..S24:** 24 cumulative; 17 inherited from 2026-11-14, 5 fixed on the prior 2026-11-15 Draft PR #8 (S18–S22), and **3 candidate UI repairs** on the stacked access branch (S23–S25). Verify the exact branch HEAD and independent real WP + Node regression before marking them source-tested. **No staging/Live resolution is claimed.**
+- **Source findings S01..S24:** 24 cumulative; 17 inherited from 2026-11-14, 5 fixed on the prior 2026-11-15 Draft PR #8 (S18–S22), and **2 candidate UI repairs** on the stacked access branch (S23–S24). Verify the exact branch HEAD and independent real WP + Node regression before marking them source-tested. **No staging/Live resolution is claimed.**
 - **Branch integration conflict:** 1 (I01) reconciled in Draft.
 - **Documentation mismatch:** D01 corrected; D02 intentionally open and tracked.
 - **Test failures being concealed:** 0 known in the recorded passing exact-head CI. **Blocked mandatory tests remain** and must never be counted as Passed.
