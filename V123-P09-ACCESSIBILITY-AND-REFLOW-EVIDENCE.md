@@ -32,6 +32,11 @@
 | Text enlargement | Disposable 200% root text-size smoke on 320 and 390 only | Authentic browser text-only zoom and 400% page zoom under real WordPress theme |
 | Media & weak networks | CSS/JS static assets loaded in disposable browser; reduced motion | Screenreader media, slow/offline, cache, high contrast and low-end device tests |
 
+## Latest immutable browser test receipt
+
+- Candidate code commit `1238837786dbb9d3759f05624caff6831c43e85b`: GitHub Actions Chromium run `43682098010`, **SUCCESS**, recorded 14/14 disposable headless combinations across seven widths (320, 375, 390, 768, 1024, 1440, 1920), RTL/LTR, scoped axe WCAG A/AA, reduced motion and no horizontal overflow or JS runtime exception. The 320/390 subset also ran a limited simulated 200% root-font enlargement check.
+- Full manual 400% browser zoom, screen reader, current File20 shell and actual Hostinger staging are **NOT** verified by this run.
+
 ## Decisions
 
 1. Do not count automated axe 0 violations on *one public empty catalog* as whole-application WCAG 2.2 AA acceptance.
@@ -41,3 +46,7 @@
 5. Do not deploy or mark Resolved without G0 deployed package/DB/Schema/Migration parity, G5 staging+restore, and G7 same-build Live re-test.
 
 **Exact deployed code ابھی unverified ہے؛ repository-based diagnosis provisional ہے۔**
+
+## S26 real evidence
+
+At 320px and 200% root font, hero H1 scrollWidth=344 against clientWidth=198 and fixed-minimum 260px catalog grid. CSS wraps headings and uses flexible grid minimums. Source CI run 43682098010 passed in 14 combinations; manual accessibility still outstanding.
