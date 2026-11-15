@@ -58,7 +58,7 @@ jobs:
           set -euo pipefail
           WP='php /tmp/wp-cli.phar --path=/tmp/file05-wp'
           $WP config create --dbname=wordpress --dbuser=ci_user --dbpass=ci_only --dbhost=127.0.0.1 --skip-check
-          $WP core install --url=http://127.0.0.1:8080 --title=File05-CI-Disposable \
+          $WP core install --url=http://127.0.0.1:8080/file05-wp --title=File05-CI-Disposable \
             --admin_user=ciadmin --admin_password=ci-only-password --admin_email=ci@example.invalid --skip-email
           mkdir -p /tmp/file05-wp/wp-content/mu-plugins
           cp tests/fixtures/v123-ci-only-owner-contract-stub.php /tmp/file05-wp/wp-content/mu-plugins/f05-ci-only.php
@@ -80,14 +80,14 @@ jobs:
           set -euo pipefail
           HOME_ID=$(php /tmp/wp-cli.phar --path=/tmp/file05-wp eval 'echo (int) (((array) get_option("lsch_page_map",array()))["home"] ?? 0);')
           test "$HOME_ID" -gt 0
-          # PHP built-in static server must serve CSS/JS directly; index.php as router rewrites assets to HTML.
-          php -S 127.0.0.1:8080 -t /tmp/file05-wp >/tmp/file05-browser-server.log 2>&1 &
+          # Document root /tmp matches the site's explicit /file05-wp prefix and serves static CSS/JS.
+          php -S 127.0.0.1:8080 -t /tmp >/tmp/file05-browser-server.log 2>&1 &
           for attempt in $(seq 1 35); do
-            if curl --fail --silent "http://127.0.0.1:8080/?page_id=$HOME_ID" >/tmp/file05-landing.html; then break; fi
+            if curl --fail --silent "http://127.0.0.1:8080/file05-wp/?page_id=$HOME_ID" >/tmp/file05-landing.html; then break; fi
             sleep 1
           done
           grep -q 'lsch-shell' /tmp/file05-landing.html
-          echo "F05_TEST_URL=http://127.0.0.1:8080/?page_id=$HOME_ID" >> "$GITHUB_ENV"
+          echo "F05_TEST_URL=http://127.0.0.1:8080/file05-wp/?page_id=$HOME_ID" >> "$GITHUB_ENV"
       - name: Chromium desktop, mobile and RTL/LTR no-overflow tests
         run: node tests/v123-disposable-chromium-landing.test.js
       - name: Preserve nonprivate diagnostic on failure only
