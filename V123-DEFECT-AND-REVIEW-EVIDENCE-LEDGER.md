@@ -9,7 +9,7 @@
 - Both are **scoped code/test passes conducted in this assistant-led workflow**, not a claim of two independent human reviewers. V12.3 G4's *two independent acceptance reviews* remain a release blocker.
 - A successful test is a source result only. A deploy/staging/live defect cannot be marked fixed without exact deployed artifact evidence and live retesting.
 
-## Unique source findings (20 cumulative: 17 previous and 3 from 2026-11-15)
+## Unique source findings (22 cumulative: 17 previous and 5 from 2026-11-15)
 
 | ID | Proven candidate-source issue | Class | Source correction and regression | Test |
 | --- | --- | --- | --- | --- |
@@ -33,8 +33,10 @@
 | F05-S18 | File16 callback/third-party citation reviewer could revoke learner access or change the lesson/source while answer request was in flight | Runtime authorization and evidence TOCTOU | Revalidate the current learner, lesson version, objectives and approved sources after provider and citation-review filters; four new negative cases | `tests/v123-file16-socratic-owner.php` |
 | F05-S19 | File26 `list_batch()` accepted nonempty scope filters (except `object_id`) but silently returned the full unfiltered snapshot | Incomplete/ambiguous owner contract | Reject all nonempty unsupported scopes; explicit negative test | `tests/v123-file26-public-version.php` |
 | F05-S20 | File26 untrusted document IDs/types could cast booleans/overflowing integers or malformed fields before canonical owner revalidation | Identity normalization / malformed DTO | Reject alternate, out-of-range IDs and non-scalar indexed metadata | `tests/v123-file26-public-version.php` |
+| F05-S21 | Exact 4.0.0 → 4.1.0 code replacement upgraded schema but left `lsch_version=4.0.0`, misleading release identity | Version/migration identity | After all schema markers and physical mentor table validate, persist `lsch_version` and source-plan provenance with readback; abort on persistence failure | `tests/v123-upgrade-seed-v400.php`, `tests/v123-upgrade-verify-v410.php` |
+| F05-S22 | File06 approved link metadata was written before relation index; index persistence failure could leave a partially approved, inconsistent relation | Cross-object approval ordering | Persist unprivileged index first, independently approved decision last; inject each meta-write failure | `tests/v12-file06-approved-links.php` |
 
-**Status for F05-S01..S20:** corrected in the Draft source branch and corresponding isolated regression checks passed on its prior tested commits. *Current exact head CI must always be rechecked after further commits.* **Live verified: 0**. Do not mark production Resolved.
+**Status for F05-S01..S22:** corrected in the Draft source branch and corresponding isolated regression checks passed on its prior tested commits. *Current exact head CI must always be rechecked after further commits.* **Live verified: 0**. Do not mark production Resolved.
 
 ## Other non-duplicated work and remaining questions
 
@@ -50,6 +52,11 @@
 | F05-O06 | P06 real peer CI | File00 1.2.44 (DB 1.4.5, `ready` after deferred admin bootstrap), File01 2.0.1, File20 1.4.17, File05 4.1.0: pinned source snapshots and guest/private REST smoke passed | Disposable source integration; Hostinger staging and exact deployed peers unverified |
 | F05-O07 | File00 owner bootstrap log | First authorized CLI activation observed 31 missing-table SQL errors before deferred File00 admin bootstrap completed; upstream issue #62 records reproducible owner finding | Open File00-owned source concern; not a File05/live fix |
 | F05-O08 | File00 readiness contract | Before completion, File00 bootstrap was `queued` while File05's `missing()` returned `[]`; a public owner migration/ready contract should be supplied rather than direct File00 private-table coupling | Pending versioned File00 owner decision |
+| F05-O09 | Actual File06 source | Pinned File06 `2.4.20` candidate at `4f5b7b1714bd1dc502026ca6509f7cab35b43cd5`; real owner `HE_V2_Schema::runtime_status()=active`, 11 negative canonical claim checks passed | Missing real approved current concepts/lessons, source rights and peer signoff; source candidate is NOT File06 main |
+| F05-O10 | Actual File26 source | Pinned File26 main `1.3.0` at `1b064c6ea9f81195611ed001d5457e8ced65460a`; proposed File05 adapter registered in real WP and remained not index-eligible; 15 checks passed | No owner tombstone/event lifecycle proof, activation governance, populated live index or real peer staging |
+| F05-O11 | Historical versioned migration | Exact File05 `4.0.0` commit `1fa37ec81df5ef9da4b794cdb44283a7204d1dcf` upgraded to `4.1.0`; 14 tests, historical 101 feedback and bookmark retained | Not actual site's predecessor, not real Hostinger backup/rollback |
+| F05-O12 | Database corruption safety | On disposable WP, physically dropped mentor table while schema marker stayed `1`; next process recorded `lsch_runtime_failure` and paused | Hostinger missing-table/read-only incident still unverified |
+| F05-O13 | Real MariaDB mentor boundary | 0/99/100/101/500/1000 legacy rows, 56 checks, tampered middle entry and partial normalization fail-closed | Real site historical data unknown |
 | F05-O04 | P07 | Eight source books, lesson claims, edition/copyright, reviewed translations and approved quizzes not populated | **Blocked / pending approval** |
 | F05-O05 | P12 | Exact deployed ZIP/version, DB options/schema, migration/restore and Live re-test unknown | **Blocked** |
 
@@ -57,16 +64,17 @@
 
 | Mechanism | Proven scope | Not proven |
 | --- | --- | --- |
-| PHP 7.4 + PHP 8.3 | Full source lint, existing fixtures, File06 17, File26 25 and File16 19 isolated assertions | Hostinger/Live and actual provider suites |
+| PHP 7.4 + PHP 8.3 | Full source lint, existing fixtures, File06 source assertions (new count to verify), File26 25 and File16 19 isolated assertions; V12.3 matrix 53/CV12 integrity | Hostinger/Live and actual provider suites |
 | Node.js | Original learning/Future18 and new private-note failure/malformed-revision regression | Browser NVDA/TalkBack/VoiceOver |
 | Deterministic ZIP | A/B identical archive plus manifest verification | Actual deployed artifact |
 | WordPress 7.0.1 disposable with MariaDB 10.11 | Plugin activation, installed schema, REST routes, guest/private authorization, owner proposed status and reactivation | WordPress on Hostinger, upgrade from actual predecessor |
 | Pinned real File00/01/20 peers in disposable CI | File00 protected admin bootstrap to `ready` / DB 1.4.5, File05 preflight, guest public catalog and native private REST denial succeeded, CI #43664653956 | Real site migration/parity, approved users/teachers, independent security acceptance |
+| Real File06 and File26 peer contract CI | File06 11 canonical negative checks in disposable WordPress and File26 15 proposed/no-index checks; peer source SHAs pinned | Real approved links, event/tombstone retry/retract, File16 provider and actual Hostinger staging |
 | P00 runbook | Exact read-only options/tables/roles/parity checklist | No actual Live DB evidence |
 
 ## Defect accounting — unique, no stacking
 
-- **Source findings S01..S20:** 20 cumulative; 17 from earlier work and **3 newly corrected** on 2026-11-15, all with isolated regression evidence. **No live-level resolution is claimed.**
+- **Source findings S01..S22:** 22 cumulative; 17 inherited from 2026-11-14 and **5 newly corrected** on 2026-11-15 (S18–S22); source regression and disposable WP evidence on exact candidate commits. **No staging/Live resolution is claimed.**
 - **Branch integration conflict:** 1 (I01) reconciled in Draft.
 - **Documentation mismatch:** D01 corrected; D02 intentionally open and tracked.
 - **Test failures being concealed:** 0 known in the recorded passing exact-head CI. **Blocked mandatory tests remain** and must never be counted as Passed.
