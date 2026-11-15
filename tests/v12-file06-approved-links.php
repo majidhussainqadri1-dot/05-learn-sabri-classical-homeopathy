@@ -22,7 +22,7 @@ function sanitize_text_field($v){return trim((string)$v);}
 function sanitize_key($v){return strtolower((string)$v);}
 function get_post($id){return (object)array('ID'=>$id,'post_type'=>'lsch_lesson','post_status'=>'publish','post_author'=>7);}
 function get_post_meta($id,$key,$single=true){return $GLOBALS['meta'][$key]??null;}
-function update_post_meta($id,$key,$value){$GLOBALS['meta'][$key]=$value;return true;}
+function update_post_meta($id,$key,$value){if($key===($GLOBALS['fail_meta_key']??'')){return false;}$GLOBALS['meta'][$key]=$value;return true;}
 function rest_ensure_response($v){return $v;}
 class MockRequest extends ArrayObject {public function get_header($n){return 'nonce';}public function get_json_params(){return $this->getArrayCopy();}}
 function get_posts($args){return array(9);}
@@ -99,7 +99,26 @@ $blocked=LSCH_File06_Source_Links::approve($request);
 must($blocked instanceof WP_Error && $blocked->get_error_code()==='lsch_f06_review_denied',
   'Safe-mode blocks approval even if WordPress capability is present');
 $GLOBALS['safe_mode']=false;
+// A failed index write must not pre-commit the new approval.
+$old_record=$GLOBALS['meta'][LSCH_File06_Source_Links::META_APPROVAL];
+$GLOBALS['meta'][LSCH_File06_Source_Links::META_INDEX]='stale-other-uuid';
+$GLOBALS['fail_meta_key']=LSCH_File06_Source_Links::META_INDEX;
+$index_error=LSCH_File06_Source_Links::approve($request);
+must($index_error instanceof WP_Error && $index_error->get_error_code()==='lsch_f06_link_index',
+  'Failed relation index blocks approval');
+must($GLOBALS['meta'][LSCH_File06_Source_Links::META_APPROVAL]===$old_record,
+  'Failed relation index does not mutate reviewed approval');
+$GLOBALS['fail_meta_key']='';
 $accepted=LSCH_File06_Source_Links::approve($request);
 must(is_array($accepted)&&$accepted['approved']===true,
   'Exact File06 current version can be independently approved');
+// A failed approval write leaves only an index, never a new academic decision.
+$prior=$GLOBALS['meta'][LSCH_File06_Source_Links::META_APPROVAL];
+$GLOBALS['fail_meta_key']=LSCH_File06_Source_Links::META_APPROVAL;
+$approval_error=LSCH_File06_Source_Links::approve($request);
+must($approval_error instanceof WP_Error && $approval_error->get_error_code()==='lsch_f06_review_store',
+  'Approval write failure denies success');
+must($GLOBALS['meta'][LSCH_File06_Source_Links::META_APPROVAL]===$prior,
+  'Failed approval retains only the previous committed decision');
+$GLOBALS['fail_meta_key']='';
 echo "File05→File06 approved educational links: {$GLOBALS['checks']} isolated checks PASS.\n";
