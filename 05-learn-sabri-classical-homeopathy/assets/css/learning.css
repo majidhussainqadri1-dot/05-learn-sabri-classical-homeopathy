@@ -20,3 +20,6 @@
 .lsch-f18-workbench [aria-live]{min-height:1.5rem}
 @media(max-width:640px){.lsch-f18-workbench .lsch-f18-kv{grid-template-columns:minmax(0,1fr)}.lsch-f18-workbench .lsch-f18-records{padding-inline-start:1.25rem}}
 @media(prefers-reduced-motion:reduce){.lsch-f18-workbench *{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* V12.3: progress and bookmark mutation feedback occupies its own readable row. */
+.lsch-learning-tools > [data-lsch-status]{flex:1 1 100%;min-width:0;margin:0;overflow-wrap:anywhere}
