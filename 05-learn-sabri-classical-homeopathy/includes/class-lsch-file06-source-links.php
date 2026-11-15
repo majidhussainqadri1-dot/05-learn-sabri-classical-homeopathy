@@ -140,13 +140,17 @@ final class LSCH_File06_Source_Links {
 		$record=array('approved'=>true,'concept_public_id'=>$uuid,'concept_version'=>$cv,
 			'lesson_version'=>$lv,'rights_scope'=>$rights,'rights_evidence_ref'=>$proof,
 			'reviewer_user_id'=>$actor,'reviewed_at_utc'=>gmdate('c'));
-		if(false===update_post_meta($id,self::META_APPROVAL,$record)
-			&&get_post_meta($id,self::META_APPROVAL,true)!==$record) {
-			return new WP_Error('lsch_f06_review_store','The independent link approval could not be saved',array('status'=>503));
-		}
+		// The relation index is not an academic approval. Persist it FIRST and
+		// commit the independently reviewed approval LAST. If indexing fails,
+		// never persist an apparently approved relation; if approval fails, an
+		// unapproved index alone can never be projected as a source link.
 		if(false===update_post_meta($id,self::META_INDEX,$uuid)
 			&&get_post_meta($id,self::META_INDEX,true)!==$uuid) {
 			return new WP_Error('lsch_f06_link_index','The canonical relation index could not be saved',array('status'=>503));
+		}
+		if(false===update_post_meta($id,self::META_APPROVAL,$record)
+			&&get_post_meta($id,self::META_APPROVAL,true)!==$record) {
+			return new WP_Error('lsch_f06_review_store','The independent link approval could not be saved',array('status'=>503));
 		}
 		return rest_ensure_response(array('approved'=>true,'concept_public_id'=>$uuid,
 			'concept_version'=>$cv,'lesson_id'=>$id,'lesson_version'=>$lv));
